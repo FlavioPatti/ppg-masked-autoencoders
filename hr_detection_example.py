@@ -1,5 +1,5 @@
 import torch
-from pytorch_model_summary import summary
+#from pytorch_model_summary import summary
 import pytorch_benchmarks.hr_detection as hrd
 from pytorch_benchmarks.utils import seed_all, EarlyStopping
 
@@ -10,7 +10,7 @@ device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 print("Training on:", device)
 
 # Ensure deterministic execution
-seed = seed_all(seed=42)
+#seed = seed_all(seed=42)
 
 # Get the Model
 model = hrd.get_reference_model('temponet')
@@ -19,7 +19,7 @@ if torch.cuda.is_available():
 
 # Model Summary
 input_example = torch.rand((1,) + model.input_shape)
-print(summary(model, input_example.to(device), show_input=False, show_hierarchical=True))
+#print(summary(model, input_example.to(device), show_input=False, show_hierarchical=True))
 
 # Get Training Settings
 criterion = hrd.get_default_criterion()
