@@ -113,7 +113,11 @@ def _get_data_gen(samples, targets, groups, cross_val):
                 print(f'Test Subject: {test_subj}')
                 test_samples = samples_val_test[test_index]
                 test_targets = targets_val_test[test_index]
-                ds_test = Dalia(test_samples, test_targets, test_subj) #cosa è test_subj?
+                ds_test = Dalia(test_samples, test_targets, test_subj) 
+                #il dataset viene unzippato in diversi Sx, ognuno con un numero diverso di samples per le diverse attività(uguali per tutti)
+                #si utilizza il k-fold in modo da allenare la TempoNet su tutti i Sx durante il training e poi fare il testing
+                #su un Sx diverso per ogni iterazione
+                
             j += 1
 
         yield ds_train, ds_val, ds_test
