@@ -13,7 +13,7 @@ print("Training on:", device)
 #seed = seed_all(seed=42)
 
 # Get the Model
-model = hrd.get_reference_model('temponet')
+model = hrd.get_reference_model('vit')
 if torch.cuda.is_available():
     model = model.cuda()
 
