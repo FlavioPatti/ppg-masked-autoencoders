@@ -18,7 +18,7 @@ if torch.cuda.is_available():
     model = model.cuda()
 
 # Model Summary
-input_example = torch.rand((1,) + model.input_shape)
+#input_example = torch.rand((1,) + model.input_shape)
 #print(summary(model, input_example.to(device), show_input=False, show_hierarchical=True))
 
 # Get Training Settings

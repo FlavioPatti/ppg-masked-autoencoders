@@ -166,7 +166,7 @@ class Dalia(Dataset):
 def get_data(data_dir=None,
              url=DALIA_URL,
              ds_name='ppg_dalia.zip',
-             cross_val=True) -> Tuple[Dataset, ...]:
+             cross_val=True):
     if data_dir is None:
         data_dir = Path('.').absolute() / 'hrd_data'
     filename = data_dir / ds_name

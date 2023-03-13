@@ -1,6 +1,9 @@
 from math import ceil
 from typing import Dict, Any, Optional
 import torch.nn as nn
+from models_mae import MaskedAutoencoderViT
+from functools import partial
+
 """
 This module must implement at least one model for the specific benchmark.
 
@@ -13,10 +16,15 @@ It returns the requested pytorch model.
 If the provided model_name is not supported an error is raised.
 """
 
-def get_reference_model(model_name: str, model_config: Optional[Dict[str, Any]] = None
-                        ) -> nn.Module:
+
+def get_reference_model(model_name: str, model_config: Optional[Dict[str, Any]] = None):
     if model_name == 'temponet':
         return TEMPONet()
+    if model_name == 'vit':
+        return MaskedAutoencoderViT(
+        patch_size=16, embed_dim=768, depth=12, num_heads=12,
+        decoder_embed_dim=512, decoder_num_heads=16,
+        mlp_ratio=4, norm_layer=partial(nn.LayerNorm, eps=1e-6) )
     else:
         raise ValueError(f"Unsupported model name {model_name}")
 

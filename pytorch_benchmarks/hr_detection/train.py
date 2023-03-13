@@ -70,7 +70,7 @@ def train_one_epoch(
             optimizer.zero_grad()
             loss.backward()
             optimizer.step()
-            mae_val = F.l1_loss(output, target) # => Mean absolute error
+            mae_val = F.mse_loss(output, target) # => Mean square error
             avgmae.update(mae_val, sample.size(0))
             avgloss.update(loss, sample.size(0))
             if step % 100 == 99:
@@ -101,7 +101,7 @@ def evaluate(
             step += 1
             sample, target = sample.to(device), target.to(device)
             output, loss = _run_model(model, sample, target, criterion, device)
-            mae_val = F.l1_loss(output, target)
+            mae_val = F.mse_loss(output, target)
             avgmae.update(mae_val, sample.size(0))
             avgloss.update(loss, sample.size(0))
         final_metrics = {
