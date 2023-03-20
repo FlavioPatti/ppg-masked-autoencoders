@@ -53,8 +53,10 @@ def _run_model(model, sample, target, criterion, device):
     loss = criterion(output, target)
     return output, loss
 
+
+
 def train_one_epoch_masked_autoencoder(model: torch.nn.Module,
-                    data_loader: Iterable, optimizer: torch.optim.Optimizer,
+                    data_loader: DataLoader, optimizer: torch.optim.Optimizer,
                     device: torch.device, epoch: int, loss_scaler,
                     log_writer=None,
                     args=None):
@@ -63,24 +65,19 @@ def train_one_epoch_masked_autoencoder(model: torch.nn.Module,
     metric_logger.add_meter('lr', misc.SmoothedValue(window_size=1, fmt='{value:.6f}'))
     header = 'Epoch: [{}]'.format(epoch)
     print_freq = 200
-
-    accum_iter = args.accum_iter
+    accum_iter = 1
 
     optimizer.zero_grad()
 
-    if log_writer is not None:
-        print('log_dir: {}'.format(log_writer.log_dir))
-
     # set model epoch
     model.epoch = epoch
-    for data_iter_step, (samples, _labels, _vids) in enumerate(metric_logger.log_every(data_loader, print_freq, header)):
 
+    for data_iter_step, (samples, _labels) in enumerate(metric_logger.log_every(data_loader, print_freq, header)):
+        
         # we use a per iteration (instead of per epoch) lr scheduler
         if data_iter_step % accum_iter == 0:
             lr_sched.adjust_learning_rate(optimizer, data_iter_step / len(data_loader) + epoch, args)
-
-
-
+        
         #print(samples.shape)# 64x3x224x224 for img, 64x1x512x128 for audio
         samples = samples.to(device, non_blocking=True)
         
@@ -93,7 +90,7 @@ def train_one_epoch_masked_autoencoder(model: torch.nn.Module,
 
 
         with torch.cuda.amp.autocast():
-            loss_a, _, _, _ = model(samples, mask_ratio=args.mask_ratio)
+            loss_a, _, _, _ = model(samples, mask_ratio=0.8)
         loss_value = loss_a.item()
         loss_total = loss_a
 
@@ -130,8 +127,6 @@ def train_one_epoch_masked_autoencoder(model: torch.nn.Module,
     metric_logger.synchronize_between_processes()
     print("Averaged stats:", metric_logger)
     return {k: meter.global_avg for k, meter in metric_logger.meters.items()}
-
-
 
 
 def evaluate(
@@ -180,7 +175,7 @@ def train_one_epoch_hr_detection(
             optimizer.zero_grad()
             loss.backward()
             optimizer.step()
-            mae_val = F.mse_loss(output, target) # => Mean square error per Masked auto encoder,  mae_val = F.l1_loss(output, target)  => Mean absolute error per hr detection
+            mae_val = F.l1_loss(output, target) # Mean absolute error per hr detection
             avgmae.update(mae_val, sample.size(0))
             avgloss.update(loss, sample.size(0))
             if step % 100 == 99:
@@ -195,4 +190,3 @@ def train_one_epoch_hr_detection(
         tepoch.set_postfix(final_metrics)
         tepoch.close()
     return final_metrics
-
