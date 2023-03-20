@@ -2,7 +2,8 @@ import torch
 #from pytorch_model_summary import summary
 import pytorch_benchmarks.hr_detection as hrd
 from pytorch_benchmarks.utils import seed_all, EarlyStopping
-
+from util.misc import NativeScalerWithGradNormCount as NativeScaler
+from pytorch_benchmarks.hr_detection.train import train_one_epoch_masked_autoencoder
 N_EPOCHS = 500
 
 # Check CUDA availability
@@ -36,9 +37,25 @@ for datasets in data_gen:
     # Set earlystop
     earlystop = EarlyStopping(patience=20, mode='min')
     # Training Loop
+    loss_scaler = NativeScaler()
     for epoch in range(N_EPOCHS):
+        """
         metrics = hrd.train_one_epoch(
             epoch, model, criterion, optimizer, train_dl, val_dl, device)
+        """
+        train_stats = train_one_epoch_masked_autoencoder(
+            model, train_dl,
+            optimizer, device, epoch, loss_scaler,
+            log_writer=None,
+            args=None
+        )
+        
+        log_stats = {**{f'train_{k}': v for k, v in train_stats.items()},
+                        'epoch': epoch,}
+        
+        print(f"{log_stats}")
+        
+        """
         if earlystop(metrics['val_MAE']):
             break
     test_metrics = hrd.evaluate(model, criterion, test_dl, device)
@@ -47,3 +64,4 @@ for datasets in data_gen:
     mae_dict[test_subj] = test_metrics['MAE']
 print(f'MAE: {mae_dict}')
 print(f'Average MAE: {sum(mae_dict.values()) / len(mae_dict)}')
+"""
