@@ -70,7 +70,7 @@ def train_one_epoch(
             optimizer.zero_grad()
             loss.backward()
             optimizer.step()
-            mae_val = F.mse_loss(output, target) # => Mean square error
+            mae_val = F.mse_loss(output, target) # => Mean square error per Masked auto encoder,  mae_val = F.l1_loss(output, target)  => Mean absolute error per hr detection
             avgmae.update(mae_val, sample.size(0))
             avgloss.update(loss, sample.size(0))
             if step % 100 == 99:
