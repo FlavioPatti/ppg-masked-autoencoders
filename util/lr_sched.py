@@ -14,7 +14,7 @@ def adjust_learning_rate(optimizer, epoch, args):
     epochs = 400
     
     """Decay the learning rate with half-cycle cosine after warmup"""
-    if epoch < args.warmup_epochs:
+    if epoch < warmup_epochs:
         lr = lr * epoch / warmup_epochs 
     else:
         lr = min_lr + (lr - min_lr) * 0.5 * \
