@@ -90,6 +90,19 @@ def train_one_epoch_masked_autoencoder(model: torch.nn.Module,
 
 
         with torch.cuda.amp.autocast():
+            #l'immagine di per se è 2D
+            #il segnale ppg calcola la variazione di volume del sangue col quale poi si stima l'hr attraverso un segnale temporale audio
+            #samples = [128,4,256] = [DIM_BATCH,NUM_CANALI,LUNGHEZZA_SEGNALE_TEMPORALE_SEGNALE_PPG]
+            #Per rappresentare le immagini si utilizzano informazioni sul colore attraverso canali. 
+            # Un'immagine può essere divisa nei canali di colore RGB, HSL o CMYK. 
+            # Un'immagine RGB ha tre canali: rosso, verde e blu.
+            #HSL ha tre canali: tonalità, saturazione e luminosità
+            #CMYK => Ciano, magenta, giallo, nero
+            
+            #il masked autoencoder ricostruisce il segnale temporale nello spettro della frequenza quindi prende il segnale temporale audio
+            #che ha 256 instanti temporali [256]
+            #e lo stasforma in spettogramma (dominio della frequenza) [istanti temporali = 256, num_frequenze] 
+            # attraverso uno step di preprocessing utilizzando f_bank
             loss_a, _, _, _ = model(samples, mask_ratio=0.8)
         loss_value = loss_a.item()
         loss_total = loss_a

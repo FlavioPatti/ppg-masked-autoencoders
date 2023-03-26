@@ -10,7 +10,7 @@ class PatchEmbed_org(nn.Module):
         super().__init__()
         img_size = to_2tuple(img_size)
         patch_size = to_2tuple(patch_size)
-        num_patches = (img_size[1] // patch_size[1]) * (img_size[0] // patch_size[0])
+        num_patches = 4 #(img_size[1] // patch_size[1]) * (img_size[0] // patch_size[0])
         self.patch_hw = (img_size[1] // patch_size[1], img_size[0] // patch_size[0])
         self.img_size = img_size
         self.patch_size = patch_size
