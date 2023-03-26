@@ -101,7 +101,7 @@ def train_one_epoch_masked_autoencoder(model: torch.nn.Module,
             
             #il masked autoencoder ricostruisce il segnale temporale nello spettro della frequenza quindi prende il segnale temporale audio
             #che ha 256 instanti temporali [256]
-            #e lo stasforma in spettogramma (dominio della frequenza) [istanti temporali = 256, num_frequenze] 
+            #e lo stasforma in spettogramma (dominio della frequenza) che ha 3D [1= canale, N_MELS, N_FRAMES] 
             # attraverso uno step di preprocessing utilizzando f_bank
             loss_a, _, _, _ = model(samples, mask_ratio=0.8)
         loss_value = loss_a.item()
