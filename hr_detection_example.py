@@ -38,6 +38,7 @@ for datasets in data_gen:
     # Training Loop
     loss_scaler = NativeScaler()
     for epoch in range(N_EPOCHS):
+        print(f"Epoch: {epoch}")
         """
         metrics = hrd.train_one_epoch_hr_detection(
             epoch, model, criterion, optimizer, train_dl, val_dl, device)

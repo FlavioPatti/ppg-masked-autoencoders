@@ -12,6 +12,9 @@ from typing import Iterable
 import torch
 import util.misc as misc
 import util.lr_sched as lr_sched
+import torchaudio
+import numpy as np
+
 """
 This module must implement the minimum set of information required to implement a training loop.
 
@@ -30,6 +33,24 @@ In particular, the mandatory and standard functions that needs to be implemented
 Optionally, the benchmark may defines and implements the get_default_scheduler function which takes as input 
 the optimizer and returns a specified learning-rate scheduler.
 """
+
+n_fft = 510 #freq = nfft/2 + 1 = 256 
+win_length = 510
+hop_length = 1 # lunghezza della finestra = istanti temporali
+n_mels = 256
+f_min = 0
+f_max = 4
+
+# creare l'istanza della trasformazione dello spettrogramma
+spectrogram_transform = torchaudio.transforms.Spectrogram(
+    n_fft=n_fft,
+    win_length=win_length,
+    hop_length=hop_length,
+    center=True,
+    pad_mode="reflect",
+    power=2.0,
+    normalized=True
+)
 
 class LogCosh(nn.Module):
     def __init__(self):
@@ -79,15 +100,23 @@ def train_one_epoch_masked_autoencoder(model: torch.nn.Module,
             lr_sched.adjust_learning_rate(optimizer, data_iter_step / len(data_loader) + epoch, args)
         
         #print(samples.shape)# 64x3x224x224 for img, 64x1x512x128 for audio
-        samples = samples.to(device, non_blocking=True)
-        
+        #samples = samples.to(device, non_blocking=True)
+        #samples = [128,4,256] = [batch,channel, time]
+        print(f"sample 0 = {samples[0].shape}") #[4,256]
+          
+        specto_samples = torch.narrow(spectrogram_transform(samples), dim=3, start=0, length=256) 
+
         # comment out when not debugging
         # from fvcore.nn import FlopCountAnalysis, parameter_count_table
         # if data_iter_step == 1:
         #     flops = FlopCountAnalysis(model, samples)
         #     print(flops.total())
         #     print(parameter_count_table(model))
+        specto_samples = specto_samples.to(device, non_blocking=True)
 
+        print(f"specto_samples = {specto_samples.shape}") 
+        #[128,4,256,256] = [batch,channels,freq, time]
+        print(model)
 
         with torch.cuda.amp.autocast():
             #l'immagine di per se è 2D
@@ -103,7 +132,8 @@ def train_one_epoch_masked_autoencoder(model: torch.nn.Module,
             #che ha 256 instanti temporali [256]
             #e lo stasforma in spettogramma (dominio della frequenza) che ha 3D [1= canale, N_MELS, N_FRAMES] 
             # attraverso uno step di preprocessing utilizzando f_bank
-            loss_a, _, _, _ = model(samples, mask_ratio=0.8)
+            loss_a, _, _, _ = model(specto_samples, mask_ratio=0.8)
+        print(f"loss = {loss_a}")
         loss_value = loss_a.item()
         loss_total = loss_a
 

@@ -28,15 +28,6 @@ The two mandatory and standard functions that need to be implemented are:
   The number of elements of the returned tuple will depends on the number of provided datasets.
 """
 
-SAMPLE_RATE = 16000
-"""Trasform audio into spectogram with the given SAMPLE_RATE"""
-mel_spectrogram = torchaudio.transforms.MelSpectrogram(
-        sample_rate=SAMPLE_RATE,
-        n_fft=1024,
-        hop_length=512,
-        n_mels=128
-    )
-
 def _collect_data(data_dir):
     random.seed(42)
 
@@ -104,7 +95,7 @@ def _get_data_gen(samples, targets, groups, cross_val):
         train_samples = samples[train_index]
         train_targets = targets[train_index] #target = la stima HR
          
-        ds_train = Dalia(train_samples, train_targets, mel_spectrogram, SAMPLE_RATE)
+        ds_train = Dalia(train_samples, train_targets)
         # Val and Test Dataset
         logo = LeaveOneGroupOut()
         samples_val_test = samples[test_val_index]
@@ -118,13 +109,13 @@ def _get_data_gen(samples, targets, groups, cross_val):
             if j == kfold_it % n:
                 val_samples = samples_val_test[val_index]
                 val_targets = targets_val_test[val_index]
-                ds_val = Dalia(val_samples, val_targets, mel_spectrogram, SAMPLE_RATE)
+                ds_val = Dalia(val_samples, val_targets)
                 test_subj = groups[test_val_index][test_index][0]
                 print(f'Test Subject: {test_subj}')
                 test_samples = samples_val_test[test_index]
                 test_targets = targets_val_test[test_index]
                 
-                ds_test = Dalia(test_samples, test_targets, test_subj, mel_spectrogram, SAMPLE_RATE) 
+                ds_test = Dalia(test_samples, test_targets, test_subj) 
                 #il dataset viene unzippato in diversi Sx, ognuno con un numero diverso di samples per le diverse attività(uguali per tutti)
                 #si utilizza il k-fold in modo da allenare la TempoNet su tutti i Sx durante il training e poi fare il testing
                 #su un Sx diverso per ogni iterazione
@@ -157,16 +148,14 @@ def _rndgroup_kfold(groups, n, seed=35):
 
 
 class Dalia(Dataset):
-    def __init__(self, samples, targets, test_subj=None, trasformation=None, target_sample_rate = None):
+    def __init__(self, samples, targets, test_subj=None):
         super(Dalia).__init__()
         self.samples = samples
         self.targets = targets
         self.test_subj = test_subj
-        self.trasformation = trasformation
-        self.target_sample_rate = target_sample_rate
 
     def __getitem__(self, idx):
-        
+        """
         audio_sample_path = ""
         label = ""
         signal, sr = torchaudio.load(audio_sample_path)
@@ -178,9 +167,10 @@ class Dalia(Dataset):
         if torch.is_tensor(idx):
             idx = idx.tolist()
         sample = self.samples[idx]
+
         target = self.targets[idx]
-        """
-        return signal, label
+        
+        return sample, target
     
     def _resample_if_necessary(self, signal, sr):
         if sr != self.target_sample_rate:
