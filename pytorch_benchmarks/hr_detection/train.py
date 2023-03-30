@@ -15,33 +15,14 @@ import util.lr_sched as lr_sched
 import torchaudio
 import numpy as np
 
-"""
-This module must implement the minimum set of information required to implement a training loop.
-
-In particular, the mandatory and standard functions that needs to be implemented are:
-
-* get_default_optimizer, it takes as input the pytorch model returned by get_reference_model and returns the default optimizer for the task.
-* get_default_criterion, it takes no inputs and returns the default loss function for the task.
-* train_one_epoch, implements one epoch of training and validation for the benchmark. 
-  For the validation part it directly calls the evaluate function. 
-  It takes as input an integer specifying the current epoch, the model to be trained, the criterion, the optimizer, 
-  the train and val dataloaders and finally the device to be used for the training. It returns a dictionary of tracked metrics.
-* evaluate, implement an evaluation step of the model. 
-  This step can be both of validation or test depending on the specific dataloader provided as input. 
-  It takes as input the model, the criterion, the dataloader and the device. It returns a dictionary of tracked metrics.
-  
-Optionally, the benchmark may defines and implements the get_default_scheduler function which takes as input 
-the optimizer and returns a specified learning-rate scheduler.
-"""
-
 n_fft = 510 #freq = nfft/2 + 1 = 256 
 win_length = 510
-hop_length = 1 # lunghezza della finestra = istanti temporali
+hop_length = 1 # window length = time instants
 n_mels = 256
 f_min = 0
 f_max = 4
 
-# creare l'istanza della trasformazione dello spettrogramma
+# create the spectrogram transformation instance
 spectrogram_transform = torchaudio.transforms.Spectrogram(
     n_fft=n_fft,
     win_length=win_length,
@@ -98,12 +79,13 @@ def train_one_epoch_masked_autoencoder(model: torch.nn.Module,
         # we use a per iteration (instead of per epoch) lr scheduler
         if data_iter_step % accum_iter == 0:
             lr_sched.adjust_learning_rate(optimizer, data_iter_step / len(data_loader) + epoch, args)
-        
-        #print(samples.shape)# 64x3x224x224 for img, 64x1x512x128 for audio
+            
         #samples = samples.to(device, non_blocking=True)
         #samples = [128,4,256] = [batch,channel, time]
-        print(f"sample 0 = {samples[0].shape}") #[4,256]
+        #print(f"sample 0 = {samples[0].shape}") #[4,256]
           
+        #apply spectrogram trasformation to samples in order to map audio into spectrogram
+        #the size of the output of this trasformation is 257 so I cut the last value
         specto_samples = torch.narrow(spectrogram_transform(samples), dim=3, start=0, length=256) 
 
         # comment out when not debugging
@@ -114,24 +96,12 @@ def train_one_epoch_masked_autoencoder(model: torch.nn.Module,
         #     print(parameter_count_table(model))
         specto_samples = specto_samples.to(device, non_blocking=True)
 
-        print(f"specto_samples = {specto_samples.shape}") 
-        #[128,4,256,256] = [batch,channels,freq, time]
-        print(model)
+        #print(f"specto_samples = {specto_samples.shape}") #[128,4,256,256] = [batch,channels,freq, time]
+        
+        #print details of the model 
+        #print(model)
 
         with torch.cuda.amp.autocast():
-            #l'immagine di per se è 2D
-            #il segnale ppg calcola la variazione di volume del sangue col quale poi si stima l'hr attraverso un segnale temporale audio
-            #samples = [128,4,256] = [DIM_BATCH,NUM_CANALI,LUNGHEZZA_SEGNALE_TEMPORALE_SEGNALE_PPG]
-            #Per rappresentare le immagini si utilizzano informazioni sul colore attraverso canali. 
-            # Un'immagine può essere divisa nei canali di colore RGB, HSL o CMYK. 
-            # Un'immagine RGB ha tre canali: rosso, verde e blu.
-            #HSL ha tre canali: tonalità, saturazione e luminosità
-            #CMYK => Ciano, magenta, giallo, nero
-            
-            #il masked autoencoder ricostruisce il segnale temporale nello spettro della frequenza quindi prende il segnale temporale audio
-            #che ha 256 instanti temporali [256]
-            #e lo stasforma in spettogramma (dominio della frequenza) che ha 3D [1= canale, N_MELS, N_FRAMES] 
-            # attraverso uno step di preprocessing utilizzando f_bank
             loss_a, _, _, _ = model(specto_samples, mask_ratio=0.8)
         print(f"loss = {loss_a}")
         loss_value = loss_a.item()
@@ -155,7 +125,7 @@ def train_one_epoch_masked_autoencoder(model: torch.nn.Module,
         lr = optimizer.param_groups[0]["lr"]
         metric_logger.update(lr=lr)
 
-        loss_value_reduce = misc.all_reduce_mean(loss_value) #calcola la media della loss su tutti i processi di un gruppo
+        loss_value_reduce = misc.all_reduce_mean(loss_value) #calculate the average of the loss on all the processes of a group
 
         if log_writer is not None and (data_iter_step + 1) % accum_iter == 0:
             """ We use epoch_1000x as the x-axis in tensorboard.
@@ -170,30 +140,6 @@ def train_one_epoch_masked_autoencoder(model: torch.nn.Module,
     metric_logger.synchronize_between_processes()
     print("Averaged stats:", metric_logger)
     return {k: meter.global_avg for k, meter in metric_logger.meters.items()}
-
-
-def evaluate(
-        model: nn.Module,
-        criterion: nn.Module,
-        data: DataLoader,
-        device: torch.device) -> Dict[str, float]:
-    model.eval()
-    avgmae = AverageMeter('6.2f')
-    avgloss = AverageMeter('2.5f')
-    step = 0
-    with torch.no_grad():
-        for sample, target in data:
-            step += 1
-            sample, target = sample.to(device), target.to(device)
-            output, loss = _run_model(model, sample, target, criterion, device)
-            mae_val = F.mse_loss(output, target)
-            avgmae.update(mae_val, sample.size(0))
-            avgloss.update(loss, sample.size(0))
-        final_metrics = {
-            'loss': avgloss.get(),
-            'MAE': avgmae.get(),
-        }
-    return final_metrics
 
 
 def train_one_epoch_hr_detection(
@@ -218,7 +164,7 @@ def train_one_epoch_hr_detection(
             optimizer.zero_grad()
             loss.backward()
             optimizer.step()
-            mae_val = F.l1_loss(output, target) # Mean absolute error per hr detection
+            mae_val = F.l1_loss(output, target) # Mean absolute error for hr detection
             avgmae.update(mae_val, sample.size(0))
             avgloss.update(loss, sample.size(0))
             if step % 100 == 99:
@@ -232,4 +178,28 @@ def train_one_epoch_hr_detection(
         final_metrics.update(val_metrics)
         tepoch.set_postfix(final_metrics)
         tepoch.close()
+    return final_metrics
+
+
+def evaluate(
+        model: nn.Module,
+        criterion: nn.Module,
+        data: DataLoader,
+        device: torch.device) -> Dict[str, float]:
+    model.eval()
+    avgmae = AverageMeter('6.2f')
+    avgloss = AverageMeter('2.5f')
+    step = 0
+    with torch.no_grad():
+        for sample, target in data:
+            step += 1
+            sample, target = sample.to(device), target.to(device)
+            output, loss = _run_model(model, sample, target, criterion, device)
+            mae_val = F.mse_loss(output, target)
+            avgmae.update(mae_val, sample.size(0))
+            avgloss.update(loss, sample.size(0))
+        final_metrics = {
+            'loss': avgloss.get(),
+            'MAE': avgmae.get(),
+        }
     return final_metrics
