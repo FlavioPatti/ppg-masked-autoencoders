@@ -1,21 +1,8 @@
 from math import ceil
 from typing import Dict, Any, Optional
 import torch.nn as nn
-from models_mae import MaskedAutoencoderViT
+from pytorch_benchmarks.hr_detection.models_mae import MaskedAutoencoderViT
 from functools import partial
-
-"""
-This module must implement at least one model for the specific benchmark.
-
-The mandatory and standard function that needs to be implemented is:
-
-* get_reference_model, the function always take as first argument the model_name which is a string associated to a specific pytorch model. 
-Optionally, the function can take as argument model_config i.e., a python dictionary of additional configurations for the model. 
-It returns the requested pytorch model.
-
-If the provided model_name is not supported an error is raised.
-"""
-
 
 def get_reference_model(model_name: str, model_config: Optional[Dict[str, Any]] = None):
     if model_name == 'temponet':

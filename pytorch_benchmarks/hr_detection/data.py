@@ -11,22 +11,8 @@ from sklearn.model_selection import LeaveOneGroupOut
 from skimage.util.shape import view_as_windows
 import torch
 from torch.utils.data import Dataset, DataLoader
-import torchaudio
 
 DALIA_URL = "https://archive.ics.uci.edu/ml/machine-learning-databases/00495/data.zip"
-"""
-This module must implement all the functions needed to obtain the data, eventually pre-process them and finally send them to the user 
-both in the form of Pytorch Dataset and Pytorch Dataloader.
-
-The two mandatory and standard functions that need to be implemented are:
-
-* get_data, which returns a tuple of Pytorch Datasets. Depending on the task, 
-  the number of returned datasets may vary from 2 (train and test) to 3 (train, validation and test). 
-  Instead, the function arguments depends on the specific task.
-* build_dataloaders, which returns a tuple of Pytorch Dataloaders. 
-  In general, takes as inputs the dataset returned by get_data and constants such as the batch-size and the number of workers. 
-  The number of elements of the returned tuple will depends on the number of provided datasets.
-"""
 
 def _collect_data(data_dir):
     random.seed(42)
@@ -40,12 +26,12 @@ def _collect_data(data_dir):
         ppg = subject['signal']['wrist']['BVP'][::2].astype('float32')
         acc = subject['signal']['wrist']['ACC'].astype('float32')
         target = subject['label'].astype('float32')
-        dataset[subj] = { #ogni sample è costituito da: valore ppg, valore accelometer, target = stima dell'hr
+        dataset[subj] = { 
+        #each sample is build by: ppg value, accelerometer value, hr estimation
                 'ppg': ppg,
                 'acc': acc,
                 'target': target
                 }
-    #le attività corrispondenti al valore dell'accelometer per ogni sample sono in un altro file
     return dataset
 
 
@@ -84,7 +70,7 @@ def _preprocess_data(data_dir, dataset):
 
 def _get_data_gen(samples, targets, groups, cross_val):
     n = 4
-    subjects = 15 #numero di pazienti su cui vengono presi i dati PPG
+    subjects = 15 #number of patients on which PPG data is taken
     indices, _ = _rndgroup_kfold(groups, n)
     kfold_it = 0
     while kfold_it < subjects:
@@ -93,7 +79,7 @@ def _get_data_gen(samples, targets, groups, cross_val):
         train_index, test_val_index = indices[fold]
         # Train Dataset
         train_samples = samples[train_index]
-        train_targets = targets[train_index] #target = la stima HR
+        train_targets = targets[train_index] #target = hr estimation
          
         ds_train = Dalia(train_samples, train_targets)
         # Val and Test Dataset
@@ -116,9 +102,10 @@ def _get_data_gen(samples, targets, groups, cross_val):
                 test_targets = targets_val_test[test_index]
                 
                 ds_test = Dalia(test_samples, test_targets, test_subj) 
-                #il dataset viene unzippato in diversi Sx, ognuno con un numero diverso di samples per le diverse attività(uguali per tutti)
-                #si utilizza il k-fold in modo da allenare la TempoNet su tutti i Sx durante il training e poi fare il testing
-                #su un Sx diverso per ogni iterazione
+               #the dataset is unzipped in several 'Sx' files, each with a different number of samples 
+               #for the different activities (that are the same for all the subjects)
+               #we use k-fold to train the TempoNet several Sx during training and then test 
+               #on a different and unseen Sx at each iteration
                 
             j += 1
 
@@ -155,15 +142,6 @@ class Dalia(Dataset):
         self.test_subj = test_subj
 
     def __getitem__(self, idx):
-        """
-        audio_sample_path = ""
-        label = ""
-        signal, sr = torchaudio.load(audio_sample_path)
-        signal = self._resample_if_necessary(signal, sr)
-        signal = self._mix_down_if_necessary(signal)
-        signal = self.transformation(signal)
-        
-        """
         if torch.is_tensor(idx):
             idx = idx.tolist()
         sample = self.samples[idx]
@@ -171,17 +149,6 @@ class Dalia(Dataset):
         target = self.targets[idx]
         
         return sample, target
-    
-    def _resample_if_necessary(self, signal, sr):
-        if sr != self.target_sample_rate:
-            resampler = torchaudio.transforms.Resample(sr, self.target_sample_rate)
-            signal = resampler(signal)
-        return signal
-
-    def _mix_down_if_necessary(self, signal):
-        if signal.shape[0] > 1:
-            signal = torch.mean(signal, dim=0, keepdim=True)
-        return signal
 
     def __len__(self):
         return len(self.samples)
