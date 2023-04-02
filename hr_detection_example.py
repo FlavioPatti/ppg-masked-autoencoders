@@ -3,7 +3,7 @@ import torch
 import pytorch_benchmarks.hr_detection as hrd
 from pytorch_benchmarks.utils import seed_all, EarlyStopping
 from util.misc import NativeScalerWithGradNormCount as NativeScaler
-N_EPOCHS = 500
+N_EPOCHS = 1
 
 # Check CUDA availability
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
@@ -38,7 +38,6 @@ for datasets in data_gen:
     # Training Loop
     loss_scaler = NativeScaler()
     for epoch in range(N_EPOCHS):
-        print(f"Epoch: {epoch}")
         """
         metrics = hrd.train_one_epoch_hr_detection(
             epoch, model, criterion, optimizer, train_dl, val_dl, device)

@@ -1,4 +1,5 @@
 from typing import Dict
+from timm.models.layers import pad_same
 from tqdm import tqdm
 import torch
 import torch.nn as nn
@@ -12,6 +13,7 @@ from typing import Iterable
 import torch
 import util.misc as misc
 import util.lr_sched as lr_sched
+import timm.optim.optim_factory as optim_factory
 import torchaudio
 import numpy as np
 
@@ -43,7 +45,9 @@ class LogCosh(nn.Module):
 
 
 def get_default_optimizer(net: nn.Module) -> optim.Optimizer:
-    return optim.Adam(net.parameters(), lr=0.001)
+  """setting optimizer for masked autoencoders"""
+  param_groups = optim_factory.param_groups_weight_decay(net, 0.01) #weight_decay
+  return optim.AdamW(param_groups, lr=0.001, betas=(0.9, 0.95))
 
 
 def get_default_criterion() -> nn.Module:
@@ -66,19 +70,22 @@ def train_one_epoch_masked_autoencoder(model: torch.nn.Module,
     metric_logger = misc.MetricLogger(delimiter="  ")
     metric_logger.add_meter('lr', misc.SmoothedValue(window_size=1, fmt='{value:.6f}'))
     header = 'Epoch: [{}]'.format(epoch)
-    print_freq = 200
-    accum_iter = 1
+    print_freq = 50
+    accum_iter = 10
 
     optimizer.zero_grad()
 
     # set model epoch
     model.epoch = epoch
 
+    #print(f"optimizer = {optimizer}")
+
     for data_iter_step, (samples, _labels) in enumerate(metric_logger.log_every(data_loader, print_freq, header)):
-        
+        #print(f"data_iter_step = {data_iter_step}")
         # we use a per iteration (instead of per epoch) lr scheduler
         if data_iter_step % accum_iter == 0:
             lr_sched.adjust_learning_rate(optimizer, data_iter_step / len(data_loader) + epoch, args)
+            #print(f"optimizer = {optimizer}")
             
         #samples = samples.to(device, non_blocking=True)
         #samples = [128,4,256] = [batch,channel, time]
@@ -87,6 +94,10 @@ def train_one_epoch_masked_autoencoder(model: torch.nn.Module,
         #apply spectrogram trasformation to samples in order to map audio into spectrogram
         #the size of the output of this trasformation is 257 so I cut the last value
         specto_samples = torch.narrow(spectrogram_transform(samples), dim=3, start=0, length=256) 
+
+        max_value = torch.max(specto_samples)
+        #normalize values into range [0,1] and avoid NaN loss
+        specto_samples = specto_samples/ max_value
 
         # comment out when not debugging
         # from fvcore.nn import FlopCountAnalysis, parameter_count_table
