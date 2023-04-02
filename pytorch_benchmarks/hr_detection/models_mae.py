@@ -26,7 +26,7 @@ class MaskedAutoencoderViT(nn.Module):
     """ Masked Autoencoder with VisionTransformer backbone
     """
     def __init__(self, img_size=224, patch_size=16, stride=10, in_chans=3,
-                 embed_dim=1024, depth=24, num_heads=16,
+                 embed_dim=1024, depth=24, num_heads=16, type="freq+time",
                  decoder_embed_dim=512, decoder_depth=8, decoder_num_heads=16,
                  mlp_ratio=4., norm_layer=nn.LayerNorm, norm_pix_loss=False, 
                  audio_exp=False, alpha=0.0, temperature=.2, mode=0, contextual_depth=8,
@@ -42,7 +42,7 @@ class MaskedAutoencoderViT(nn.Module):
         # --------------------------------------------------------------------------
         # MAE encoder specifics
         
-        self.patch_embed = PatchEmbed_org(img_size, patch_size, in_chans, embed_dim)
+        self.patch_embed = PatchEmbed_org(img_size, patch_size, in_chans, embed_dim, type)
         self.use_custom_patch = use_custom_patch
         num_patches = self.patch_embed.num_patches
 
@@ -269,14 +269,14 @@ class MaskedAutoencoderViT(nn.Module):
         # masking: length -> length * mask_ratio
         if mask_2d:
           x, mask, ids_restore = self.random_masking_2d(x, mask_t_prob=self.mask_t_prob, mask_f_prob=self.mask_f_prob)
-          print(f" x = {x.shape}")
-          print(f"mask = {mask.shape}")
-          print(f"ids_restore = {ids_restore.shape}")
+          #print(f" x = {x.shape}")
+          #print(f"mask = {mask.shape}")
+          #print(f"ids_restore = {ids_restore.shape}")
         else:
           x, mask, ids_restore = self.random_masking(x, mask_ratio)
-          print(f" x = {x.shape}")
-          print(f"mask = {mask.shape}")
-          print(f"ids_restore = {ids_restore.shape}")
+          #print(f" x = {x.shape}")
+          #print(f"mask = {mask.shape}")
+          #print(f"ids_restore = {ids_restore.shape}")
         # append cls token
         cls_token = self.cls_token + self.pos_embed[:, :1, :]
         cls_tokens = cls_token.expand(x.shape[0], -1, -1)

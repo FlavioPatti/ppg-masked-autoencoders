@@ -1,20 +1,47 @@
 
 import torch
 import torch.nn as nn
-from timm.models.layers import to_2tuple
+#from timm.models.layers import to_2tuple, to_1tuple
+
+from itertools import repeat
+import collections.abc
+
+
+# From PyTorch internals
+def _ntuple(n):
+    def parse(x):
+        if isinstance(x, collections.abc.Iterable) and not isinstance(x, str):
+            return tuple(x)
+        return tuple(repeat(x, n))
+    return parse
+
+to_1tuple = _ntuple(1)
+to_2tuple = _ntuple(2)
 
 class PatchEmbed_org(nn.Module):
     """ Image to Patch Embedding
     """
-    def __init__(self, img_size=224, patch_size=16, in_chans=3, embed_dim=768):
+    def __init__(self, img_size=224, patch_size=16, in_chans=3, embed_dim=768, type = "freq+time"):
         super().__init__()
-        img_size = to_2tuple(img_size)
-        print(f"img_size = {img_size}")
-        patch_size = to_2tuple(patch_size)
-        print(f"patch_size = {patch_size}")
-        num_patches = (img_size[1] // patch_size[1]) * (img_size[0] // patch_size[0])
-        print(f"num_patch = {num_patches}")
-        self.patch_hw = (img_size[1] // patch_size[1], img_size[0] // patch_size[0])
+        if type == "freq+time":
+            img_size = to_2tuple(img_size)
+            print(f"img_size = {img_size}")
+            patch_size = to_2tuple(patch_size)
+            print(f"patch_size = {patch_size}")
+            num_patches = (img_size[1] // patch_size[1]) * (img_size[0] // patch_size[0])
+            print(f"num_patch = {num_patches}")
+            self.patch_hw = (img_size[1] // patch_size[1], img_size[0] // patch_size[0])
+            print(f"patch_hw = {self.patch_hw}")
+        if type == "time":
+            img_size = to_1tuple(img_size)
+            print(f"img_size = {img_size}")
+            patch_size = to_1tuple(patch_size)
+            print(f"patch_size = {patch_size}")
+            num_patches = (1 // 1) * (img_size[0] // patch_size[0])
+            print(f"num_patch = {num_patches}")
+            self.patch_hw = (1 // 1 , img_size[0] // patch_size[0])
+            print(f"patch_hw = {self.patch_hw}")
+            
         self.img_size = img_size
         self.patch_size = patch_size
         self.num_patches = num_patches
@@ -26,13 +53,13 @@ class PatchEmbed_org(nn.Module):
         # FIXME look at relaxing size constraints
         #assert H == self.img_size[0] and W == self.img_size[1], \
         #    f"Input image size ({H}*{W}) doesn't match model ({self.img_size[0]}*{self.img_size[1]})."
-        print(f"x1 = {x.shape}")
+        #print(f"x1 = {x.shape}")
         x = self.proj(x)
-        print(f"x2 = {x.shape}")
+        #print(f"x2 = {x.shape}")
         x = x.flatten(2)
-        print(f"x3 = {x.shape}")
+        #print(f"x3 = {x.shape}")
         x = x.transpose(1,2)
-        print(f"x4 = {x.shape}")
+        #print(f"x4 = {x.shape}")
         return x
 
 

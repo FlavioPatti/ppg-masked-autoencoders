@@ -7,12 +7,19 @@ from functools import partial
 def get_reference_model(model_name: str, model_config: Optional[Dict[str, Any]] = None):
     if model_name == 'temponet':
         return TEMPONet()
-    if model_name == 'vit':
+    if model_name == 'vit_freq+time':
         return MaskedAutoencoderViT(
-        img_size = 256, in_chans = 4,
+        img_size = 256, in_chans = 4, mask_2d=True, type = "freq+time",
         patch_size=16, embed_dim=64, depth=12, num_heads=16,
-        decoder_embed_dim=64, decoder_num_heads=16, mask_2d=True,
+        decoder_embed_dim=64, decoder_num_heads=16,
         mlp_ratio=4, norm_layer=partial(nn.LayerNorm, eps=1e-6) )
+    if model_name == 'vit_time':
+        return MaskedAutoencoderViT(
+        img_size = 256, in_chans = 4, mask_2d=False, type = "time",
+        patch_size=16, embed_dim=64, depth=12, num_heads=16,
+        decoder_embed_dim=64, decoder_num_heads=16,
+        mlp_ratio=4, norm_layer=partial(nn.LayerNorm, eps=1e-6) )
+            
     else:
         raise ValueError(f"Unsupported model name {model_name}")
 

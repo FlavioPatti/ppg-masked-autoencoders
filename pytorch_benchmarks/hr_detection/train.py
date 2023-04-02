@@ -61,7 +61,7 @@ def _run_model(model, sample, target, criterion, device):
 
 
 
-def train_one_epoch_masked_autoencoder(model: torch.nn.Module,
+def train_one_epoch_masked_autoencoder_freq_time(model: torch.nn.Module,
                     data_loader: DataLoader, optimizer: torch.optim.Optimizer,
                     device: torch.device, epoch: int, loss_scaler,
                     log_writer=None,
@@ -114,6 +114,98 @@ def train_one_epoch_masked_autoencoder(model: torch.nn.Module,
 
         with torch.cuda.amp.autocast():
             loss_a, _, _, _ = model(specto_samples, mask_ratio=0.8)
+        print(f"loss = {loss_a}")
+        loss_value = loss_a.item()
+        loss_total = loss_a
+
+        if not math.isfinite(loss_value):
+            print("Loss is {}, stopping training".format(loss_value))
+            sys.exit(1)
+
+        #loss /= accum_iter
+        loss_total = loss_total / accum_iter
+        loss_scaler(loss_total, optimizer, parameters=model.parameters(),
+                    update_grad=(data_iter_step + 1) % accum_iter == 0)
+        if (data_iter_step + 1) % accum_iter == 0:
+            optimizer.zero_grad()
+
+        torch.cuda.synchronize()
+
+        metric_logger.update(loss=loss_value)
+
+        lr = optimizer.param_groups[0]["lr"]
+        metric_logger.update(lr=lr)
+
+        loss_value_reduce = misc.all_reduce_mean(loss_value) #calculate the average of the loss on all the processes of a group
+
+        if log_writer is not None and (data_iter_step + 1) % accum_iter == 0:
+            """ We use epoch_1000x as the x-axis in tensorboard.
+            This calibrates different curves when batch size changes.
+            """
+            epoch_1000x = int((data_iter_step / len(data_loader) + epoch) * 1000)
+            log_writer.add_scalar('loss', loss_value_reduce, epoch_1000x)
+            log_writer.add_scalar('lr', lr, epoch_1000x)
+
+
+    # gather the stats from all processes
+    metric_logger.synchronize_between_processes()
+    print("Averaged stats:", metric_logger)
+    return {k: meter.global_avg for k, meter in metric_logger.meters.items()}
+
+
+def train_one_epoch_masked_autoencoder_time(model: torch.nn.Module,
+                    data_loader: DataLoader, optimizer: torch.optim.Optimizer,
+                    device: torch.device, epoch: int, loss_scaler,
+                    log_writer=None,
+                    args=None):
+    model.train(True)
+    metric_logger = misc.MetricLogger(delimiter="  ")
+    metric_logger.add_meter('lr', misc.SmoothedValue(window_size=1, fmt='{value:.6f}'))
+    header = 'Epoch: [{}]'.format(epoch)
+    print_freq = 50
+    accum_iter = 10
+
+    optimizer.zero_grad()
+
+    # set model epoch
+    model.epoch = epoch
+
+    #print(f"optimizer = {optimizer}")
+
+    for data_iter_step, (samples, _labels) in enumerate(metric_logger.log_every(data_loader, print_freq, header)):
+        #print(f"data_iter_step = {data_iter_step}")
+        # we use a per iteration (instead of per epoch) lr scheduler
+        if data_iter_step % accum_iter == 0:
+            lr_sched.adjust_learning_rate(optimizer, data_iter_step / len(data_loader) + epoch, args)
+            #print(f"optimizer = {optimizer}")
+            
+        samples = samples.to(device, non_blocking=True)
+        #samples = [128,4,256] = [batch,channel, time]
+        #print(f"sample 0 = {samples[0].shape}") #[4,256]
+          
+        #apply spectrogram trasformation to samples in order to map audio into spectrogram
+        #the size of the output of this trasformation is 257 so I cut the last value
+        #specto_samples = torch.narrow(spectrogram_transform(samples), dim=3, start=0, length=256) 
+
+        #max_value = torch.max(specto_samples)
+        #normalize values into range [0,1] and avoid NaN loss
+        #specto_samples = specto_samples/ max_value
+
+        # comment out when not debugging
+        # from fvcore.nn import FlopCountAnalysis, parameter_count_table
+        # if data_iter_step == 1:
+        #     flops = FlopCountAnalysis(model, samples)
+        #     print(flops.total())
+        #     print(parameter_count_table(model))
+        #specto_samples = specto_samples.to(device, non_blocking=True)
+
+        #print(f"specto_samples = {specto_samples.shape}") #[128,4,256,256] = [batch,channels,freq, time]
+        
+        #print details of the model 
+        #print(model)
+
+        with torch.cuda.amp.autocast():
+            loss_a, _, _, _ = model(samples, mask_ratio=0.8)
         print(f"loss = {loss_a}")
         loss_value = loss_a.item()
         loss_total = loss_a

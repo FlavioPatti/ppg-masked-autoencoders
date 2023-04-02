@@ -13,7 +13,7 @@ print("Training on:", device)
 #seed = seed_all(seed=42)
 
 # Get the Model
-model = hrd.get_reference_model('vit') #vit or temponet
+model = hrd.get_reference_model('vit_time') #vit or temponet
 if torch.cuda.is_available():
     model = model.cuda()
 
@@ -42,7 +42,7 @@ for datasets in data_gen:
         metrics = hrd.train_one_epoch_hr_detection(
             epoch, model, criterion, optimizer, train_dl, val_dl, device)
         """
-        train_stats = hrd.train_one_epoch_masked_autoencoder(
+        train_stats = hrd.train_one_epoch_masked_autoencoder_time(
             model, train_dl,
             optimizer, device, epoch, loss_scaler,
             log_writer=None,
