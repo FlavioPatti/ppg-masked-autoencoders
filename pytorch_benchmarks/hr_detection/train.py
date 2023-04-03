@@ -226,11 +226,12 @@ def train_one_epoch_hr_detection(model: torch.nn.Module,
         #print(f"specto_samples = {specto_samples.shape}") #[128,4,256,256] = [batch,channels,freq, time]
         
         #print details of the model 
-        print(model)
+        #print(model)
 
         with torch.cuda.amp.autocast():
             output = model(specto_samples)
-            print(f"output = {output}")
+            print(f"output = {output.shape}")
+            print(f"target = {target.shape}")
             loss_a = criterion(output, target)
             
             #loss_a = _run_model(model, specto_samples, target, criterion, device)
