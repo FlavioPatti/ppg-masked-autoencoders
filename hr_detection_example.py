@@ -13,7 +13,7 @@ print("Training on:", device)
 #seed = seed_all(seed=42)
 
 # Get the Model
-model = hrd.get_reference_model('vit_time') #vit or temponet
+model = hrd.get_reference_model('vit_freq++time') #vit or temponet
 if torch.cuda.is_available():
     model = model.cuda()
 
@@ -42,21 +42,25 @@ for datasets in data_gen:
         metrics = hrd.train_one_epoch_hr_detection(
             epoch, model, criterion, optimizer, train_dl, val_dl, device)
         """
-        train_stats = hrd.train_one_epoch_masked_autoencoder_time(
+        train_stats = hrd.train_one_epoch_masked_autoencoder_freq_time(
             model, train_dl,
             optimizer, device, epoch, loss_scaler,
             log_writer=None,
             args=None
         )
         
+        print(f" train_stats = {train_stats}")
+        
         log_stats = {**{f'train_{k}': v for k, v in train_stats.items()},
                         'epoch': epoch,}
         
-        print(f"{log_stats}")
+        print(f" log_stats = {log_stats}")
         
-        """
+"""      
         if earlystop(metrics['val_MAE']):
             break
+        
+
     test_metrics = hrd.evaluate(model, criterion, test_dl, device)
     print("Test Set Loss:", test_metrics['loss'])
     print("Test Set MAE:", test_metrics['MAE'])
