@@ -135,9 +135,11 @@ class MaskedAutoencoderViT_without_decoder(nn.Module):
 
     def forward(self, imgs):
         x = self.forward_encoder_no_mask(imgs)
-        print(f"x = {x.shape}")
+        print(f"x1 = {x.shape}")
         x = self.out_neuron_1(x)
+        print(f"x2 = {x.shape}")
         x = self.out_neuron_2(x)
+        print(f"x3 = {x.shape}")
         #loss = self.forward_loss(imgs, pred, norm_pix_loss=self.norm_pix_loss)
         #pred, _, _ = self.forward_decoder(emb_enc, ids_restore)  # [N, L, p*p*3]
         #loss_contrastive = torch.FloatTensor([0.0]).cuda()
