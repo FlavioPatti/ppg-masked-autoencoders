@@ -196,7 +196,7 @@ def train_one_epoch_hr_detection(model: torch.nn.Module,
 
     #print(f"optimizer = {optimizer}")
 
-    for data_iter_step, (samples, _labels) in enumerate(metric_logger.log_every(data_loader, print_freq, header)):
+    for data_iter_step, (samples, target) in enumerate(metric_logger.log_every(data_loader, print_freq, header)):
         #print(f"data_iter_step = {data_iter_step}")
         # we use a per iteration (instead of per epoch) lr scheduler
         if data_iter_step % accum_iter == 0:
@@ -230,6 +230,7 @@ def train_one_epoch_hr_detection(model: torch.nn.Module,
 
         with torch.cuda.amp.autocast():
             output = model(specto_samples)
+            print(f"output = {output}")
             loss_a = criterion(output, target)
             
             #loss_a = _run_model(model, specto_samples, target, criterion, device)
