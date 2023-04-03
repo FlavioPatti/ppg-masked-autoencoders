@@ -60,6 +60,28 @@ class MaskedAutoencoderViT_without_decoder(nn.Module):
             for i in range(depth)])
         self.norm = norm_layer(embed_dim)
 
+         # --------------------------------------------------------------------------
+        # MAE decoder specifics
+        self.decoder_embed = nn.Linear(embed_dim, decoder_embed_dim, bias=True)
+
+        self.mask_token = nn.Parameter(torch.zeros(1, 1, decoder_embed_dim))
+        self.decoder_pos_embed = nn.Parameter(torch.zeros(1, num_patches + 1, decoder_embed_dim), requires_grad=pos_trainable)  # fixed sin-cos embedding
+
+        self.no_shift=no_shift
+
+        self.decoder_mode = decoder_mode
+    
+        # Transfomer
+        self.decoder_blocks = nn.ModuleList([
+            Block(decoder_embed_dim, decoder_num_heads, mlp_ratio, qkv_bias=True, qk_norm=None, norm_layer=norm_layer)
+            for i in range(decoder_depth)])
+
+        self.decoder_norm = norm_layer(decoder_embed_dim)
+        self.decoder_pred = nn.Linear(decoder_embed_dim, patch_size**2 * in_chans, bias=True) # decoder to patch
+
+        # --------------------------------------------------------------------------
+
+
         self.norm_pix_loss = norm_pix_loss
 
         self.patch_size=patch_size
@@ -76,10 +98,13 @@ class MaskedAutoencoderViT_without_decoder(nn.Module):
 
         self.epoch = epoch
         # Output layer 1
-        self.out_neuron_1 = nn.Linear(in_features=256, out_features=128)
+        self.out_neuron_1 = nn.Linear(in_features=64, out_features=32)
+        nn.init.constant_(self.out_neuron_1.bias, 0)
+        torch.nn.init.xavier_uniform_(self.out_neuron_1.weight)
         # Output layer 2
-        self.out_neuron_2 = nn.Linear(in_features=128, out_features=1)
-
+        self.out_neuron_2 = nn.Linear(in_features=32, out_features=1)
+        nn.init.constant_(self.out_neuron_2.bias, 0)
+        torch.nn.init.xavier_uniform_(self.out_neuron_2.weight)
 
     def forward_encoder_no_mask(self, x):
         # embed patches
@@ -110,9 +135,10 @@ class MaskedAutoencoderViT_without_decoder(nn.Module):
 
     def forward(self, imgs):
         x = self.forward_encoder_no_mask(imgs)
+        print(f"x = {x.shape}")
         x = self.out_neuron_1(x)
-        x =  x = self.out_neuron_2(x)
+        x = self.out_neuron_2(x)
+        #loss = self.forward_loss(imgs, pred, norm_pix_loss=self.norm_pix_loss)
         #pred, _, _ = self.forward_decoder(emb_enc, ids_restore)  # [N, L, p*p*3]
-        #loss_recon = self.forward_loss(imgs, pred, mask, norm_pix_loss=self.norm_pix_loss)
         #loss_contrastive = torch.FloatTensor([0.0]).cuda()
         return x

@@ -68,6 +68,16 @@ class MaskedAutoencoderViT(nn.Module):
         self.no_shift=no_shift
 
         self.decoder_mode = decoder_mode
+        
+        #Not used in this model, only to be compatible with finetune mode
+         # Output layer 1
+        self.out_neuron_1 = nn.Linear(in_features=256, out_features=128)
+        nn.init.constant_(self.out_neuron_1.bias, 0)
+        nn.init.constant_(self.out_neuron_1.weight, 1.0)
+        # Output layer 2
+        self.out_neuron_2 = nn.Linear(in_features=128, out_features=1)
+        nn.init.constant_(self.out_neuron_2.bias, 0)
+        nn.init.constant_(self.out_neuron_2.weight, 1.0)
     
         # Transfomer
         self.decoder_blocks = nn.ModuleList([

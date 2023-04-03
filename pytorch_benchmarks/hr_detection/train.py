@@ -16,6 +16,7 @@ import util.lr_sched as lr_sched
 import timm.optim.optim_factory as optim_factory
 import torchaudio
 import numpy as np
+from sklearn.preprocessing import MinMaxScaler, StandardScaler
 
 n_fft = 510 #freq = nfft/2 + 1 = 256 
 win_length = 510
@@ -105,9 +106,22 @@ def train_one_epoch_masked_autoencoder_freq_time(model: torch.nn.Module,
         #the size of the output of this trasformation is 257 so I cut the last value
         specto_samples = torch.narrow(spectrogram_transform(samples), dim=3, start=0, length=256) 
 
-        max_value = torch.max(specto_samples)
-        #normalize values into range [0,1] and avoid NaN loss
-        specto_samples = specto_samples/ max_value
+        #normalize values into range [0,1] to avoid NaN loss
+
+        #Method 1
+
+        #max_value = torch.max(specto_samples)
+        #specto_samples = specto_samples/ max_value
+
+        #Method 2
+
+        # Get min, max value aming all elements for each column
+        specto_min = np.min(specto_samples.numpy(), axis=tuple(range(specto_samples.ndim-1)), keepdims=1)
+        #print(f"min = {specto_min}")
+        specto_max = np.max(specto_samples.numpy(), axis=tuple(range(specto_samples.ndim-1)), keepdims=1)
+        #print(f"max = {specto_max}")
+        # Normalize with those min, max values leveraging broadcasting
+        specto_samples = (specto_samples - specto_min)/ (specto_max - specto_min)
 
         # comment out when not debugging
         # from fvcore.nn import FlopCountAnalysis, parameter_count_table
@@ -125,7 +139,7 @@ def train_one_epoch_masked_autoencoder_freq_time(model: torch.nn.Module,
         with torch.cuda.amp.autocast():
             #loss_a, _, _, _ = _run_model(specto_samples, mask_ratio=0.1)
             loss_a, _, _, _ = model(specto_samples, mask_ratio=0.1)
-        print(f"loss = {loss_a}")
+        #print(f"loss = {loss_a}")
         loss_value = loss_a.item()
         loss_total = loss_a
 
@@ -212,10 +226,13 @@ def train_one_epoch_hr_detection(model: torch.nn.Module,
         #print(f"specto_samples = {specto_samples.shape}") #[128,4,256,256] = [batch,channels,freq, time]
         
         #print details of the model 
-        #print(model)
+        print(model)
 
         with torch.cuda.amp.autocast():
-            loss_a, _, _, _ = model(specto_samples, mask_ratio=0.1)
+            output = model(specto_samples)
+            loss_a = criterion(output, target)
+            
+            #loss_a = _run_model(model, specto_samples, target, criterion, device)
         print(f"loss = {loss_a}")
         loss_value = loss_a.item()
         loss_total = loss_a
