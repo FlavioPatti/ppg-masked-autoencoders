@@ -72,7 +72,7 @@ def _run_model(model, sample, target, criterion, device):
 
 
 def train_one_epoch_masked_autoencoder_freq_time(model: torch.nn.Module,
-                    data_loader: DataLoader, criterion: torch.nnMSELoss, optimizer: torch.optim.Optimizer,
+                    data_loader: DataLoader, criterion: torch.nn.MSELoss, optimizer: torch.optim.Optimizer,
                     device: torch.device, epoch: int, loss_scaler,
                     log_writer=None,
                     args=None):
@@ -164,7 +164,7 @@ def train_one_epoch_masked_autoencoder_freq_time(model: torch.nn.Module,
     return {k: meter.global_avg for k, meter in metric_logger.meters.items()}
 
 def train_one_epoch_hr_detection(model: torch.nn.Module,
-                    data_loader: DataLoader, criterion: torch.nnMSELoss, optimizer: torch.optim.Optimizer, 
+                    data_loader: DataLoader, criterion: torch.nn.MSELoss, optimizer: torch.optim.Optimizer, 
                     device: torch.device, epoch: int, loss_scaler,
                     log_writer=None,
                     args=None):
