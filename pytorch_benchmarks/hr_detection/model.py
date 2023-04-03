@@ -2,13 +2,20 @@ from math import ceil
 from typing import Dict, Any, Optional
 import torch.nn as nn
 from pytorch_benchmarks.hr_detection.models_mae import MaskedAutoencoderViT
+from pytorch_benchmarks.hr_detection.model_finetune import MaskedAutoencoderViT_without_decoder
 from functools import partial
 
 def get_reference_model(model_name: str, model_config: Optional[Dict[str, Any]] = None):
     if model_name == 'temponet':
         return TEMPONet()
-    if model_name == 'vit_freq+time':
+    if model_name == 'vit_freq+time_pretrain':
         return MaskedAutoencoderViT(
+        img_size = 256, in_chans = 4, mask_2d=True, type = "freq+time",
+        patch_size=16, embed_dim=64, depth=12, num_heads=16,
+        decoder_embed_dim=64, decoder_num_heads=16,
+        mlp_ratio=4, norm_layer=partial(nn.LayerNorm, eps=1e-6) )
+    if model_name == 'vit_freq+time_finetune':
+        return MaskedAutoencoderViT_without_decoder(
         img_size = 256, in_chans = 4, mask_2d=True, type = "freq+time",
         patch_size=16, embed_dim=64, depth=12, num_heads=16,
         decoder_embed_dim=64, decoder_num_heads=16,

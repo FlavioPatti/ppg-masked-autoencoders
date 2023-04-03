@@ -370,7 +370,9 @@ class MaskedAutoencoderViT(nn.Module):
             mean = target.mean(dim=-1, keepdim=True)
             var = target.var(dim=-1, keepdim=True)
             target = (target - mean) / (var + 1.e-6)**.5
-
+        
+        """ MSE loss """
+        
         loss = (pred - target) ** 2
         loss = loss.mean(dim=-1)  # [N, L], mean loss per patch
 
@@ -383,4 +385,3 @@ class MaskedAutoencoderViT(nn.Module):
         loss_recon = self.forward_loss(imgs, pred, mask, norm_pix_loss=self.norm_pix_loss)
         loss_contrastive = torch.FloatTensor([0.0]).cuda()
         return loss_recon, pred, mask, loss_contrastive
-
