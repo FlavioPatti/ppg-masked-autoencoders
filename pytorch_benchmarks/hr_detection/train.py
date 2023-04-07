@@ -93,8 +93,8 @@ def get_default_criterion(task):
 
 def _run_model(model, sample, target, criterion):
     output = model(sample)
-    print(f"output = {output.shape}")
-    print(f"target = {target.shape}")
+    #print(f"output = {output.shape}")
+    #print(f"target = {target.shape}")
     loss = criterion(output, target)
     return output, loss
 
@@ -129,9 +129,7 @@ def train_one_epoch_masked_autoencoder_freq_time(model: torch.nn.Module,
         #samples = samples.to(device, non_blocking=True)
         #samples = [128,4,256] = [batch,channel, time]
         #print(f"sample 0 = {samples[0].shape}") #[4,256]
-          
-        #apply spectrogram trasformation to samples in order to map audio into spectrogram
-        #the size of the output of this trasformation is 257 so I cut the last value
+
         specto_samples = torch.narrow(spectrogram_transform(samples), dim=3, start=0, length=256) 
         
         """
@@ -299,6 +297,16 @@ def train_one_epoch_hr_detection(
     with tqdm(total=len(train), unit="batch") as tepoch:
         tepoch.set_description(f"Epoch {epoch+1}")
         for sample, target in train:
+            #print(f"samples = {sample.shape}")
+            sample = torch.narrow(spectrogram_transform(sample), dim=3, start=0, length=256) 
+            #print(f"specto samples = {sample.shape}")
+            # Get min, max value aming all elements for each column
+            specto_min = np.min(sample.numpy(), axis=tuple(range(sample.ndim-1)), keepdims=1)
+            #print(f"min = {specto_min}")
+            specto_max = np.max(sample.numpy(), axis=tuple(range(sample.ndim-1)), keepdims=1)
+            #print(f"max = {specto_max}")
+            # Normalize with those min, max values leveraging broadcasting
+            sample = (sample - specto_min)/ (specto_max - specto_min)
             step += 1
             tepoch.update(1)
             sample, target = sample.to(device), target.to(device)
@@ -334,9 +342,19 @@ def evaluate(
     step = 0
     with torch.no_grad():
         for sample, target in data:
+            #print(f"samples = {sample.shape}")
+            sample = torch.narrow(spectrogram_transform(sample), dim=3, start=0, length=256) 
+            #print(f"specto samples = {sample.shape}")
+            # Get min, max value aming all elements for each column
+            specto_min = np.min(sample.numpy(), axis=tuple(range(sample.ndim-1)), keepdims=1)
+            #print(f"min = {specto_min}")
+            specto_max = np.max(sample.numpy(), axis=tuple(range(sample.ndim-1)), keepdims=1)
+            #print(f"max = {specto_max}")
+            # Normalize with those min, max values leveraging broadcasting
+            sample = (sample - specto_min)/ (specto_max - specto_min)
             step += 1
             sample, target = sample.to(device), target.to(device)
-            output, loss = _run_model(model, sample, target, criterion, device)
+            output, loss = _run_model(model, sample, target, criterion)
             mae_val = F.mse_loss(output, target)
             avgmae.update(mae_val, sample.size(0))
             avgloss.update(loss, sample.size(0))

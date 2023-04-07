@@ -12,11 +12,6 @@ print("Training on:", device)
 # Ensure deterministic execution
 #seed = seed_all(seed=42)
 
-# Get the Model
-model = hrd.get_reference_model('vit_freq+time_pretrain') #vit or temponet
-if torch.cuda.is_available():
-    model = model.cuda()
-
 # Model Summary
 #input_example = torch.rand((1,) + model.input_shape)
 #print(summary(model, input_example.to(device), show_input=False, show_hierarchical=True))
@@ -34,6 +29,10 @@ for datasets in data_gen:
     # Training Loop
     loss_scaler = NativeScaler()
     
+    # Get the Model
+    model = hrd.get_reference_model('vit_freq+time_pretrain') #vit or temponet
+    if torch.cuda.is_available():
+      model = model.cuda()
     # Get Training Settings
     criterion = hrd.get_default_criterion("pretrain")
     optimizer = hrd.get_default_optimizer(model, "pretrain")

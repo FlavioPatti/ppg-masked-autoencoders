@@ -71,11 +71,11 @@ class MaskedAutoencoderViT(nn.Module):
         
         #Not used in this model, only to be compatible with finetune mode
          # Output layer 1
-        self.out_neuron_1 = nn.Linear(in_features=64, out_features=32)
+        self.out_neuron_1 = nn.Linear(in_features=16448, out_features=1024)
         nn.init.constant_(self.out_neuron_1.bias, 0)
         nn.init.constant_(self.out_neuron_1.weight, 1.0)
         # Output layer 2
-        self.out_neuron_2 = nn.Linear(in_features=32, out_features=1)
+        self.out_neuron_2 = nn.Linear(in_features=1024, out_features=1)
         nn.init.constant_(self.out_neuron_2.bias, 0)
         nn.init.constant_(self.out_neuron_2.weight, 1.0)
     
