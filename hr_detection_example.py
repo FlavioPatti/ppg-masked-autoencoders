@@ -73,18 +73,16 @@ for datasets in data_gen:
     model.load_state_dict(torch.load("./pytorch_benchmarks/checkpoint"))
     
     for epoch in range(N_EPOCHS):
-        train_stats = hrd.train_one_epoch_hr_detection(
-            model, train_dl, criterion,
-            optimizer, device, epoch, loss_scaler,
-            log_writer=None,
-            args=None)
-
-        print(f" train_stats = {train_stats}")
+        metrics = hrd.train_one_epoch_hr_detection(
+            epoch, model, criterion, optimizer, train_dl, val_dl, device)
         
-        log_stats = {**{f'train_{k}': v for k, v in train_stats.items()},
-                        'epoch': epoch,}
-        
-        print(f" log_stats = {log_stats}")
-        
-        if earlystop(log_stats['train_loss']):
+        if earlystop(metrics['val_MAE']):
             break
+        
+    test_metrics = hrd.evaluate(model, criterion, test_dl, device)
+    print("Test Set Loss:", test_metrics['loss'])
+    print("Test Set MAE:", test_metrics['MAE'])
+    mae_dict[test_subj] = test_metrics['MAE']
+
+    print(f'MAE: {mae_dict}')
+    print(f'Average MAE: {sum(mae_dict.values()) / len(mae_dict)}')

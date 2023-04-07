@@ -17,6 +17,7 @@ import timm.optim.optim_factory as optim_factory
 import torchaudio
 import numpy as np
 from sklearn.preprocessing import MinMaxScaler, StandardScaler
+import matplotlib as plt
 
 n_fft = 510 #freq = nfft/2 + 1 = 256 
 win_length = 510
@@ -35,6 +36,31 @@ spectrogram_transform = torchaudio.transforms.Spectrogram(
     power=2.0,
     normalized=True
 )
+
+
+"""
+spectrogram_transform = torchaudio.transforms.MelSpectrogram(
+    n_fft=n_fft,
+    win_length=win_length,
+    hop_length=hop_length,
+    center=True,
+    pad_mode="reflect",
+    power=2.0,
+    normalized=True,
+    f_min = f_min,
+    f_max = f_max,
+    n_mels = n_mels
+)
+"""
+
+def heatmap_specto(input_data):
+  for i in range(input_data.shape[0]):
+    plt.imshow(input_data[i], cmap ='hot', interpolation = 'nearest')
+    plt.colorbar()
+    plt.title(f'Heatmap channel {i+1}')
+    plt.xlabel('time')
+    plt.ylabel('freq')
+    plt.savefig(f'./pytorch_benchmarks/imgs/specto{i+1}.png')
 
 class LogCosh(nn.Module):
     def __init__(self):
@@ -65,8 +91,10 @@ def get_default_criterion(task):
         return LogCosh()
 
 
-def _run_model(model, sample, target, criterion, device):
+def _run_model(model, sample, target, criterion):
     output = model(sample)
+    print(f"output = {output.shape}")
+    print(f"target = {target.shape}")
     loss = criterion(output, target)
     return output, loss
 
@@ -105,8 +133,71 @@ def train_one_epoch_masked_autoencoder_freq_time(model: torch.nn.Module,
         #apply spectrogram trasformation to samples in order to map audio into spectrogram
         #the size of the output of this trasformation is 257 so I cut the last value
         specto_samples = torch.narrow(spectrogram_transform(samples), dim=3, start=0, length=256) 
+        
+        """
+        print(f"shape = {specto_samples.shape}")
+        sample1 = specto_samples[0]
+        print(f"shape sample1 = {sample1.shape}")
 
-        #normalize values into range [0,1] to avoid NaN loss
+        ch1 = sample1[0].numpy()
+        print(f"shape ch1 = {ch1.shape}")
+        max_ch1 = np.max(ch1)
+        print(f"max_ch1 = {max_ch1}")
+        min_ch1 = np.min(ch1)
+        print(f"min_ch1 = {min_ch1}")
+
+        plt.imshow(ch1, cmap ='hot', interpolation = 'nearest')
+        plt.colorbar()
+        plt.title(f'Heatmap channel 1')
+        plt.xlabel('time')
+        plt.ylabel('freq')
+        plt.savefig(f'./pytorch_benchmarks/imgs/specto1.png')      
+
+        ch2 = sample1[1].numpy()
+        print(f"shape ch2 = {ch2.shape}")
+        max_ch2 = np.max(ch2)
+        print(f"max_ch2 = {max_ch2}")
+        min_ch2 = np.min(ch2)
+        print(f"min_ch2 = {min_ch2}")
+
+        plt.imshow(ch2, cmap ='hot', interpolation = 'nearest')
+        plt.colorbar()
+        plt.title(f'Heatmap channel 2')
+        plt.xlabel('time')
+        plt.ylabel('freq')
+        plt.savefig(f'./pytorch_benchmarks/imgs/specto2.png') 
+
+        ch3 = sample1[2].numpy()
+        print(f"shape ch3 = {ch3.shape}")
+        max_ch3 = np.max(ch3)
+        print(f"max_ch3 = {max_ch3}")
+        min_ch3 = np.min(ch3)
+        print(f"min_ch3 = {min_ch3}")
+
+        plt.imshow(ch3, cmap ='hot', interpolation = 'nearest')
+        plt.colorbar()
+        plt.title(f'Heatmap channel 3')
+        plt.xlabel('time')
+        plt.ylabel('freq')
+        plt.savefig(f'./pytorch_benchmarks/imgs/specto3.png') 
+
+        ch4 = sample1[3].numpy()
+        print(f"shape ch4 = {ch4.shape}")
+        max_ch4 = np.max(ch4)
+        print(f"max_ch4 = {max_ch4}")
+        min_ch4 = np.min(ch4)
+        print(f"min_ch4 = {min_ch4}")
+
+        plt.imshow(ch4, cmap ='hot', interpolation = 'nearest')
+        plt.colorbar()
+        plt.title(f'Heatmap channel 4')
+        plt.xlabel('time')
+        plt.ylabel('freq')
+        plt.savefig(f'./pytorch_benchmarks/imgs/specto4.png') 
+
+        break
+        """
+        #Normalize values into range [0,1] to avoid NaN loss
 
         #Method 1
 
@@ -122,6 +213,21 @@ def train_one_epoch_masked_autoencoder_freq_time(model: torch.nn.Module,
         #print(f"max = {specto_max}")
         # Normalize with those min, max values leveraging broadcasting
         specto_samples = (specto_samples - specto_min)/ (specto_max - specto_min)
+
+
+        #Method 3 => use MinMaxScaler
+        """
+        scaler = MinMaxScaler(feature_range=(0,1))
+        image_1d = ch2.reshape(-1,1)
+        scaler.fit(image_1d)
+        normalized_image_1d = scaler.transform(image_1d)
+        normalized_image = normalized_image_1d.reshape(ch2.shape)
+        """
+
+        #print heatmap of the first spectogram
+       # input_data = specto_samples[0]
+        #print(input_data)
+       # heatmap_specto(input_data)
 
         # comment out when not debugging
         # from fvcore.nn import FlopCountAnalysis, parameter_count_table
@@ -177,195 +283,7 @@ def train_one_epoch_masked_autoencoder_freq_time(model: torch.nn.Module,
     print("Averaged stats:", metric_logger)
     return {k: meter.global_avg for k, meter in metric_logger.meters.items()}
 
-def train_one_epoch_hr_detection(model: torch.nn.Module,
-                    data_loader: DataLoader, criterion: torch.nn.MSELoss, optimizer: torch.optim.Optimizer, 
-                    device: torch.device, epoch: int, loss_scaler,
-                    log_writer=None,
-                    args=None):
-    model.train(True)
-    metric_logger = misc.MetricLogger(delimiter="  ")
-    metric_logger.add_meter('lr', misc.SmoothedValue(window_size=1, fmt='{value:.6f}'))
-    header = 'Epoch: [{}]'.format(epoch)
-    print_freq = 50
-    accum_iter = 10
 
-    optimizer.zero_grad()
-
-    # set model epoch
-    model.epoch = epoch
-
-    #print(f"optimizer = {optimizer}")
-
-    for data_iter_step, (samples, target) in enumerate(metric_logger.log_every(data_loader, print_freq, header)):
-        #print(f"data_iter_step = {data_iter_step}")
-        # we use a per iteration (instead of per epoch) lr scheduler
-        if data_iter_step % accum_iter == 0:
-            lr_sched.adjust_learning_rate(optimizer, data_iter_step / len(data_loader) + epoch, args)
-            #print(f"optimizer = {optimizer}")
-            
-        #samples = samples.to(device, non_blocking=True)
-        #samples = [128,4,256] = [batch,channel, time]
-        #print(f"sample 0 = {samples[0].shape}") #[4,256]
-          
-        #apply spectrogram trasformation to samples in order to map audio into spectrogram
-        #the size of the output of this trasformation is 257 so I cut the last value
-        specto_samples = torch.narrow(spectrogram_transform(samples), dim=3, start=0, length=256) 
-
-        max_value = torch.max(specto_samples)
-        #normalize values into range [0,1] and avoid NaN loss
-        specto_samples = specto_samples/ max_value
-
-        # comment out when not debugging
-        # from fvcore.nn import FlopCountAnalysis, parameter_count_table
-        # if data_iter_step == 1:
-        #     flops = FlopCountAnalysis(model, samples)
-        #     print(flops.total())
-        #     print(parameter_count_table(model))
-        specto_samples = specto_samples.to(device, non_blocking=True)
-
-        #print(f"specto_samples = {specto_samples.shape}") #[128,4,256,256] = [batch,channels,freq, time]
-        
-        #print details of the model 
-        #print(model)
-
-        with torch.cuda.amp.autocast():
-            output = model(specto_samples)
-            print(f"output = {output.shape}")
-            print(f"target = {target.shape}")
-            loss_a = criterion(output, target)
-            
-            #loss_a = _run_model(model, specto_samples, target, criterion, device)
-        print(f"loss = {loss_a}")
-        loss_value = loss_a.item()
-        loss_total = loss_a
-
-        if not math.isfinite(loss_value):
-            print("Loss is {}, stopping training".format(loss_value))
-            sys.exit(1)
-
-        #loss /= accum_iter
-        loss_total = loss_total / accum_iter
-        loss_scaler(loss_total, optimizer, parameters=model.parameters(),
-                    update_grad=(data_iter_step + 1) % accum_iter == 0)
-        if (data_iter_step + 1) % accum_iter == 0:
-            optimizer.zero_grad()
-
-        torch.cuda.synchronize()
-
-        metric_logger.update(loss=loss_value)
-
-        lr = optimizer.param_groups[0]["lr"]
-        metric_logger.update(lr=lr)
-
-        loss_value_reduce = misc.all_reduce_mean(loss_value) #calculate the average of the loss on all the processes of a group
-
-        if log_writer is not None and (data_iter_step + 1) % accum_iter == 0:
-            """ We use epoch_1000x as the x-axis in tensorboard.
-            This calibrates different curves when batch size changes.
-            """
-            epoch_1000x = int((data_iter_step / len(data_loader) + epoch) * 1000)
-            log_writer.add_scalar('loss', loss_value_reduce, epoch_1000x)
-            log_writer.add_scalar('lr', lr, epoch_1000x)
-
-
-    # gather the stats from all processes
-    metric_logger.synchronize_between_processes()
-    print("Averaged stats:", metric_logger)
-    return {k: meter.global_avg for k, meter in metric_logger.meters.items()}
-
-"""
-def train_one_epoch_masked_autoencoder_time(model: torch.nn.Module,
-                    data_loader: DataLoader, optimizer: torch.optim.Optimizer,
-                    device: torch.device, epoch: int, loss_scaler,
-                    log_writer=None,
-                    args=None):
-    model.train(True)
-    metric_logger = misc.MetricLogger(delimiter="  ")
-    metric_logger.add_meter('lr', misc.SmoothedValue(window_size=1, fmt='{value:.6f}'))
-    header = 'Epoch: [{}]'.format(epoch)
-    print_freq = 50
-    accum_iter = 10
-
-    optimizer.zero_grad()
-
-    # set model epoch
-    model.epoch = epoch
-
-    #print(f"optimizer = {optimizer}")
-
-    for data_iter_step, (samples, _labels) in enumerate(metric_logger.log_every(data_loader, print_freq, header)):
-        #print(f"data_iter_step = {data_iter_step}")
-        # we use a per iteration (instead of per epoch) lr scheduler
-        if data_iter_step % accum_iter == 0:
-            lr_sched.adjust_learning_rate(optimizer, data_iter_step / len(data_loader) + epoch, args)
-            #print(f"optimizer = {optimizer}")
-            
-        samples = samples.to(device, non_blocking=True)
-        #samples = [128,4,256] = [batch,channel, time]
-        #print(f"sample 0 = {samples[0].shape}") #[4,256]
-          
-        #apply spectrogram trasformation to samples in order to map audio into spectrogram
-        #the size of the output of this trasformation is 257 so I cut the last value
-        #specto_samples = torch.narrow(spectrogram_transform(samples), dim=3, start=0, length=256) 
-
-        #max_value = torch.max(specto_samples)
-        #normalize values into range [0,1] and avoid NaN loss
-        #specto_samples = specto_samples/ max_value
-
-        # comment out when not debugging
-        # from fvcore.nn import FlopCountAnalysis, parameter_count_table
-        # if data_iter_step == 1:
-        #     flops = FlopCountAnalysis(model, samples)
-        #     print(flops.total())
-        #     print(parameter_count_table(model))
-        #specto_samples = specto_samples.to(device, non_blocking=True)
-
-        #print(f"specto_samples = {specto_samples.shape}") #[128,4,256,256] = [batch,channels,freq, time]
-        
-        #print details of the model 
-        #print(model)
-
-        with torch.cuda.amp.autocast():
-            loss_a, _, _, _ = model(samples, mask_ratio=0.8)
-        print(f"loss = {loss_a}")
-        loss_value = loss_a.item()
-        loss_total = loss_a
-
-        if not math.isfinite(loss_value):
-            print("Loss is {}, stopping training".format(loss_value))
-            sys.exit(1)
-
-        #loss /= accum_iter
-        loss_total = loss_total / accum_iter
-        loss_scaler(loss_total, optimizer, parameters=model.parameters(),
-                    update_grad=(data_iter_step + 1) % accum_iter == 0)
-        if (data_iter_step + 1) % accum_iter == 0:
-            optimizer.zero_grad()
-
-        torch.cuda.synchronize()
-
-        metric_logger.update(loss=loss_value)
-
-        lr = optimizer.param_groups[0]["lr"]
-        metric_logger.update(lr=lr)
-
-        loss_value_reduce = misc.all_reduce_mean(loss_value) #calculate the average of the loss on all the processes of a group
-
-        if log_writer is not None and (data_iter_step + 1) % accum_iter == 0:
-            
-            epoch_1000x = int((data_iter_step / len(data_loader) + epoch) * 1000)
-            log_writer.add_scalar('loss', loss_value_reduce, epoch_1000x)
-            log_writer.add_scalar('lr', lr, epoch_1000x)
-
-
-    # gather the stats from all processes
-    metric_logger.synchronize_between_processes()
-    print("Averaged stats:", metric_logger)
-    return {k: meter.global_avg for k, meter in metric_logger.meters.items()}
-
-"""
-
-"""
 def train_one_epoch_hr_detection(
         epoch: int,
         model: nn.Module,
@@ -373,7 +291,7 @@ def train_one_epoch_hr_detection(
         optimizer: optim.Optimizer,
         train: DataLoader,
         val: DataLoader,
-        device: torch.device) -> Dict[str, float]:
+        device: torch.device):
     model.train()
     avgmae = AverageMeter('6.2f')
     avgloss = AverageMeter('2.5f')
@@ -384,7 +302,7 @@ def train_one_epoch_hr_detection(
             step += 1
             tepoch.update(1)
             sample, target = sample.to(device), target.to(device)
-            output, loss = _run_model(model, sample, target, criterion, device)
+            output, loss = _run_model(model, sample, target, criterion)
             optimizer.zero_grad()
             loss.backward()
             optimizer.step()
@@ -409,7 +327,7 @@ def evaluate(
         model: nn.Module,
         criterion: nn.Module,
         data: DataLoader,
-        device: torch.device) -> Dict[str, float]:
+        device: torch.device):
     model.eval()
     avgmae = AverageMeter('6.2f')
     avgloss = AverageMeter('2.5f')
@@ -427,4 +345,3 @@ def evaluate(
             'MAE': avgmae.get(),
         }
     return final_metrics
-"""
