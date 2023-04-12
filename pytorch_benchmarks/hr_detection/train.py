@@ -19,6 +19,30 @@ import numpy as np
 from sklearn.preprocessing import MinMaxScaler, StandardScaler
 import matplotlib.pyplot as plt
 
+sample_rate= 32
+n_fft = 510 #freq = nfft/2 + 1 = 256 => risoluzione/granularità dello spettrogramma
+win_length = 32
+hop_length = 1 # window length = time instants
+n_mels = 64 #definisce la dimensione della frequenza di uscita
+f_min = 0
+f_max = 4
+
+  
+spectrogram_transform = torchaudio.transforms.MelSpectrogram(
+    sample_rate = sample_rate,
+    n_fft=n_fft,
+    win_length=win_length,
+    hop_length=hop_length,
+    center=True,
+    pad_mode="reflect",
+    power=2.0,
+    normalized=True,
+    f_min = f_min,
+    f_max = f_max,
+    n_mels = n_mels
+)
+
+
 class LogCosh(nn.Module):
     def __init__(self):
         super(LogCosh, self).__init__()
@@ -88,88 +112,25 @@ def train_one_epoch_masked_autoencoder_freq_time(model: torch.nn.Module,
         sample = samples[80,:,:]
         print(f"sample = {sample.shape}")
         
-        sample_rate= 32
-        n_fft = 510 #freq = nfft/2 + 1 = 256 => risoluzione/granularità dello spettrogramma
-        win_length = [8,16,32,64]
-        hop_length = 1 # window length = time instants
-        n_mels = [32,64] #definisce la dimensione della frequenza di uscita
-        f_min = 0
-        f_max = 4
-        
-        for nmels in n_mels:
-            for wl in win_length:
+        specto_sample = spectrogram_transform(sample)
+        print(f"specto shape = {specto_sample.shape}")
 
-                spectrogram_transform = torchaudio.transforms.MelSpectrogram(
-                    sample_rate = sample_rate,
-                    n_fft=n_fft,
-                    win_length=wl,
-                    hop_length=hop_length,
-                    center=True,
-                    pad_mode="reflect",
-                    power=2.0,
-                    normalized=True,
-                    f_min = f_min,
-                    f_max = f_max,
-                    n_mels = nmels
-                )
+        ch1 = specto_sample[0].numpy() #canale ppg
+            
+        ch1 = np.log10(ch1)
+        max_ch1 = np.max(ch1)
+        min_ch1 = np.min(ch1)
 
+        #normalization
+        ch1 = (ch1 - min_ch1)/ (max_ch1 - min_ch1)
+  
+        plt.imshow(ch1, cmap ='hot', interpolation = 'hanning')
+        plt.title(f'Heatmap channel 1')
+        plt.colorbar()
+        plt.xlabel('time')
+        plt.ylabel('freq')
+        plt.savefig(f'./pytorch_benchmarks/imgs/specto80.png') 
 
-                sample1 = spectrogram_transform(sample)
-                print(f"specto shape = {sample1.shape}")
-
-                ch1 = sample1[0].numpy()
-                print(f"shape ch1 = {ch1.shape}")
-                max_ch1 = np.max(ch1)
-                print(f"max_ch1 = {max_ch1}")
-                min_ch1 = np.min(ch1)
-                print(f"min_ch1 = {min_ch1}")
-
-                plt.imshow(ch1, cmap ='hot', interpolation = 'hanning')
-                plt.title(f'Heatmap channel 1')
-                plt.xlabel('time')
-                plt.ylabel('freq')
-                plt.savefig(f'./pytorch_benchmarks/imgs/specto80_nmels={n_mels}_wl={wl}.png') 
-
-            """
-          ch2 = sample1[1].numpy()
-          print(f"shape ch2 = {ch2.shape}")
-          max_ch2 = np.max(ch2)
-          print(f"max_ch2 = {max_ch2}")
-          min_ch2 = np.min(ch2)
-          print(f"min_ch2 = {min_ch2}")
-
-          plt.imshow(ch2, cmap ='hot', interpolation = 'hanning')
-          plt.title(f'Heatmap channel 2')
-          plt.xlabel('time')
-          plt.ylabel('freq')
-          plt.savefig(f'./pytorch_benchmarks/imgs/specto2_wl={wl}.png') 
-
-          ch3 = sample1[2].numpy()
-          print(f"shape ch3 = {ch3.shape}")
-          max_ch3 = np.max(ch3)
-          print(f"max_ch3 = {max_ch3}")
-          min_ch3 = np.min(ch3)
-          print(f"min_ch3 = {min_ch3}")
-
-          plt.imshow(ch3, cmap ='hot', interpolation = 'hanning')
-          plt.title(f'Heatmap channel 3')
-          plt.xlabel('time')
-          plt.ylabel('freq')
-          plt.savefig(f'./pytorch_benchmarks/imgs/specto3_wl={wl}.png') 
-
-          ch4 = sample1[3].numpy()
-          print(f"shape ch4 = {ch4.shape}")
-          max_ch4 = np.max(ch4)
-          print(f"max_ch4 = {max_ch4}")
-          min_ch4 = np.min(ch4)
-          print(f"min_ch4 = {min_ch4}")
-
-          plt.imshow(ch4, cmap ='hot', interpolation = 'hanning')
-          plt.title(f'Heatmap channel 4')
-          plt.xlabel('time')
-          plt.ylabel('freq')
-          plt.savefig(f'./pytorch_benchmarks/imgs/specto4_wl={wl}.png') 
-          """
         break
         
         #Normalize values into range [0,1] to avoid NaN loss
