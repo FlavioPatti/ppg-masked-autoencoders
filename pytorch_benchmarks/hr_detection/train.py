@@ -89,47 +89,48 @@ def train_one_epoch_masked_autoencoder_freq_time(model: torch.nn.Module,
         print(f"sample = {sample.shape}")
         
         sample_rate= 32
-        n_fft = 510 #freq = nfft/2 + 1 = 256 
+        n_fft = 510 #freq = nfft/2 + 1 = 256 => risoluzione/granularità dello spettrogramma
         win_length = [8,16,32,64]
         hop_length = 1 # window length = time instants
-        n_mels = 32
+        n_mels = [32,64] #definisce la dimensione della frequenza di uscita
         f_min = 0
         f_max = 4
+        
+        for nmels in n_mels:
+            for wl in win_length:
 
-        for wl in win_length:
-
-          spectrogram_transform = torchaudio.transforms.MelSpectrogram(
-              sample_rate = sample_rate,
-              n_fft=n_fft,
-              win_length=wl,
-              hop_length=hop_length,
-              center=True,
-              pad_mode="reflect",
-              power=2.0,
-              normalized=True,
-              f_min = f_min,
-              f_max = f_max,
-              n_mels = n_mels
-          )
+                spectrogram_transform = torchaudio.transforms.MelSpectrogram(
+                    sample_rate = sample_rate,
+                    n_fft=n_fft,
+                    win_length=wl,
+                    hop_length=hop_length,
+                    center=True,
+                    pad_mode="reflect",
+                    power=2.0,
+                    normalized=True,
+                    f_min = f_min,
+                    f_max = f_max,
+                    n_mels = nmels
+                )
 
 
-          sample1 = spectrogram_transform(sample)
-          print(f"specto shape = {sample1.shape}")
+                sample1 = spectrogram_transform(sample)
+                print(f"specto shape = {sample1.shape}")
 
-          ch1 = sample1[0].numpy()
-          print(f"shape ch1 = {ch1.shape}")
-          max_ch1 = np.max(ch1)
-          print(f"max_ch1 = {max_ch1}")
-          min_ch1 = np.min(ch1)
-          print(f"min_ch1 = {min_ch1}")
+                ch1 = sample1[0].numpy()
+                print(f"shape ch1 = {ch1.shape}")
+                max_ch1 = np.max(ch1)
+                print(f"max_ch1 = {max_ch1}")
+                min_ch1 = np.min(ch1)
+                print(f"min_ch1 = {min_ch1}")
 
-          plt.imshow(ch1, cmap ='hot', interpolation = 'hanning')
-          plt.title(f'Heatmap channel 1')
-          plt.xlabel('time')
-          plt.ylabel('freq')
-          plt.savefig(f'./pytorch_benchmarks/imgs/specto1_wl={wl}.png') 
+                plt.imshow(ch1, cmap ='hot', interpolation = 'hanning')
+                plt.title(f'Heatmap channel 1')
+                plt.xlabel('time')
+                plt.ylabel('freq')
+                plt.savefig(f'./pytorch_benchmarks/imgs/specto80_nmels={n_mels}_wl={wl}.png') 
 
-          """
+            """
           ch2 = sample1[1].numpy()
           print(f"shape ch2 = {ch2.shape}")
           max_ch2 = np.max(ch2)
