@@ -93,7 +93,6 @@ def train_one_epoch_masked_autoencoder_freq_time(model: torch.nn.Module,
         win_length = [8,16,32,64]
         hop_length = 1 # window length = time instants
         n_mels = 32
-
         f_min = 0
         f_max = 4
 
