@@ -33,6 +33,7 @@ for datasets in data_gen:
     model = hrd.get_reference_model('vit_freq+time_pretrain') #vit or temponet
     if torch.cuda.is_available():
       model = model.cuda()
+      
     # Get Training Settings
     criterion = hrd.get_default_criterion("pretrain")
     optimizer = hrd.get_default_optimizer(model, "pretrain")

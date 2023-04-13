@@ -110,19 +110,22 @@ def train_one_epoch_masked_autoencoder_freq_time(model: torch.nn.Module,
         #print(f"sample 0 = {samples[0].shape}") #[4,256]
 
         sample = samples[80,:,:]
+        label = _labels[80]
         print(f"sample = {sample.shape}")
+        print(f"label = {label}")
         
         specto_sample = spectrogram_transform(sample)
         print(f"specto shape = {specto_sample.shape}")
 
-        ch1 = specto_sample[0].numpy() #canale ppg
-            
-        ch1 = np.log10(ch1)
+        ch1 = specto_sample[0].numpy() #canale ppg?
+        
+        #rescale
+        #ch1 = np.log10(ch1)
         max_ch1 = np.max(ch1)
         min_ch1 = np.min(ch1)
 
         #normalization
-        ch1 = (ch1 - min_ch1)/ (max_ch1 - min_ch1)
+        #ch1 = (ch1 - min_ch1)/ (max_ch1 - min_ch1)
   
         plt.imshow(ch1, cmap ='hot', interpolation = 'hanning')
         plt.title(f'Heatmap channel 1')
