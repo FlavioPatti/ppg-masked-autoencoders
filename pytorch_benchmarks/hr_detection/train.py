@@ -21,8 +21,8 @@ from sklearn.preprocessing import MinMaxScaler, StandardScaler
 import matplotlib.pyplot as plt
 
 RESCALE = True
-NORMALIZATION = False
-PLOT_HEATMAP = True
+NORMALIZATION = True
+PLOT_HEATMAP = False
 
 """spectogram trasformation and relative parameters"""
 sample_rate= 32
@@ -129,25 +129,39 @@ def train_one_epoch_masked_autoencoder_freq_time(model: torch.nn.Module,
         #samples = [128,4,256] = [batch,channel, time]
         #print(f"sample 0 = {samples[0].shape}") #[4,256]
         
-        print(f"samples shape = {samples.shape}")
+        #print(f"samples shape = {samples.shape}")
         specto_samples = torch.narrow(spectrogram_transform(samples), dim=3, start=0, length=256) 
-        print(f"specto shape = {specto_samples.shape}")
+        #print(f"specto shape = {specto_samples.shape}")
         
         #Rescale samples
         if RESCALE:
-          specto_samples = np.log10(specto_samples)
+          specto_samples = np.log10(specto_samples, where=specto_samples>0)
 
-        #Normalize values into range [0,1] to avoid NaN loss
         if NORMALIZATION:
-          specto_samples = (specto_samples - min_ch1)/ (max_ch1 - min_ch1)
+          channel_1 = specto_samples[:,0,:,:]
+          for i in range(specto_samples[0]):
+            ch1 = channel_1[i].numpy()
+            max_ch1 = np.max(ch1)
+            min_ch1 = np.min(ch1)
+            #print(f"max = {max_ch1}")
+            #print(f"min = {min_ch1}")
+            ch1 = (ch1 - min_ch1) / (max_ch1-min_ch1)
 
+            max_ch1 = np.max(ch1)
+            min_ch1 = np.min(ch1)
+            #print(f"max = {max_ch1}")
+            #print(f"min = {min_ch1}")
+            specto_samples[i,0,:,:] = torch.tensor(ch1, dtype = float)
+
+
+          
         if PLOT_HEATMAP:
           sample = specto_samples[80,:,:,:]
+          print(f"sample = {sample.shape}")
           label = _labels[80]
           ch1 = sample[0].numpy()
           max_ch1 = np.max(ch1)
           min_ch1 = np.min(ch1)
-          print(f"sample = {sample.shape}")
           print(f"max ch1 = {max_ch1}")
           print(f"min ch1 = {min_ch1}")
           print(f"label = {label} BPM = {float(label/60)} Hz")

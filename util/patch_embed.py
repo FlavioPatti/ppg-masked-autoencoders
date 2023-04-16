@@ -1,4 +1,3 @@
-
 import torch
 import torch.nn as nn
 #from timm.models.layers import to_2tuple, to_1tuple
@@ -24,9 +23,9 @@ class PatchEmbed_org(nn.Module):
     def __init__(self, img_size=224, patch_size=16, in_chans=3, embed_dim=768, type = "freq+time"):
         super().__init__()
         if type == "freq+time":
-            img_size = to_2tuple(img_size)
+            img_size = (64,256)#to_2tuple(img_size)
             print(f"img_size = {img_size}")
-            patch_size = to_2tuple(patch_size)
+            patch_size =  (4,16)#to_2tuple(patch_size)
             print(f"patch_size = {patch_size}")
             num_patches = (img_size[1] // patch_size[1]) * (img_size[0] // patch_size[0])
             print(f"num_patch = {num_patches}")
@@ -53,13 +52,13 @@ class PatchEmbed_org(nn.Module):
         # FIXME look at relaxing size constraints
         #assert H == self.img_size[0] and W == self.img_size[1], \
         #    f"Input image size ({H}*{W}) doesn't match model ({self.img_size[0]}*{self.img_size[1]})."
-        print(f"x1 = {x.shape}")
+        #print(f"x1 = {x.shape}")
         x = self.proj(x)
-        print(f"x2 = {x.shape}")
+        #print(f"x2 = {x.shape}")
         x = x.flatten(2)
-        print(f"x3 = {x.shape}")
+        #print(f"x3 = {x.shape}")
         x = x.transpose(1,2)
-        print(f"x4 = {x.shape}")
+        #print(f"x4 = {x.shape}")
         return x
 
 
