@@ -1,5 +1,6 @@
 from typing import Dict
 from timm.models.layers import pad_same
+from torch.nn.modules import normalization
 from tqdm import tqdm
 import torch
 import torch.nn as nn
@@ -19,6 +20,11 @@ import numpy as np
 from sklearn.preprocessing import MinMaxScaler, StandardScaler
 import matplotlib.pyplot as plt
 
+RESCALE = True
+NORMALIZATION = False
+PLOT_HEATMAP = True
+
+"""spectogram trasformation and relative parameters"""
 sample_rate= 32
 n_fft = 510 #freq = nfft/2 + 1 = 256 => risoluzione/granularità dello spettrogramma
 win_length = 32
@@ -27,7 +33,6 @@ n_mels = 64 #definisce la dimensione della frequenza di uscita
 f_min = 0
 f_max = 4
 
-  
 spectrogram_transform = torchaudio.transforms.MelSpectrogram(
     sample_rate = sample_rate,
     n_fft=n_fft,
@@ -41,6 +46,21 @@ spectrogram_transform = torchaudio.transforms.MelSpectrogram(
     f_max = f_max,
     n_mels = n_mels
 )
+
+"""plot heatmap"""
+def plot_heatmap_spectogram(x, num_sample):
+  fig, ax = plt.subplots()
+  left = 0
+  right= 8
+  bottom = 4
+  top = 0 
+  extent = [left,right, bottom, top]
+  im = ax.imshow(x, cmap = 'hot', interpolation = 'hanning', extent = extent)
+  cbar = ax.figure.colorbar(im, ax = ax)
+  ax.set_title(f"Heatmap PPG: sample {num_sample}")  
+  plt.xlabel('Time (s)')
+  plt.ylabel('Frequency (Hz)')
+  plt.savefig(f'./pytorch_benchmarks/imgs/specto{num_sample}.png') 
 
 
 class LogCosh(nn.Module):
@@ -108,65 +128,31 @@ def train_one_epoch_masked_autoencoder_freq_time(model: torch.nn.Module,
         #samples = samples.to(device, non_blocking=True)
         #samples = [128,4,256] = [batch,channel, time]
         #print(f"sample 0 = {samples[0].shape}") #[4,256]
-
-        sample = samples[80,:,:]
-        label = _labels[80]
-        print(f"sample = {sample.shape}")
-        print(f"label = {label}")
         
-        specto_sample = spectrogram_transform(sample)
-        print(f"specto shape = {specto_sample.shape}")
-
-        ch1 = specto_sample[0].numpy() #canale ppg?
+        print(f"samples shape = {samples.shape}")
+        specto_samples = torch.narrow(spectrogram_transform(samples), dim=3, start=0, length=256) 
+        print(f"specto shape = {specto_samples.shape}")
         
-        #rescale
-        #ch1 = np.log10(ch1)
-        max_ch1 = np.max(ch1)
-        min_ch1 = np.min(ch1)
+        #Rescale samples
+        if RESCALE:
+          specto_samples = np.log10(specto_samples)
 
-        #normalization
-        #ch1 = (ch1 - min_ch1)/ (max_ch1 - min_ch1)
-  
-        plt.imshow(ch1, cmap ='hot', interpolation = 'hanning')
-        plt.title(f'Heatmap channel 1')
-        plt.colorbar()
-        plt.xlabel('time')
-        plt.ylabel('freq')
-        plt.savefig(f'./pytorch_benchmarks/imgs/specto80.png') 
-
-        break
-        
         #Normalize values into range [0,1] to avoid NaN loss
+        if NORMALIZATION:
+          specto_samples = (specto_samples - min_ch1)/ (max_ch1 - min_ch1)
 
-        #Method 1
-
-        #max_value = torch.max(specto_samples)
-        #specto_samples = specto_samples/ max_value
-
-        #Method 2
-
-        # Get min, max value aming all elements for each column
-        specto_min = np.min(specto_samples.numpy(), axis=tuple(range(specto_samples.ndim-1)), keepdims=1)
-        #print(f"min = {specto_min}")
-        specto_max = np.max(specto_samples.numpy(), axis=tuple(range(specto_samples.ndim-1)), keepdims=1)
-        #print(f"max = {specto_max}")
-        # Normalize with those min, max values leveraging broadcasting
-        specto_samples = (specto_samples - specto_min)/ (specto_max - specto_min)
-
-
-        #Method 3 => use MinMaxScaler
-        """
-        scaler = MinMaxScaler(feature_range=(0,1))
-        image_1d = ch2.reshape(-1,1)
-        scaler.fit(image_1d)
-        normalized_image_1d = scaler.transform(image_1d)
-        normalized_image = normalized_image_1d.reshape(ch2.shape)
-        """
-
-        #print heatmap of the first spectogram
-       # input_data = specto_samples[0]
-        #print(input_data)
-       # heatmap_specto(input_data)
+        if PLOT_HEATMAP:
+          sample = specto_samples[80,:,:,:]
+          label = _labels[80]
+          ch1 = sample[0].numpy()
+          max_ch1 = np.max(ch1)
+          min_ch1 = np.min(ch1)
+          print(f"sample = {sample.shape}")
+          print(f"max ch1 = {max_ch1}")
+          print(f"min ch1 = {min_ch1}")
+          print(f"label = {label} BPM = {float(label/60)} Hz")
+          plot_heatmap_spectogram(x= ch1, num_sample = 80)
+      
 
         # comment out when not debugging
         # from fvcore.nn import FlopCountAnalysis, parameter_count_table
@@ -234,39 +220,55 @@ def train_one_epoch_hr_detection(
     avgloss = AverageMeter('2.5f')
     step = 0
     with tqdm(total=len(train), unit="batch") as tepoch:
-        tepoch.set_description(f"Epoch {epoch+1}")
-        for sample, target in train:
-            #print(f"samples = {sample.shape}")
-            sample = torch.narrow(spectrogram_transform(sample), dim=3, start=0, length=256) 
-            #print(f"specto samples = {sample.shape}")
-            # Get min, max value aming all elements for each column
-            specto_min = np.min(sample.numpy(), axis=tuple(range(sample.ndim-1)), keepdims=1)
-            #print(f"min = {specto_min}")
-            specto_max = np.max(sample.numpy(), axis=tuple(range(sample.ndim-1)), keepdims=1)
-            #print(f"max = {specto_max}")
-            # Normalize with those min, max values leveraging broadcasting
-            sample = (sample - specto_min)/ (specto_max - specto_min)
-            step += 1
-            tepoch.update(1)
-            sample, target = sample.to(device), target.to(device)
-            output, loss = _run_model(model, sample, target, criterion)
-            optimizer.zero_grad()
-            loss.backward()
-            optimizer.step()
-            mae_val = F.l1_loss(output, target) # Mean absolute error for hr detection
-            avgmae.update(mae_val, sample.size(0))
-            avgloss.update(loss, sample.size(0))
-            if step % 100 == 99:
-                tepoch.set_postfix({'loss': avgloss, 'MAE': avgmae})
-        val_metrics = evaluate(model, criterion, val, device)
-        val_metrics = {'val_' + k: v for k, v in val_metrics.items()}
-        final_metrics = {
-            'loss': avgloss.get(),
-            'MAE': avgmae.get(),
-        }
-        final_metrics.update(val_metrics)
-        tepoch.set_postfix(final_metrics)
-        tepoch.close()
+      tepoch.set_description(f"Epoch {epoch+1}")
+      for sample, target in train:
+
+        print(f"samples shape = {sample.shape}")
+        specto_samples = spectrogram_transform(sample)
+        print(f"specto shape = {specto_samples.shape}")
+        
+        #Rescale samples
+        if RESCALE:
+          specto_samples = np.log10(specto_samples)
+
+        #Normalize values into range [0,1] to avoid NaN loss
+        if NORMALIZATION:
+          specto_samples = (specto_samples - min_ch1)/ (max_ch1 - min_ch1)
+
+        if PLOT_HEATMAP:
+          sample = sample[80,:,:]
+          label = target[80]
+          ch1 = sample[0].numpy()
+          max_ch1 = np.max(ch1)
+          min_ch1 = np.min(ch1)
+          print(f"sample = {sample.shape}")
+          print(f"max ch1 = {max_ch1}")
+          print(f"min ch1 = {min_ch1}")
+          print(f"label = {label} BPM = {float(label/60)} Hz")
+          plot_heatmap_spectogram(x= ch1, num_sample = 80)
+
+          
+        step += 1
+        tepoch.update(1)
+        sample, target = sample.to(device), target.to(device)
+        output, loss = _run_model(model, sample, target, criterion)
+        optimizer.zero_grad()
+        loss.backward()
+        optimizer.step()
+        mae_val = F.l1_loss(output, target) # Mean absolute error for hr detection
+        avgmae.update(mae_val, sample.size(0))
+        avgloss.update(loss, sample.size(0))
+        if step % 100 == 99:
+          tepoch.set_postfix({'loss': avgloss, 'MAE': avgmae})
+      val_metrics = evaluate(model, criterion, val, device)
+      val_metrics = {'val_' + k: v for k, v in val_metrics.items()}
+      final_metrics = {
+          'loss': avgloss.get(),
+          'MAE': avgmae.get(),
+      }
+      final_metrics.update(val_metrics)
+      tepoch.set_postfix(final_metrics)
+      tepoch.close()
     return final_metrics
 
 
@@ -281,24 +283,38 @@ def evaluate(
     step = 0
     with torch.no_grad():
         for sample, target in data:
-            #print(f"samples = {sample.shape}")
-            sample = torch.narrow(spectrogram_transform(sample), dim=3, start=0, length=256) 
-            #print(f"specto samples = {sample.shape}")
-            # Get min, max value aming all elements for each column
-            specto_min = np.min(sample.numpy(), axis=tuple(range(sample.ndim-1)), keepdims=1)
-            #print(f"min = {specto_min}")
-            specto_max = np.max(sample.numpy(), axis=tuple(range(sample.ndim-1)), keepdims=1)
-            #print(f"max = {specto_max}")
-            # Normalize with those min, max values leveraging broadcasting
-            sample = (sample - specto_min)/ (specto_max - specto_min)
-            step += 1
-            sample, target = sample.to(device), target.to(device)
-            output, loss = _run_model(model, sample, target, criterion)
-            mae_val = F.mse_loss(output, target)
-            avgmae.update(mae_val, sample.size(0))
-            avgloss.update(loss, sample.size(0))
+          print(f"samples shape = {sample.shape}")
+          specto_samples = spectrogram_transform(sample)
+          print(f"specto shape = {specto_samples.shape}")
+          
+          #Rescale samples
+          if RESCALE:
+            specto_samples = np.log10(specto_samples)
+
+          #Normalize values into range [0,1] to avoid NaN loss
+          if NORMALIZATION:
+            specto_samples = (specto_samples - min_ch1)/ (max_ch1 - min_ch1)
+
+          if PLOT_HEATMAP:
+            sample = sample[80,:,:]
+            label = target[80]
+            ch1 = sample[0].numpy()
+            max_ch1 = np.max(ch1)
+            min_ch1 = np.min(ch1)
+            print(f"sample = {sample.shape}")
+            print(f"max ch1 = {max_ch1}")
+            print(f"min ch1 = {min_ch1}")
+            print(f"label = {label} BPM = {float(label/60)} Hz")
+            plot_heatmap_spectogram(x= ch1, num_sample = 80)
+
+          step += 1
+          sample, target = sample.to(device), target.to(device)
+          output, loss = _run_model(model, sample, target, criterion)
+          mae_val = F.mse_loss(output, target)
+          avgmae.update(mae_val, sample.size(0))
+          avgloss.update(loss, sample.size(0))
         final_metrics = {
-            'loss': avgloss.get(),
-            'MAE': avgmae.get(),
+          'loss': avgloss.get(),
+          'MAE': avgmae.get(),
         }
     return final_metrics

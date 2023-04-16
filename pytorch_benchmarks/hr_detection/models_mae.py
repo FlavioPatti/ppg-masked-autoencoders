@@ -43,6 +43,8 @@ class MaskedAutoencoderViT(nn.Module):
         # MAE encoder specifics
         
         self.patch_embed = PatchEmbed_org(img_size, patch_size, in_chans, embed_dim, type)
+        print(f"patch_embed = {self.patch_embed}")
+        
         self.use_custom_patch = use_custom_patch
         num_patches = self.patch_embed.num_patches
 
@@ -50,6 +52,7 @@ class MaskedAutoencoderViT(nn.Module):
 
         #self.split_pos = split_pos # not useful
         self.pos_embed = nn.Parameter(torch.zeros(1, num_patches + 1, embed_dim), requires_grad=pos_trainable)  # fixed sin-cos embedding
+        print(f"pos_embed = {self.pos_embed.shape}")
 
         self.encoder_depth = depth
         self.contextual_depth = contextual_depth
@@ -169,9 +172,10 @@ class MaskedAutoencoderViT(nn.Module):
                 x = x.reshape(shape=(imgs.shape[0], h * w, p**2 * 1))
         else:
             h = w = imgs.shape[2] // p
-            x = imgs.reshape(shape=(imgs.shape[0], 4, h, p, w, p))
+            print(f"h = {h}, w = {w}, p = {p}")
+            x = imgs.reshape(shape=(imgs.shape[0], 16, h, p, w, p))
             x = torch.einsum('nchpwq->nhwpqc', x)
-            x = x.reshape(shape=(imgs.shape[0], h * w, p**2 * 4))
+            x = x.reshape(shape=(imgs.shape[0], h * w, p**2 * 16))
 
         return x
 
@@ -274,7 +278,8 @@ class MaskedAutoencoderViT(nn.Module):
         x = self.patch_embed(x)
 
         # add pos embed w/o cls token
-        x = x + self.pos_embed[:, 1:, :]
+        print(f"size ={self.pos_embed[:,1:65,:].shape}")
+        x = x + self.pos_embed[:, 1:65, :]
 
         # masking: length -> length * mask_ratio
         if mask_2d:

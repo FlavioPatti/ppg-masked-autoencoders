@@ -53,13 +53,13 @@ class PatchEmbed_org(nn.Module):
         # FIXME look at relaxing size constraints
         #assert H == self.img_size[0] and W == self.img_size[1], \
         #    f"Input image size ({H}*{W}) doesn't match model ({self.img_size[0]}*{self.img_size[1]})."
-        #print(f"x1 = {x.shape}")
+        print(f"x1 = {x.shape}")
         x = self.proj(x)
-        #print(f"x2 = {x.shape}")
+        print(f"x2 = {x.shape}")
         x = x.flatten(2)
-        #print(f"x3 = {x.shape}")
+        print(f"x3 = {x.shape}")
         x = x.transpose(1,2)
-        #print(f"x4 = {x.shape}")
+        print(f"x4 = {x.shape}")
         return x
 
 
