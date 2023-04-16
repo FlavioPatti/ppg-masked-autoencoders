@@ -5,6 +5,9 @@ from pytorch_benchmarks.utils import seed_all, EarlyStopping
 from util.misc import NativeScalerWithGradNormCount as NativeScaler
 N_EPOCHS = 1
 
+FREQ_PLUS_TIME = False
+TIME = True
+
 # Check CUDA availability
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 print("Training on:", device)
@@ -30,7 +33,10 @@ for datasets in data_gen:
     loss_scaler = NativeScaler()
     
     # Get the Model
-    model = hrd.get_reference_model('vit_freq+time_pretrain') #vit or temponet
+    if FREQ_PLUS_TIME:
+      model = hrd.get_reference_model('vit_freq+time_pretrain') #vit or temponet
+    if TIME:
+      model = hrd.get_reference_model('vit_time_pretrain') #vit or temponet
     if torch.cuda.is_available():
       model = model.cuda()
       
@@ -41,22 +47,31 @@ for datasets in data_gen:
     """pretraining for recostruct input signals"""
     for epoch in range(N_EPOCHS):
         
+      if FREQ_PLUS_TIME:
         train_stats = hrd.train_one_epoch_masked_autoencoder_freq_time(
             model, train_dl, criterion,
             optimizer, device, epoch, loss_scaler,
             log_writer=None,
             args=None
         )
+
+      if TIME:
+        train_stats = hrd.train_one_epoch_masked_autoencoder_time(
+            model, train_dl, criterion,
+            optimizer, device, epoch, loss_scaler,
+            log_writer=None,
+            args=None
+        )
         
-        print(f" train_stats = {train_stats}")
-        
-        log_stats = {**{f'train_{k}': v for k, v in train_stats.items()},
-                        'epoch': epoch,}
-        
-        print(f" log_stats = {log_stats}")
-        
-        if earlystop(log_stats['train_loss']):
-            break
+      print(f" train_stats = {train_stats}")
+      
+      log_stats = {**{f'train_{k}': v for k, v in train_stats.items()},
+                      'epoch': epoch,}
+      
+      print(f" log_stats = {log_stats}")
+      
+      if earlystop(log_stats['train_loss']):
+          break
     
     #salvo i pesi del vecchio modello
     torch.save(model.state_dict(), "./pytorch_benchmarks/checkpoint")
@@ -65,7 +80,10 @@ for datasets in data_gen:
     # Get Training Settings
     criterion = hrd.get_default_criterion("finetune")
     optimizer = hrd.get_default_optimizer(model, "finetune")
-    model = hrd.get_reference_model('vit_freq+time_finetune') #vit or temponet
+    if FREQ_PLUS_TIME:
+      model = hrd.get_reference_model('vit_freq+time_finetune') #vit or temponet
+    if TIME:
+      model = hrd.get_reference_model('vit_time_finetune')
     if torch.cuda.is_available():
         model = model.cuda()
     
@@ -73,11 +91,16 @@ for datasets in data_gen:
     model.load_state_dict(torch.load("./pytorch_benchmarks/checkpoint"))
     
     for epoch in range(N_EPOCHS):
-        metrics = hrd.train_one_epoch_hr_detection(
+
+      if FREQ_PLUS_TIME:
+        metrics = hrd.train_one_epoch_hr_detection_freq_time(
             epoch, model, criterion, optimizer, train_dl, val_dl, device)
-        
-        if earlystop(metrics['val_MAE']):
-            break
+      if TIME:
+        metrics = hrd.train_one_epoch_hr_detection_time(
+            epoch, model, criterion, optimizer, train_dl, val_dl, device)
+      
+      if earlystop(metrics['val_MAE']):
+          break
         
     test_metrics = hrd.evaluate(model, criterion, test_dl, device)
     print("Test Set Loss:", test_metrics['loss'])

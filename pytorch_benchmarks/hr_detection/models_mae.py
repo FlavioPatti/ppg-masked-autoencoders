@@ -88,7 +88,7 @@ class MaskedAutoencoderViT(nn.Module):
             for i in range(decoder_depth)])
 
         self.decoder_norm = norm_layer(decoder_embed_dim)
-        self.decoder_pred = nn.Linear(decoder_embed_dim, patch_size**2* in_chans, bias=True) # decoder to patch
+        self.decoder_pred = nn.Linear(decoder_embed_dim, patch_size**2 * in_chans, bias=True) # decoder to patch
 
         # --------------------------------------------------------------------------
 
@@ -371,6 +371,7 @@ class MaskedAutoencoderViT(nn.Module):
             else:
                 pred = pred
         else:
+            #pred = pred[:,1:,:]
             pred = pred[:, 1:, 0:256]
             #print(f"pred = {pred}")
             #print(f"pred = {pred[:,1:,:].shape}")
