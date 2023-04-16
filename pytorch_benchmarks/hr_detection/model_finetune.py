@@ -98,11 +98,11 @@ class MaskedAutoencoderViT_without_decoder(nn.Module):
 
         self.epoch = epoch
         # Output layer 1
-        self.out_neuron_1 = nn.Linear(in_features=16448, out_features=1024)
+        self.out_neuron_1 = nn.Linear(in_features=256, out_features=128)
         nn.init.constant_(self.out_neuron_1.bias, 0)
         torch.nn.init.xavier_uniform_(self.out_neuron_1.weight)
         # Output layer 2
-        self.out_neuron_2 = nn.Linear(in_features=1024, out_features=1)
+        self.out_neuron_2 = nn.Linear(in_features=128, out_features=1)
         nn.init.constant_(self.out_neuron_2.bias, 0)
         torch.nn.init.xavier_uniform_(self.out_neuron_2.weight)
 
@@ -135,7 +135,12 @@ class MaskedAutoencoderViT_without_decoder(nn.Module):
 
     def forward(self, imgs):
         x = self.forward_encoder_no_mask(imgs)
+        #print("")
         #print(f"x1 = {x.shape}")
+        m = nn.AvgPool2d((16, 4))
+        x = m(x)
+        #print(f"x1.5 = {x.shape}")
+        #print(f"{x}")
         x = x.flatten(1)
         #print(f"x2 = {x.shape}")
         x = self.out_neuron_1(x)

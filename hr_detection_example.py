@@ -5,8 +5,8 @@ from pytorch_benchmarks.utils import seed_all, EarlyStopping
 from util.misc import NativeScalerWithGradNormCount as NativeScaler
 N_EPOCHS = 1
 
-FREQ_PLUS_TIME = False
-TIME = True
+FREQ_PLUS_TIME = True
+TIME = False
 
 # Check CUDA availability
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
@@ -39,12 +39,13 @@ for datasets in data_gen:
       model = hrd.get_reference_model('vit_time_pretrain') #vit or temponet
     if torch.cuda.is_available():
       model = model.cuda()
-      
+    
+    """
     # Get Training Settings
     criterion = hrd.get_default_criterion("pretrain")
     optimizer = hrd.get_default_optimizer(model, "pretrain")
     
-    """pretraining for recostruct input signals"""
+    #Pretraining for recostruct input signals
     for epoch in range(N_EPOCHS):
         
       if FREQ_PLUS_TIME:
@@ -75,8 +76,10 @@ for datasets in data_gen:
     
     #salvo i pesi del vecchio modello
     torch.save(model.state_dict(), "./pytorch_benchmarks/checkpoint")
-    
-    """finetune for hr estimation """
+    """
+
+    #Finetune for hr estimation
+
     # Get Training Settings
     criterion = hrd.get_default_criterion("finetune")
     optimizer = hrd.get_default_optimizer(model, "finetune")
@@ -88,7 +91,7 @@ for datasets in data_gen:
         model = model.cuda()
     
     #loddo i pesi del vecchio modello al nuovo modello
-    model.load_state_dict(torch.load("./pytorch_benchmarks/checkpoint"))
+    #model.load_state_dict(torch.load("./pytorch_benchmarks/checkpoint"))
     
     for epoch in range(N_EPOCHS):
 
@@ -101,8 +104,11 @@ for datasets in data_gen:
       
       if earlystop(metrics['val_MAE']):
           break
-        
-    test_metrics = hrd.evaluate(model, criterion, test_dl, device)
+    
+    if FREQ_PLUS_TIME:
+      test_metrics = hrd.evaluate_freq_time(model, criterion, test_dl, device)
+    if TIME:
+      test_metrics = hrd.evaluate_time(model, criterion, test_dl, device)
     print("Test Set Loss:", test_metrics['loss'])
     print("Test Set MAE:", test_metrics['MAE'])
     mae_dict[test_subj] = test_metrics['MAE']
