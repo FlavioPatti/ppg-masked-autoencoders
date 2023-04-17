@@ -5,8 +5,8 @@ from pytorch_benchmarks.utils import seed_all, EarlyStopping
 from util.misc import NativeScalerWithGradNormCount as NativeScaler
 N_EPOCHS = 1
 
-FREQ_PLUS_TIME = True
-TIME = False
+FREQ_PLUS_TIME = False
+TIME = True
 
 # Check CUDA availability
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
@@ -40,7 +40,6 @@ for datasets in data_gen:
     if torch.cuda.is_available():
       model = model.cuda()
     
-    """
     # Get Training Settings
     criterion = hrd.get_default_criterion("pretrain")
     optimizer = hrd.get_default_optimizer(model, "pretrain")
@@ -76,22 +75,22 @@ for datasets in data_gen:
     
     #salvo i pesi del vecchio modello
     torch.save(model.state_dict(), "./pytorch_benchmarks/checkpoint")
-    """
-
+    
     #Finetune for hr estimation
 
-    # Get Training Settings
-    criterion = hrd.get_default_criterion("finetune")
-    optimizer = hrd.get_default_optimizer(model, "finetune")
     if FREQ_PLUS_TIME:
       model = hrd.get_reference_model('vit_freq+time_finetune') #vit or temponet
     if TIME:
       model = hrd.get_reference_model('vit_time_finetune')
     if torch.cuda.is_available():
         model = model.cuda()
+
+    # Get Training Settings
+    criterion = hrd.get_default_criterion("finetune")
+    optimizer = hrd.get_default_optimizer(model, "finetune")
     
     #loddo i pesi del vecchio modello al nuovo modello
-    #model.load_state_dict(torch.load("./pytorch_benchmarks/checkpoint"))
+    model.load_state_dict(torch.load("./pytorch_benchmarks/checkpoint"))
     
     for epoch in range(N_EPOCHS):
 
@@ -105,6 +104,7 @@ for datasets in data_gen:
       if earlystop(metrics['val_MAE']):
           break
     
+    """
     if FREQ_PLUS_TIME:
       test_metrics = hrd.evaluate_freq_time(model, criterion, test_dl, device)
     if TIME:
@@ -115,3 +115,4 @@ for datasets in data_gen:
 
     print(f'MAE: {mae_dict}')
     print(f'Average MAE: {sum(mae_dict.values()) / len(mae_dict)}')
+    """

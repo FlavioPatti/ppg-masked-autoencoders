@@ -73,14 +73,8 @@ class MaskedAutoencoderViT(nn.Module):
         self.decoder_mode = decoder_mode
         
         #Not used in this model, only to be compatible with finetune mode
-         # Output layer 1
-        self.out_neuron_1 = nn.Linear(in_features=16448, out_features=1024)
-        nn.init.constant_(self.out_neuron_1.bias, 0)
-        nn.init.constant_(self.out_neuron_1.weight, 1.0)
-        # Output layer 2
-        self.out_neuron_2 = nn.Linear(in_features=1024, out_features=1)
-        nn.init.constant_(self.out_neuron_2.bias, 0)
-        nn.init.constant_(self.out_neuron_2.weight, 1.0)
+         # Output layer
+        self.out_neuron = nn.Linear(in_features=64, out_features=1)
     
         # Transfomer
         self.decoder_blocks = nn.ModuleList([
@@ -171,11 +165,18 @@ class MaskedAutoencoderViT(nn.Module):
                 x = torch.einsum('nchpwq->nhwpqc', x)
                 x = x.reshape(shape=(imgs.shape[0], h * w, p**2 * 1))
         else:
-            h = w = imgs.shape[2] // p
-            #print(f"h = {h}, w = {w}, p = {p}")
-            x = imgs.reshape(shape=(imgs.shape[0], 16, h, p, w, p))
-            x = torch.einsum('nchpwq->nhwpqc', x)
-            x = x.reshape(shape=(imgs.shape[0], h * w, p**2 *16))
+            h = imgs.shape[2] // p
+            w = 1
+            print(f"h = {h}, w = {w}, p = {p}")
+            if type == "freq+time":
+              x = imgs.reshape(shape=(imgs.shape[0], 16, h, p, w, p))
+              x = torch.einsum('nchpwq->nhwpqc', x)
+              x = x.reshape(shape=(imgs.shape[0], h * w, p**2 *16))
+            else:
+              x = imgs.reshape(shape=(imgs.shape[0], 1, h, p, w, p))
+              x = torch.einsum('nchpwq->nhwpqc', x)
+              x = x.reshape(shape=(imgs.shape[0], h *w , p**2 ))
+
 
         return x
 

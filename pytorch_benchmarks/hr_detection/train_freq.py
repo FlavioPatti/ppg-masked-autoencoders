@@ -94,9 +94,11 @@ def get_default_criterion(task):
 
 def _run_model(model, sample, target, criterion):
     output = model(sample)
-    #print(f"output = {output.shape}")
-    #print(f"target = {target.shape}")
+    #print("")
+    #print(f"output = {output}")
+   # print(f"target = {target}")
     loss = criterion(output, target)
+    #print(f"loss = {loss}")
     return output, loss
 
 

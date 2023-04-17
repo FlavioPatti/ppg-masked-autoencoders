@@ -24,29 +24,6 @@ RESCALE = True
 NORMALIZATION = True
 PLOT_HEATMAP = False
 
-"""spectogram trasformation and relative parameters"""
-sample_rate= 32
-n_fft = 510 #freq = nfft/2 + 1 = 256 => risoluzione/granularità dello spettrogramma
-win_length = 32
-hop_length = 1 # window length = time instants
-n_mels = 64 #definisce la dimensione della frequenza di uscita
-f_min = 0
-f_max = 4
-
-spectrogram_transform = torchaudio.transforms.MelSpectrogram(
-    sample_rate = sample_rate,
-    n_fft=n_fft,
-    win_length=win_length,
-    hop_length=hop_length,
-    center=True,
-    pad_mode="reflect",
-    power=2.0,
-    normalized=True,
-    f_min = f_min,
-    f_max = f_max,
-    n_mels = n_mels
-)
-
 """plot heatmap"""
 def plot_heatmap_spectogram(x, num_sample):
   fig, ax = plt.subplots()
@@ -129,7 +106,7 @@ def train_one_epoch_masked_autoencoder_time(model: torch.nn.Module,
         #print(f"sample 0 = {samples[0].shape}") #[4,256]
         
         #print(f"samples shape = {samples.shape}")
-        #specto_samples = torch.narrow(spectrogram_transform(samples), dim=3, start=0, length=256) 
+        samples = torch.tensor(np.expand_dims(samples, axis= -1))
         #print(f"specto shape = {specto_samples.shape}")
         
         

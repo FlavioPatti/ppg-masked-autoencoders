@@ -23,7 +23,6 @@ from util.patch_embed import PatchEmbed_new, PatchEmbed_org
 from timm.models.swin_transformer import SwinTransformerBlock
 
 
-
 class MaskedAutoencoderViT_without_decoder(nn.Module):
     """ Masked Autoencoder with VisionTransformer backbone
     """
@@ -80,8 +79,7 @@ class MaskedAutoencoderViT_without_decoder(nn.Module):
         self.decoder_pred = nn.Linear(decoder_embed_dim, patch_size**2 * in_chans, bias=True) # decoder to patch
 
         # --------------------------------------------------------------------------
-
-
+        
         self.norm_pix_loss = norm_pix_loss
 
         self.patch_size=patch_size
@@ -97,6 +95,13 @@ class MaskedAutoencoderViT_without_decoder(nn.Module):
         self.log_softmax=nn.LogSoftmax(dim=-1)
 
         self.epoch = epoch
+
+        # Output layer
+        self.out_neuron = nn.Linear(in_features=64, out_features=1)
+        
+        self.initialize_weights()
+        
+        """
         # Output layer 1
         self.out_neuron_1 = nn.Linear(in_features=256, out_features=128)
         nn.init.constant_(self.out_neuron_1.bias, 0)
@@ -105,6 +110,35 @@ class MaskedAutoencoderViT_without_decoder(nn.Module):
         self.out_neuron_2 = nn.Linear(in_features=128, out_features=1)
         nn.init.constant_(self.out_neuron_2.bias, 0)
         torch.nn.init.xavier_uniform_(self.out_neuron_2.weight)
+        """
+    def initialize_weights(self):
+        # initialization
+        # initialize (and freeze) pos_embed by sin-cos embedding
+        pos_embed = get_2d_sincos_pos_embed(self.pos_embed.shape[-1], int(self.patch_embed.num_patches**.5), cls_token=True)
+        self.pos_embed.data.copy_(torch.from_numpy(pos_embed).float().unsqueeze(0))
+
+        # initialize patch_embed like nn.Linear (instead of nn.Conv2d)
+        w = self.patch_embed.proj.weight.data
+        torch.nn.init.xavier_uniform_(w.view([w.shape[0], -1]))
+
+        # timm's trunc_normal_(std=.02) is effectively normal_(std=0.02) as cutoff is too big (2.)
+        torch.nn.init.normal_(self.cls_token, std=.02)
+
+        # initialize nn.Linear and nn.LayerNorm
+        self.apply(self._init_weights)
+
+    def _init_weights(self, m):
+        if isinstance(m, nn.Linear):
+            # we use xavier_uniform following official JAX ViT:
+            torch.nn.init.xavier_uniform_(m.weight)
+            if isinstance(m, nn.Linear) and m.bias is not None:
+                nn.init.constant_(m.bias, 0)
+        elif isinstance(m, nn.LayerNorm):
+            nn.init.constant_(m.bias, 0)
+            nn.init.constant_(m.weight, 1.0)
+        elif isinstance(m,nn.BatchNorm1d):
+            nn.init.constant_(m.bias, 0)
+            nn.init.constant_(m.weight, 1.0)
 
     def forward_encoder_no_mask(self, x):
         # embed patches
@@ -139,14 +173,28 @@ class MaskedAutoencoderViT_without_decoder(nn.Module):
         #print(f"x1 = {x.shape}")
         m = nn.AvgPool2d((16, 4))
         x = m(x)
-        #print(f"x1.5 = {x.shape}")
-        #print(f"{x}")
-        x = x.flatten(1)
         #print(f"x2 = {x.shape}")
-        x = self.out_neuron_1(x)
-        #print(f"x3 = {x.shape}")
-        x = self.out_neuron_2(x)
-        #print(f"x4 = {x.shape}")
+        x = x.flatten(1)
+
+        #first istance of regression
+        m = nn.Linear(in_features=256, out_features=128, device='cuda')
+        x=m(x)
+        m = nn.ReLU()
+        x=m(x)
+        m = nn.BatchNorm1d(num_features=128, device = 'cuda')
+        x=m(x)
+
+        #second istance of regression
+        m = nn.Linear(in_features=128, out_features=64, device = 'cuda')
+        x=m(x)
+        m = nn.ReLU()
+        x=m(x)
+        m = nn.BatchNorm1d(num_features=64, device = 'cuda')
+        x=m(x)
+        
+        #output layer
+        x = self.out_neuron(x)
+        #print(f"x6 = {x.shape}")
         #loss = self.forward_loss(imgs, pred, norm_pix_loss=self.norm_pix_loss)
         #pred, _, _ = self.forward_decoder(emb_enc, ids_restore)  # [N, L, p*p*3]
         #loss_contrastive = torch.FloatTensor([0.0]).cuda()
