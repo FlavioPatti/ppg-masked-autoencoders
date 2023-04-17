@@ -1,17 +1,3 @@
-# Copyright (c) Meta Platforms, Inc. and affiliates.
-# All rights reserved.
-
-# This source code is licensed under the license found in the
-# LICENSE file in the root directory of this source tree.
-# --------------------------------------------------------
-# References:
-# timm: https://github.com/rwightman/pytorch-image-models/tree/master/timm
-# DeiT: https://github.com/facebookresearch/deit
-# --------------------------------------------------------
-
-from functools import partial
-from json import encoder
-
 import torch
 import torch.nn as nn
 
@@ -52,7 +38,7 @@ class MaskedAutoencoderViT(nn.Module):
 
         #self.split_pos = split_pos # not useful
         self.pos_embed = nn.Parameter(torch.zeros(1, num_patches + 1, embed_dim), requires_grad=pos_trainable)  # fixed sin-cos embedding
-        print(f"pos_embed = {self.pos_embed.shape}")
+      
 
         self.encoder_depth = depth
         self.contextual_depth = contextual_depth
@@ -112,7 +98,10 @@ class MaskedAutoencoderViT(nn.Module):
     def initialize_weights(self):
         # initialization
         # initialize (and freeze) pos_embed by sin-cos embedding
+        #print(f"pos_embed = {self.pos_embed.shape[-1]}")
+       # print(f"patch = {int(self.patch_embed.num_patches**.5)}")
         pos_embed = get_2d_sincos_pos_embed(self.pos_embed.shape[-1], int(self.patch_embed.num_patches**.5), cls_token=True)
+        #print(f"pos embed 2 = {pos_embed.shape}")
         self.pos_embed.data.copy_(torch.from_numpy(pos_embed).float().unsqueeze(0))
 
         decoder_pos_embed = get_2d_sincos_pos_embed(self.decoder_pos_embed.shape[-1], int(self.patch_embed.num_patches**.5), cls_token=True)
@@ -175,7 +164,7 @@ class MaskedAutoencoderViT(nn.Module):
             else:
               x = imgs.reshape(shape=(imgs.shape[0], 1, h, p, w, p))
               x = torch.einsum('nchpwq->nhwpqc', x)
-              x = x.reshape(shape=(imgs.shape[0], h *w , p**2 ))
+              x = x.reshape(shape=(imgs.shape[0], h , p**2 ))
 
 
         return x
@@ -373,7 +362,10 @@ class MaskedAutoencoderViT(nn.Module):
                 pred = pred
         else:
             #pred = pred[:,1:,:]
-            pred = pred[:, 1:, 0:256]
+            if type=="freq+time":
+              pred = pred[:, 1:, 0:256]
+            else:
+              pred = pred[:,1:,:]
             #print(f"pred = {pred}")
             #print(f"pred = {pred[:,1:,:].shape}")
 
@@ -395,9 +387,9 @@ class MaskedAutoencoderViT(nn.Module):
         
         """ MSE loss """
         
-        #print(f"pred shape = {pred.shape}")
+        print(f"pred shape = {pred.shape}")
         #print(f"pred = {pred}")
-        #print(f"target shape = {target.shape}")
+        print(f"target shape = {target.shape}")
         #print(f"target = {target}")
         loss = (pred - target) ** 2
         loss = loss.mean(dim=-1)  # [N, L], mean loss per patch
