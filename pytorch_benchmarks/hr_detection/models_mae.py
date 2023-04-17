@@ -12,8 +12,8 @@ class MaskedAutoencoderViT(nn.Module):
     """ Masked Autoencoder with VisionTransformer backbone
     """
     def __init__(self, img_size=224, patch_size=16, stride=10, in_chans=3,
-                 embed_dim=1024, depth=24, num_heads=16, type="freq+time",
-                 decoder_embed_dim=512, decoder_depth=8, decoder_num_heads=16,
+                 embed_dim=1024, depth=24, num_heads=16, typeExp="freq+time",
+                 decoder_embed_dim=32, decoder_depth=8, decoder_num_heads=16,
                  mlp_ratio=4., norm_layer=nn.LayerNorm, norm_pix_loss=False, 
                  audio_exp=False, alpha=0.0, temperature=.2, mode=0, contextual_depth=8,
                  use_custom_patch=False, split_pos=False, pos_trainable=False, use_nce=False, beta=4.0, decoder_mode=0,
@@ -25,10 +25,11 @@ class MaskedAutoencoderViT(nn.Module):
         self.audio_exp=audio_exp
         self.embed_dim = embed_dim
         self.decoder_embed_dim = decoder_embed_dim
+        print(f"decoder embed dim = {decoder_embed_dim}")
         # --------------------------------------------------------------------------
         # MAE encoder specifics
         
-        self.patch_embed = PatchEmbed_org(img_size, patch_size, in_chans, embed_dim, type)
+        self.patch_embed = PatchEmbed_org(img_size, patch_size, in_chans, embed_dim, typeExp)
         print(f"patch_embed = {self.patch_embed}")
         
         self.use_custom_patch = use_custom_patch
@@ -128,7 +129,7 @@ class MaskedAutoencoderViT(nn.Module):
             nn.init.constant_(m.bias, 0)
             nn.init.constant_(m.weight, 1.0)
 
-    def patchify(self, imgs):
+    def patchify(self, imgs, typeExp):
         """
         imgs: (N, 3, H, W)
         x: (N, L, patch_size**2 *3)
@@ -154,17 +155,19 @@ class MaskedAutoencoderViT(nn.Module):
                 x = torch.einsum('nchpwq->nhwpqc', x)
                 x = x.reshape(shape=(imgs.shape[0], h * w, p**2 * 1))
         else:
-            h = imgs.shape[2] // p
-            w = 1
-            print(f"h = {h}, w = {w}, p = {p}")
-            if type == "freq+time":
+            if typeExp == "freq+time": 
+              h = w = imgs.shape[2] // p
+              print(f"h = {h}, w = {w}, p = {p}")
               x = imgs.reshape(shape=(imgs.shape[0], 16, h, p, w, p))
               x = torch.einsum('nchpwq->nhwpqc', x)
               x = x.reshape(shape=(imgs.shape[0], h * w, p**2 *16))
             else:
+              h = imgs.shape[2] // p
+              w = 1
+              print(f"h = {h}, w = {w}, p = {p}")
               x = imgs.reshape(shape=(imgs.shape[0], 1, h, p, w, p))
               x = torch.einsum('nchpwq->nhwpqc', x)
-              x = x.reshape(shape=(imgs.shape[0], h , p**2 ))
+              x = x.reshape(shape=(imgs.shape[0], h * w, p**2 ))
 
 
         return x
@@ -321,7 +324,7 @@ class MaskedAutoencoderViT(nn.Module):
 
         return contextual_emb
 
-    def forward_decoder(self, x, ids_restore):
+    def forward_decoder(self, x, ids_restore, typeExp):
         # embed tokens
         x = self.decoder_embed(x)
 
@@ -362,22 +365,22 @@ class MaskedAutoencoderViT(nn.Module):
                 pred = pred
         else:
             #pred = pred[:,1:,:]
-            if type=="freq+time":
+            if typeExp=="freq+time":
               pred = pred[:, 1:, 0:256]
             else:
-              pred = pred[:,1:,:]
+              pred = pred[:,1:,0:16]
             #print(f"pred = {pred}")
             #print(f"pred = {pred[:,1:,:].shape}")
 
         return pred, None, None #emb, emb_pixel
 
-    def forward_loss(self, imgs, pred, mask, norm_pix_loss=False):
+    def forward_loss(self, imgs, pred, mask, typeExp, norm_pix_loss=False):
         """
         imgs: [N, 3, H, W]
         pred: [N, L, p*p*3]
         mask: [N, L], 0 is keep, 1 is remove, 
         """
-        target = self.patchify(imgs)
+        target = self.patchify(imgs, typeExp)
         #print(f"target = {target.shape}")
 
         if norm_pix_loss:
@@ -397,9 +400,9 @@ class MaskedAutoencoderViT(nn.Module):
         print(f"loss = {loss}")
         return loss      
 
-    def forward(self, imgs, mask_ratio=0.8):
+    def forward(self, imgs, typeExp="freq+time", mask_ratio=0.8):
         emb_enc, mask, ids_restore, _ = self.forward_encoder(imgs, mask_ratio, mask_2d=self.mask_2d)
-        pred, _, _ = self.forward_decoder(emb_enc, ids_restore)  # [N, L, p*p*3]
-        loss_recon = self.forward_loss(imgs, pred, mask, norm_pix_loss=self.norm_pix_loss)
+        pred, _, _ = self.forward_decoder(emb_enc, ids_restore, typeExp)  # [N, L, p*p*3]
+        loss_recon = self.forward_loss(imgs, pred, mask, typeExp, norm_pix_loss=self.norm_pix_loss)
         loss_contrastive = torch.FloatTensor([0.0]).cuda()
         return loss_recon, pred, mask, loss_contrastive

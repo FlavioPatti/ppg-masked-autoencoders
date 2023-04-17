@@ -125,7 +125,7 @@ def train_one_epoch_masked_autoencoder_time(model: torch.nn.Module,
 
         with torch.cuda.amp.autocast():
             #loss_a, _, _, _ = _run_model(specto_samples, mask_ratio=0.1)
-            loss_a, _, _, _ = model(samples, mask_ratio=0.1)
+            loss_a, _, _, _ = model(samples, "time",mask_ratio=0.1)
         #print(f"loss = {loss_a}")
         loss_value = loss_a.item()
         loss_total = loss_a

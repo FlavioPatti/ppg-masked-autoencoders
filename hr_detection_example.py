@@ -5,8 +5,8 @@ from pytorch_benchmarks.utils import seed_all, EarlyStopping
 from util.misc import NativeScalerWithGradNormCount as NativeScaler
 N_EPOCHS = 1
 
-FREQ_PLUS_TIME = False
-TIME = True
+FREQ_PLUS_TIME = 0
+TIME = 1
 
 # Check CUDA availability
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
@@ -34,8 +34,10 @@ for datasets in data_gen:
     
     # Get the Model
     if FREQ_PLUS_TIME:
+      print(f"Freq+Time experiment")
       model = hrd.get_reference_model('vit_freq+time_pretrain') #vit or temponet
     if TIME:
+      print(f"Time experiment")
       model = hrd.get_reference_model('vit_time_pretrain') #vit or temponet
     if torch.cuda.is_available():
       model = model.cuda()

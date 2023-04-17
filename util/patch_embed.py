@@ -36,9 +36,9 @@ class PatchEmbed_org(nn.Module):
             print(f"img_size = {img_size}")
             patch_size = (4,1)
             print(f"patch_size = {patch_size}")
-            num_patches = (1 // 1) * (img_size[0] // patch_size[0])
+            num_patches = (img_size[1] // patch_size[1]) * (img_size[0] // patch_size[0])
             print(f"num_patch = {num_patches}")
-            self.patch_hw = (1 // 1 , img_size[0] // patch_size[0])
+            self.patch_hw = (img_size[1] // patch_size[1] // 1 , img_size[0] // patch_size[0])
             print(f"patch_hw = {self.patch_hw}")
             
         self.img_size = img_size
@@ -59,7 +59,7 @@ class PatchEmbed_org(nn.Module):
         x = x.flatten(2)
         #print(f"x3 = {x.shape}")
         x = x.transpose(1,2)
-        #print(f"x4 = {x.shape}")
+        print(f"x4 = {x.shape}")
         return x
 
 
