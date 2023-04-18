@@ -96,7 +96,7 @@ def _run_model(model, sample, target, criterion):
     output = model(sample)
     #print("")
     #print(f"output = {output}")
-   # print(f"target = {target}")
+    #print(f"target = {target}")
     loss = criterion(output, target)
     #print(f"loss = {loss}")
     return output, loss
@@ -186,7 +186,7 @@ def train_one_epoch_masked_autoencoder_freq_time(model: torch.nn.Module,
 
         with torch.cuda.amp.autocast():
             #loss_a, _, _, _ = _run_model(specto_samples, mask_ratio=0.1)
-            loss_a, _, _, _ = model(specto_samples, "freq+time", mask_ratio=0.1)
+            loss_a, _, _, _ = model(specto_samples, "freq+time")
         #print(f"loss = {loss_a}")
         loss_value = loss_a.item()
         loss_total = loss_a

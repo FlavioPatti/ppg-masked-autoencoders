@@ -27,7 +27,7 @@ class MaskedAutoencoderViT_without_decoder(nn.Module):
     """ Masked Autoencoder with VisionTransformer backbone
     """
     def __init__(self, img_size=224, patch_size=16, stride=10, in_chans=3,
-                 embed_dim=1024, depth=24, num_heads=16, type="freq+time",
+                 embed_dim=1024, depth=24, num_heads=16, typeExp="freq+time",
                  decoder_embed_dim=512, decoder_depth=8, decoder_num_heads=16,
                  mlp_ratio=4., norm_layer=nn.LayerNorm, norm_pix_loss=False, 
                  audio_exp=False, alpha=0.0, temperature=.2, mode=0, contextual_depth=8,
@@ -43,7 +43,7 @@ class MaskedAutoencoderViT_without_decoder(nn.Module):
         # --------------------------------------------------------------------------
         # MAE encoder specifics
         
-        self.patch_embed = PatchEmbed_org(img_size, patch_size, in_chans, embed_dim, type)
+        self.patch_embed = PatchEmbed_org(img_size, patch_size, in_chans, embed_dim, typeExp)
         self.use_custom_patch = use_custom_patch
         num_patches = self.patch_embed.num_patches
 
@@ -168,13 +168,15 @@ class MaskedAutoencoderViT_without_decoder(nn.Module):
      
 
     def forward(self, imgs):
-        x = self.forward_encoder_no_mask(imgs)
         #print("")
-        #print(f"x1 = {x.shape}")
-        m = nn.AvgPool2d((16, 4))
+        #print(f"imgs = {imgs.shape}") (128,4,64,256)
+        x = self.forward_encoder_no_mask(imgs)
+        #print(f"x1 = {x.shape}") (128,257,64)
+        m = nn.AvgPool2d((16, 4)) 
         x = m(x)
-        #print(f"x2 = {x.shape}")
+        #print(f"x2 = {x.shape}") (128,16,16)
         x = x.flatten(1)
+        #print(f"x3 = {x.shape}") (128,256)
 
         #first istance of regression
         m = nn.Linear(in_features=256, out_features=128, device='cuda')
@@ -184,6 +186,8 @@ class MaskedAutoencoderViT_without_decoder(nn.Module):
         m = nn.BatchNorm1d(num_features=128, device = 'cuda')
         x=m(x)
 
+        #print(f"x4 = {x.shape}") (128,128)
+
         #second istance of regression
         m = nn.Linear(in_features=128, out_features=64, device = 'cuda')
         x=m(x)
@@ -191,10 +195,13 @@ class MaskedAutoencoderViT_without_decoder(nn.Module):
         x=m(x)
         m = nn.BatchNorm1d(num_features=64, device = 'cuda')
         x=m(x)
+
+        #print(f"x5 = {x.shape}") (128,64)
         
         #output layer
         x = self.out_neuron(x)
-        #print(f"x6 = {x.shape}")
+        #print(f"x5 = {x.shape}") (128,1)
+        
         #loss = self.forward_loss(imgs, pred, norm_pix_loss=self.norm_pix_loss)
         #pred, _, _ = self.forward_decoder(emb_enc, ids_restore)  # [N, L, p*p*3]
         #loss_contrastive = torch.FloatTensor([0.0]).cuda()

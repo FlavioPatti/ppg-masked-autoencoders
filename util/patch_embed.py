@@ -48,7 +48,7 @@ class PatchEmbed_org(nn.Module):
         self.proj = nn.Conv2d(in_chans, embed_dim, kernel_size=patch_size, stride=patch_size)
 
     def forward(self, x):
-        print(f"x0 = {x.shape}")
+        #print(f"x0 = {x.shape}")
         B, C, H, W = x.shape
         # FIXME look at relaxing size constraints
         #assert H == self.img_size[0] and W == self.img_size[1], \
@@ -59,7 +59,7 @@ class PatchEmbed_org(nn.Module):
         x = x.flatten(2)
         #print(f"x3 = {x.shape}")
         x = x.transpose(1,2)
-        print(f"x4 = {x.shape}")
+        #print(f"x4 = {x.shape}")
         return x
 
 

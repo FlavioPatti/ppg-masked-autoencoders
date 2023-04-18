@@ -3,10 +3,10 @@ import torch
 import pytorch_benchmarks.hr_detection as hrd
 from pytorch_benchmarks.utils import seed_all, EarlyStopping
 from util.misc import NativeScalerWithGradNormCount as NativeScaler
-N_EPOCHS = 1
+N_EPOCHS = 3
 
-FREQ_PLUS_TIME = 0
-TIME = 1
+FREQ_PLUS_TIME = 1
+TIME = 0
 
 # Check CUDA availability
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
@@ -31,7 +31,7 @@ for datasets in data_gen:
     earlystop = EarlyStopping(patience=20, mode='min')
     # Training Loop
     loss_scaler = NativeScaler()
-    
+    """
     # Get the Model
     if FREQ_PLUS_TIME:
       print(f"Freq+Time experiment")
@@ -79,7 +79,7 @@ for datasets in data_gen:
     torch.save(model.state_dict(), "./pytorch_benchmarks/checkpoint")
     
     #Finetune for hr estimation
-
+"""
     if FREQ_PLUS_TIME:
       model = hrd.get_reference_model('vit_freq+time_finetune') #vit or temponet
     if TIME:
@@ -92,7 +92,7 @@ for datasets in data_gen:
     optimizer = hrd.get_default_optimizer(model, "finetune")
     
     #loddo i pesi del vecchio modello al nuovo modello
-    model.load_state_dict(torch.load("./pytorch_benchmarks/checkpoint"))
+   # model.load_state_dict(torch.load("./pytorch_benchmarks/checkpoint"))
     
     for epoch in range(N_EPOCHS):
 
