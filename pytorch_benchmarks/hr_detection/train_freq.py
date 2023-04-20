@@ -87,7 +87,7 @@ def get_default_criterion(task):
     if task == "pretrain":
     #setting criterion for masked autoencoders
         return nn.MSELoss()
-    else:
+    if task == "finetune":
     #setting criterion for hr estimation
         return LogCosh()
 
@@ -265,8 +265,6 @@ def train_one_epoch_hr_detection_freq_time(
             #print(f"min = {min_ch1}")
             specto_samples[i,0,:,:] = torch.tensor(ch1, dtype = float)
 
-
-          
         if PLOT_HEATMAP:
           sample = specto_samples[80,:,:,:]
           print(f"sample = {sample.shape}")
@@ -338,8 +336,6 @@ def evaluate_freq_time(
               #print(f"max = {max_ch1}")
               #print(f"min = {min_ch1}")
               specto_samples[i,0,:,:] = torch.tensor(ch1, dtype = float)
-
-
             
           if PLOT_HEATMAP:
             sample = specto_samples[80,:,:,:]

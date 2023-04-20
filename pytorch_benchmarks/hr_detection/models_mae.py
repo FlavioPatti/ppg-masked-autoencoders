@@ -167,7 +167,7 @@ class MaskedAutoencoderViT(nn.Module):
               print(f"h = {h}, w = {w}, p = {p}")
               x = imgs.reshape(shape=(imgs.shape[0], 1, h, p, w, p))
               x = torch.einsum('nchpwq->nhwpqc', x)
-              x = x.reshape(shape=(imgs.shape[0], h * w, p**2 ))
+              x = x.reshape(shape=(imgs.shape[0], h * w, p**2 * 4)) #(128, 64, 16) 128*64*16 = 131.072
 
 
         return x

@@ -55,7 +55,7 @@ def get_default_optimizer(net: nn.Module, task):
     #setting optimizer for masked autoencoders
     param_groups = optim_factory.param_groups_weight_decay(net, 0.01) #weight_decay
     return optim.AdamW(param_groups, lr=0.001, betas=(0.9, 0.95))
-  else:
+  if task == "finetune":
     #setting optimizer for hr estimation
     return optim.Adam(net.parameters(), lr=0.001)
 
