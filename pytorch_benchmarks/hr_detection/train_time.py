@@ -109,7 +109,23 @@ def train_one_epoch_masked_autoencoder_time(model: torch.nn.Module,
         samples = torch.tensor(np.expand_dims(samples, axis= -1))
         print(f"samples shape = {samples.shape}")
         #print(f"specto shape = {specto_samples.shape}")
-        
+       #Normalize values into range [0,1] to avoid NaN loss
+        if NORMALIZATION:
+          channel_1 = samples[:,0,:,:]
+          for i in range(samples.shape[0]):
+            ch1 = channel_1[i].numpy()
+            max_ch1 = np.max(ch1)
+            min_ch1 = np.min(ch1)
+            #print(f"max = {max_ch1}")
+            #print(f"min = {min_ch1}")
+            ch1 = (ch1 - min_ch1) / (max_ch1-min_ch1)
+
+            max_ch1 = np.max(ch1)
+            min_ch1 = np.min(ch1)
+            #print(f"max = {max_ch1}")
+            #print(f"min = {min_ch1}")
+            samples[i,0,:,:] = torch.tensor(ch1, dtype = float)
+
         
         # comment out when not debugging
         # from fvcore.nn import FlopCountAnalysis, parameter_count_table

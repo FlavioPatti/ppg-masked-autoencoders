@@ -69,7 +69,7 @@ class MaskedAutoencoderViT(nn.Module):
             for i in range(decoder_depth)])
 
         self.decoder_norm = norm_layer(decoder_embed_dim)
-        self.decoder_pred = nn.Linear(decoder_embed_dim, patch_size**2 * in_chans, bias=True) # decoder to patch
+        self.decoder_pred = nn.Linear(decoder_embed_dim, patch_size**2 , bias=True) # decoder to patch
 
         # --------------------------------------------------------------------------
 
@@ -157,17 +157,17 @@ class MaskedAutoencoderViT(nn.Module):
         else:
             if typeExp == "freq+time": 
               h = w = imgs.shape[2] // p
-              print(f"h = {h}, w = {w}, p = {p}")
+             # print(f"h = {h}, w = {w}, p = {p}")
               x = imgs.reshape(shape=(imgs.shape[0], 4, h, p, w, p))
               x = torch.einsum('nchpwq->nhwpqc', x)
               x = x.reshape(shape=(imgs.shape[0], h * w, p**2 *4))
             else:
-              h = w = (imgs.shape[2] // p) // 2
-              
-              print(f"h = {h}, w = {w}, p = {p}")
+              h = imgs.shape[2] // p
+              w = 1
+              #print(f"h = {h}, w = {w}, p = {p}")
               x = imgs.reshape(shape=(imgs.shape[0], 1, h, p, w, p))
               x = torch.einsum('nchpwq->nhwpqc', x)
-              x = x.reshape(shape=(imgs.shape[0], h * w, p**2 * 1)) #(128, 64, 16) 128*64*16 = 131.072
+              x = x.reshape(shape=(imgs.shape[0], h * w, p**2 )) #(128, 64, 16) 128*64*16 = 131.072
 
 
         return x
@@ -364,11 +364,7 @@ class MaskedAutoencoderViT(nn.Module):
             else:
                 pred = pred
         else:
-            #pred = pred[:,1:,:]
-            if typeExp=="freq+time":
-              pred = pred[:, 1:,]
-            else:
-              pred = pred[:,1:,]
+            pred = pred[:, 1:,]
             #print(f"pred = {pred}")
             #print(f"pred = {pred[:,1:,:].shape}")
 
@@ -390,9 +386,9 @@ class MaskedAutoencoderViT(nn.Module):
         
         """ MSE loss """
         
-        print(f"pred shape = {pred.shape}")
+        #print(f"pred shape = {pred.shape}")
         #print(f"pred = {pred}")
-        print(f"target shape = {target.shape}")
+        #print(f"target shape = {target.shape}")
         #print(f"target = {target}")
         loss = (pred - target) ** 2
         loss = loss.mean(dim=-1)  # [N, L], mean loss per patch
