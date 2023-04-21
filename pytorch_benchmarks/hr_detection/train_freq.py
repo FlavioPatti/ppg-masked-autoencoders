@@ -29,7 +29,7 @@ sample_rate= 32
 n_fft = 510 #freq = nfft/2 + 1 = 256 => risoluzione/granularità dello spettrogramma
 win_length = 32
 hop_length = 1 # window length = time instants
-n_mels = 64 #definisce la dimensione della frequenza di uscita
+n_mels = 256 #definisce la dimensione della frequenza di uscita
 f_min = 0
 f_max = 4
 
@@ -185,8 +185,8 @@ def train_one_epoch_masked_autoencoder_freq_time(model: torch.nn.Module,
         #print(model)
 
         with torch.cuda.amp.autocast():
-            #loss_a, _, _, _ = _run_model(specto_samples, mask_ratio=0.1)
-            loss_a, _, _, _ = model(specto_samples, "freq+time")
+           # output, loss = _run_model(specto_samples, mask_ratio=0.1)
+            loss_a, _, _, _ = model(specto_samples, "freq+time", mask_ratio = 0.1)
         #print(f"loss = {loss_a}")
         loss_value = loss_a.item()
         loss_total = loss_a

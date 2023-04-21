@@ -6,8 +6,8 @@ from util.misc import NativeScalerWithGradNormCount as NativeScaler
 N_EPOCHS = 3
 
 #Type of experiments: 
-FREQ_PLUS_TIME = 1
-TIME = 0
+FREQ_PLUS_TIME = 0
+TIME = 1
 
 # Check CUDA availability
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")

@@ -158,16 +158,16 @@ class MaskedAutoencoderViT(nn.Module):
             if typeExp == "freq+time": 
               h = w = imgs.shape[2] // p
               print(f"h = {h}, w = {w}, p = {p}")
-              x = imgs.reshape(shape=(imgs.shape[0], 16, h, p, w, p))
+              x = imgs.reshape(shape=(imgs.shape[0], 4, h, p, w, p))
               x = torch.einsum('nchpwq->nhwpqc', x)
-              x = x.reshape(shape=(imgs.shape[0], h * w, p**2 *16))
+              x = x.reshape(shape=(imgs.shape[0], h * w, p**2 *4))
             else:
-              h = imgs.shape[2] // p
-              w = 1
+              h = w = (imgs.shape[2] // p) // 2
+              
               print(f"h = {h}, w = {w}, p = {p}")
               x = imgs.reshape(shape=(imgs.shape[0], 1, h, p, w, p))
               x = torch.einsum('nchpwq->nhwpqc', x)
-              x = x.reshape(shape=(imgs.shape[0], h * w, p**2 * 4)) #(128, 64, 16) 128*64*16 = 131.072
+              x = x.reshape(shape=(imgs.shape[0], h * w, p**2 * 1)) #(128, 64, 16) 128*64*16 = 131.072
 
 
         return x
@@ -366,9 +366,9 @@ class MaskedAutoencoderViT(nn.Module):
         else:
             #pred = pred[:,1:,:]
             if typeExp=="freq+time":
-              pred = pred[:, 1:, 0:256]
+              pred = pred[:, 1:,]
             else:
-              pred = pred[:,1:,0:16]
+              pred = pred[:,1:,]
             #print(f"pred = {pred}")
             #print(f"pred = {pred[:,1:,:].shape}")
 
@@ -400,7 +400,7 @@ class MaskedAutoencoderViT(nn.Module):
         print(f"loss = {loss}")
         return loss      
 
-    def forward(self, imgs, typeExp="freq+time", mask_ratio=0.8):
+    def forward(self, imgs, typeExp="freq+time", mask_ratio=0.1):
         emb_enc, mask, ids_restore, _ = self.forward_encoder(imgs, mask_ratio, mask_2d=self.mask_2d)
         pred, _, _ = self.forward_decoder(emb_enc, ids_restore, typeExp)  # [N, L, p*p*3]
         loss_recon = self.forward_loss(imgs, pred, mask, typeExp, norm_pix_loss=self.norm_pix_loss)
