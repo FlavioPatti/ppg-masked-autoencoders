@@ -167,12 +167,16 @@ class MaskedAutoencoderViT_without_decoder(nn.Module):
         return contextual_emb
      
 
-    def forward(self, imgs):
+    def forward(self, imgs, typeExp="freq+time"):
+
         #print("")
         #print(f"imgs = {imgs.shape}") (128,4,64,256)
         x = self.forward_encoder_no_mask(imgs)
         #print(f"x1 = {x.shape}") (128,257,64)
-        m = nn.AvgPool2d((16, 4)) 
+        if typeExp == "freq+time":
+          m = nn.AvgPool2d((16, 4)) 
+        else: 
+          m = nn.AvgPool2d((4,4))
         x = m(x)
         #print(f"x2 = {x.shape}") (128,16,16)
         x = x.flatten(1)
@@ -202,6 +206,8 @@ class MaskedAutoencoderViT_without_decoder(nn.Module):
         x = self.out_neuron(x)
         #print(f"x5 = {x.shape}") (128,1)
         
+        
+          
         #loss = self.forward_loss(imgs, pred, norm_pix_loss=self.norm_pix_loss)
         #pred, _, _ = self.forward_decoder(emb_enc, ids_restore)  # [N, L, p*p*3]
         #loss_contrastive = torch.FloatTensor([0.0]).cuda()
