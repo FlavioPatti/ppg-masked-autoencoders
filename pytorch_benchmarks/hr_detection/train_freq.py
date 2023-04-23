@@ -280,7 +280,10 @@ def train_one_epoch_hr_detection_freq_time(
         step += 1
         tepoch.update(1)
         sample, target = specto_samples.to(device), target.to(device)
-        output, loss = _run_model(model, sample, target, criterion)
+        output = model(sample)
+        loss = criterion(output, target)
+        
+        #output, loss = _run_model(model, sample, target, criterion)
         optimizer.zero_grad()
         loss.backward()
         optimizer.step()

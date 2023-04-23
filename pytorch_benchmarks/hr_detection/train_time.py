@@ -196,15 +196,32 @@ def train_one_epoch_hr_detection_time(
       tepoch.set_description(f"Epoch {epoch+1}")
       for sample, target in train:
 
-        #print(f"samples shape = {sample.shape}")
-        #specto_samples = spectrogram_transform(sample)
+        sample = torch.tensor(np.expand_dims(sample, axis= -1))
+       # print(f"samples shape = {samples.shape}")
         #print(f"specto shape = {specto_samples.shape}")
-        
-          
+        """
+       #Normalize values into range [0,1] to avoid NaN loss
+        if NORMALIZATION:
+          channel_1 = sample[:,0,:,:]
+          for i in range(sample.shape[0]):
+            ch1 = channel_1[i].numpy()
+            max_ch1 = np.max(ch1)
+            min_ch1 = np.min(ch1)
+            #print(f"max = {max_ch1}")
+            #print(f"min = {min_ch1}")
+            ch1 = (ch1 - min_ch1) / (max_ch1-min_ch1)
+
+            max_ch1 = np.max(ch1)
+            min_ch1 = np.min(ch1)
+            #print(f"max = {max_ch1}")
+            #print(f"min = {min_ch1}")
+            sample[i,0,:,:] = torch.tensor(ch1, dtype = float)
+        """
         step += 1
         tepoch.update(1)
         sample, target = sample.to(device), target.to(device)
-        output, loss = _run_model(model, sample, target, criterion)
+        output = model(sample, typeExp= "time")
+        loss = criterion(output,target)
         optimizer.zero_grad()
         loss.backward()
         optimizer.step()
@@ -235,13 +252,31 @@ def evaluate_time(
     step = 0
     with torch.no_grad():
         for sample, target in data:
-          #print(f"samples shape = {sample.shape}")
-          #specto_samples = spectrogram_transform(sample)
-          #print(f"specto shape = {specto_samples.shape}")
-          
+          sample = torch.tensor(np.expand_dims(sample, axis= -1))
+       # print(f"samples shape = {samples.shape}")
+        #print(f"specto shape = {specto_samples.shape}")
+          """
+       #Normalize values into range [0,1] to avoid NaN loss
+          if NORMALIZATION:
+            channel_1 = sample[:,0,:,:]
+            for i in range(sample.shape[0]):
+              ch1 = channel_1[i].numpy()
+              max_ch1 = np.max(ch1)
+              min_ch1 = np.min(ch1)
+              #print(f"max = {max_ch1}")
+              #print(f"min = {min_ch1}")
+              ch1 = (ch1 - min_ch1) / (max_ch1-min_ch1)
+
+              max_ch1 = np.max(ch1)
+              min_ch1 = np.min(ch1)
+              #print(f"max = {max_ch1}")
+              #print(f"min = {min_ch1}")
+              sample[i,0,:,:] = torch.tensor(ch1, dtype = float)
+          """
           step += 1
           sample, target = sample.to(device), target.to(device)
-          output, loss = _run_model(model, sample, target, criterion)
+          output = model(sample, typeExp= "time")
+          loss = criterion(output,target)
           mae_val = F.l1_loss(output, target)
           avgmae.update(mae_val, sample.size(0))
           avgloss.update(loss, sample.size(0))
