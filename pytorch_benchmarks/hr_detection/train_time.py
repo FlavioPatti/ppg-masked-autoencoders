@@ -105,9 +105,9 @@ def train_one_epoch_masked_autoencoder_time(model: torch.nn.Module,
         #samples = [128,4,256] = [batch,channel, time]
         #print(f"sample 0 = {samples[0].shape}") #[4,256]
         
-        print(f"samples shape = {samples.shape}")
+        #print(f"samples shape = {samples.shape}")
         samples = torch.tensor(np.expand_dims(samples, axis= -1))
-        print(f"samples shape = {samples.shape}")
+        #print(f"samples shape = {samples.shape}")
         #print(f"specto shape = {specto_samples.shape}")
        #Normalize values into range [0,1] to avoid NaN loss
         if NORMALIZATION:

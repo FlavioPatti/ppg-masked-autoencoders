@@ -162,6 +162,7 @@ class MaskedAutoencoderViT_without_decoder(nn.Module):
         contextual_embs=[]
         for n, blk in enumerate(self.blocks):
           x = blk(x)
+          """
           if typeExp == "freq+time":
             m = nn.BatchNorm1d(num_features=257, device = 'cuda')
           if typeExp == "time":
@@ -169,10 +170,11 @@ class MaskedAutoencoderViT_without_decoder(nn.Module):
           x=m(x)
           m = nn.ReLU()
           x=m(x)
+          """
           #if n > self.contextual_depth:
            # contextual_embs.append(self.norm(x))
         if typeExp == "freq+time":
-            m = nn.BatchNorm1d(num_features=257, device = 'cuda')
+          m = nn.BatchNorm1d(num_features=257, device = 'cuda')
         if typeExp == "time":
           m = nn.BatchNorm1d(num_features=65, device = 'cuda')
         x=m(x)

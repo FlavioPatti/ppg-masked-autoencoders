@@ -299,13 +299,13 @@ def train_one_epoch_hr_detection_freq_time(
         avgloss.update(loss, sample.size(0))
         if step % 100 == 99:
           tepoch.set_postfix({'loss': avgloss, 'MAE': avgmae})
-      #val_metrics = evaluate_freq_time(model, criterion, val, device)
-      #val_metrics = {'val_' + k: v for k, v in val_metrics.items()}
+      val_metrics = evaluate_freq_time(model, criterion, val, device)
+      val_metrics = {'val_' + k: v for k, v in val_metrics.items()}
       final_metrics = {
           'loss': avgloss.get(),
           'MAE': avgmae.get(),
       }
-      #final_metrics.update(val_metrics)
+      final_metrics.update(val_metrics)
       tepoch.set_postfix(final_metrics)
       tepoch.close()
     return final_metrics

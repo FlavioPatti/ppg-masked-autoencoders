@@ -4,8 +4,8 @@ import os
 import pytorch_benchmarks.hr_detection as hrd
 from pytorch_benchmarks.utils import seed_all, EarlyStopping
 from util.misc import NativeScalerWithGradNormCount as NativeScaler
-N_PRETRAIN_EPOCHS = 10
-N_FINETUNE_EPOCHS = 100
+N_PRETRAIN_EPOCHS = 5
+N_FINETUNE_EPOCHS = 20
 
 #Type of experiments: 
 FREQ_PLUS_TIME = 0
@@ -34,7 +34,7 @@ for datasets in data_gen:
     earlystop = EarlyStopping(patience=20, mode='min')
     # Training Loop
     loss_scaler = NativeScaler()
-    """
+    
     # Get the Model
     if FREQ_PLUS_TIME:
       print(f"Freq+Time experiment")
@@ -86,7 +86,7 @@ for datasets in data_gen:
     torch.save(model.state_dict(), "./pytorch_benchmarks/checkpoint")
     
     #Finetune for hr estimation
-    """
+    
     if FREQ_PLUS_TIME:
       model = hrd.get_reference_model('vit_freq+time_finetune') #ViT (only encoder with at the end linear layer)
     if TIME:
@@ -99,7 +99,7 @@ for datasets in data_gen:
     optimizer = hrd.get_default_optimizer(model, "finetune")
     
     #loddo i pesi del vecchio modello al nuovo modello
-   # model.load_state_dict(torch.load("./pytorch_benchmarks/checkpoint"))
+    model.load_state_dict(torch.load("./pytorch_benchmarks/checkpoint"))
     
     for epoch in range(N_FINETUNE_EPOCHS):
 
@@ -110,13 +110,13 @@ for datasets in data_gen:
         metrics = hrd.train_one_epoch_hr_detection_time(
             epoch, model, criterion, optimizer, train_dl, val_dl, device)
       
-      #if earlystop(metrics['val_MAE']):
-      #    break
+      if earlystop(metrics['val_MAE']):
+          break
 
     #salvo i pesi del vecchio modello
     torch.save(model.state_dict(), "./pytorch_benchmarks/checkpoint")
     
-    """
+    
     if FREQ_PLUS_TIME:
       test_metrics = hrd.evaluate_freq_time(model, criterion, test_dl, device)
     if TIME:
@@ -127,4 +127,4 @@ for datasets in data_gen:
 
     print(f'MAE: {mae_dict}')
     print(f'Average MAE: {sum(mae_dict.values()) / len(mae_dict)}')
-    """
+  
