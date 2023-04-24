@@ -14,7 +14,7 @@ from json import encoder
 
 import torch
 import torch.nn as nn
-
+import numpy as np
 #from timm.models.vision_transformer import PatchEmbed, Block
 from timm.models.vision_transformer import Block
 from util.pos_embed import get_2d_sincos_pos_embed, get_2d_sincos_pos_embed_flexible, get_1d_sincos_pos_embed_from_grid
@@ -76,7 +76,10 @@ class MaskedAutoencoderViT_without_decoder(nn.Module):
             for i in range(decoder_depth)])
 
         self.decoder_norm = norm_layer(decoder_embed_dim)
-        self.decoder_pred = nn.Linear(decoder_embed_dim, patch_size**2 * in_chans, bias=True) # decoder to patch
+        if typeExp == "freq+time":
+          self.decoder_pred = nn.Linear(decoder_embed_dim, patch_size**2  * in_chans, bias=True) # decoder to patch
+        if typeExp == "time":
+          self.decoder_pred = nn.Linear(decoder_embed_dim, patch_size**2 , bias=True) # decoder to patch
 
         # --------------------------------------------------------------------------
         
@@ -97,7 +100,7 @@ class MaskedAutoencoderViT_without_decoder(nn.Module):
         self.epoch = epoch
 
         # Output layer
-        self.out_neuron = nn.Linear(in_features=64, out_features=1)
+        self.out_neuron = nn.Linear(in_features=256, out_features=1)
         
         self.initialize_weights()
         
@@ -140,7 +143,7 @@ class MaskedAutoencoderViT_without_decoder(nn.Module):
             nn.init.constant_(m.bias, 0)
             nn.init.constant_(m.weight, 1.0)
 
-    def forward_encoder_no_mask(self, x):
+    def forward_encoder_no_mask(self, x, typeExp):
         # embed patches
         x = self.patch_embed(x)
 
@@ -158,30 +161,46 @@ class MaskedAutoencoderViT_without_decoder(nn.Module):
         # apply Transformer blocks
         contextual_embs=[]
         for n, blk in enumerate(self.blocks):
-            x = blk(x)
-            if n > self.contextual_depth:
-                contextual_embs.append(self.norm(x))
-        #x = self.norm(x)
-        contextual_emb = torch.stack(contextual_embs,dim=0).mean(dim=0)
+          x = blk(x)
+          if typeExp == "freq+time":
+            m = nn.BatchNorm1d(num_features=257, device = 'cuda')
+          if typeExp == "time":
+            m = nn.BatchNorm1d(num_features=65, device = 'cuda')
+          x=m(x)
+          m = nn.ReLU()
+          x=m(x)
+          #if n > self.contextual_depth:
+           # contextual_embs.append(self.norm(x))
+        if typeExp == "freq+time":
+            m = nn.BatchNorm1d(num_features=257, device = 'cuda')
+        if typeExp == "time":
+          m = nn.BatchNorm1d(num_features=65, device = 'cuda')
+        x=m(x)
+        m = nn.ReLU()
+        x=m(x)
+        #contextual_emb = torch.stack(contextual_embs,dim=0).mean(dim=0)
+        #print(f"x_max_fin = {x.max()}")
+        #print(f"x_min_fin = {x.min()}")
+        return x
 
-        return contextual_emb
-     
-
-    def forward(self, imgs, typeExp="freq+time"):
+    def forward(self, imgs, typeExp="freq+time", mask_ratio=0.1):
 
         #print("")
-        #print(f"imgs = {imgs.shape}") (128,4,64,256)
-        x = self.forward_encoder_no_mask(imgs)
-        #print(f"x1 = {x.shape}") (128,257,64)
+        #print(f"imgs = {imgs.shape}") 
+        #(128,4,256,1) for time, (128, 4, 64, 256) for freq+time
+        x = self.forward_encoder_no_mask(imgs, typeExp)
+        #print(f"x1 = {x.shape}") 
+        #(128,65,64) for time, (128,257,64) for freq+time
         if typeExp == "freq+time":
           m = nn.AvgPool2d((16, 4)) 
         else: 
           m = nn.AvgPool2d((4,4))
         x = m(x)
-        #print(f"x2 = {x.shape}") (128,16,16)
+        #print(f"x2 = {x.shape}")
         x = x.flatten(1)
-        #print(f"x3 = {x.shape}") (128,256)
+        #print(f"x3 = {x.shape}") #(128,256)
 
+        """
         #first istance of regression
         m = nn.Linear(in_features=256, out_features=128, device='cuda')
         x=m(x)
@@ -199,15 +218,12 @@ class MaskedAutoencoderViT_without_decoder(nn.Module):
         x=m(x)
         m = nn.BatchNorm1d(num_features=64, device = 'cuda')
         x=m(x)
-
-        #print(f"x5 = {x.shape}") (128,64)
+        """
         
         #output layer
         x = self.out_neuron(x)
-        #print(f"x5 = {x.shape}") (128,1)
-        
-        
-          
+        #print(f"x5 = {x.shape}") (256,1)
+         
         #loss = self.forward_loss(imgs, pred, norm_pix_loss=self.norm_pix_loss)
         #pred, _, _ = self.forward_decoder(emb_enc, ids_restore)  # [N, L, p*p*3]
         #loss_contrastive = torch.FloatTensor([0.0]).cuda()

@@ -61,7 +61,7 @@ class MaskedAutoencoderViT(nn.Module):
         
         #Not used in this model, only to be compatible with finetune mode
          # Output layer
-        self.out_neuron = nn.Linear(in_features=64, out_features=1)
+        self.out_neuron = nn.Linear(in_features=256, out_features=1)
     
         # Transfomer
         self.decoder_blocks = nn.ModuleList([
@@ -69,7 +69,11 @@ class MaskedAutoencoderViT(nn.Module):
             for i in range(decoder_depth)])
 
         self.decoder_norm = norm_layer(decoder_embed_dim)
-        self.decoder_pred = nn.Linear(decoder_embed_dim, patch_size**2 , bias=True) # decoder to patch
+
+        if typeExp == "freq+time":
+          self.decoder_pred = nn.Linear(decoder_embed_dim, patch_size**2  * in_chans, bias=True) # decoder to patch
+        if typeExp == "time":
+          self.decoder_pred = nn.Linear(decoder_embed_dim, patch_size**2 , bias=True) # decoder to patch
 
         # --------------------------------------------------------------------------
 
@@ -393,7 +397,7 @@ class MaskedAutoencoderViT(nn.Module):
         loss = (pred - target) ** 2
         loss = loss.mean(dim=-1)  # [N, L], mean loss per patch
         loss = (loss * mask).sum() / mask.sum()  # mean loss on removed patches
-        print(f"loss = {loss}")
+        #print(f"loss = {loss}")
         return loss      
 
     def forward(self, imgs, typeExp="freq+time", mask_ratio=0.1):

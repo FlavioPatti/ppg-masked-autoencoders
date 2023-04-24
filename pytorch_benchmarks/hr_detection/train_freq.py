@@ -75,21 +75,25 @@ class LogCosh(nn.Module):
 def get_default_optimizer(net: nn.Module, task):
 
   if task == "pretrain":
+    print(f"Load pretrain optimizer")
     #setting optimizer for masked autoencoders
     param_groups = optim_factory.param_groups_weight_decay(net, 0.01) #weight_decay
     return optim.AdamW(param_groups, lr=0.001, betas=(0.9, 0.95))
-  else:
+  if task == "finetune":
+    print(f"Load finetune optimizer")
     #setting optimizer for hr estimation
     return optim.Adam(net.parameters(), lr=0.001)
 
 
 def get_default_criterion(task):
     if task == "pretrain":
+      print(f"Load pretrain criterion")
     #setting criterion for masked autoencoders
-        return nn.MSELoss()
+      return nn.MSELoss()
     if task == "finetune":
+      print(f"Load finetune criterion")
     #setting criterion for hr estimation
-        return LogCosh()
+      return LogCosh()
 
 
 def _run_model(model, sample, target, criterion):
@@ -116,16 +120,19 @@ def train_one_epoch_masked_autoencoder_freq_time(model: torch.nn.Module,
     accum_iter = 10
 
     optimizer.zero_grad()
-
+    
     # set model epoch
     model.epoch = epoch
+    #print(f" optm = {optimizer}")
 
     for data_iter_step, (samples, _labels) in enumerate(metric_logger.log_every(data_loader, print_freq, header)):
         #print(f"data_iter_step = {data_iter_step}")
         # we use a per iteration (instead of per epoch) lr scheduler
         if data_iter_step % accum_iter == 0:
-            lr_sched.adjust_learning_rate(optimizer, data_iter_step / len(data_loader) + epoch, args)
-            #print(f"optimizer = {optimizer}")
+          #print(f"data_iter_step = {data_iter_step}, len = {len(data_loader)}, epoch = {epoch}, sum = {data_iter_step / len(data_loader) + epoch + 1}")
+          lr_sched.adjust_learning_rate(optimizer, data_iter_step / len(data_loader) + epoch + 1, args)
+
+        #print(f"optimizer = {optimizer}")
             
         #samples = samples.to(device, non_blocking=True)
         #samples = [128,4,256] = [batch,channel, time]
@@ -186,7 +193,7 @@ def train_one_epoch_masked_autoencoder_freq_time(model: torch.nn.Module,
 
         with torch.cuda.amp.autocast():
            # output, loss = _run_model(specto_samples, mask_ratio=0.1)
-            loss_a, _, _, _ = model(specto_samples, "freq+time", mask_ratio = 0.1)
+            loss_a, _, _, _ = model(specto_samples, "freq+time", mask_ratio = 0.8)
         #print(f"loss = {loss_a}")
         loss_value = loss_a.item()
         loss_total = loss_a
@@ -292,13 +299,13 @@ def train_one_epoch_hr_detection_freq_time(
         avgloss.update(loss, sample.size(0))
         if step % 100 == 99:
           tepoch.set_postfix({'loss': avgloss, 'MAE': avgmae})
-      val_metrics = evaluate_freq_time(model, criterion, val, device)
-      val_metrics = {'val_' + k: v for k, v in val_metrics.items()}
+      #val_metrics = evaluate_freq_time(model, criterion, val, device)
+      #val_metrics = {'val_' + k: v for k, v in val_metrics.items()}
       final_metrics = {
           'loss': avgloss.get(),
           'MAE': avgmae.get(),
       }
-      final_metrics.update(val_metrics)
+      #final_metrics.update(val_metrics)
       tepoch.set_postfix(final_metrics)
       tepoch.close()
     return final_metrics
@@ -363,4 +370,3 @@ def evaluate_freq_time(
           'MAE': avgmae.get(),
         }
     return final_metrics
-
