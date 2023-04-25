@@ -21,23 +21,23 @@ from sklearn.preprocessing import MinMaxScaler, StandardScaler
 import matplotlib.pyplot as plt
 
 RESCALE = True
-NORMALIZATION = True
+Z_NORM = True
+MIN_MAX_NORM = False
 PLOT_HEATMAP = False
 
 """plot heatmap"""
-def plot_heatmap_spectogram(x, num_sample):
+def plot_heatmap_audio(x, num_sample):
   fig, ax = plt.subplots()
   left = 0
   right= 8
+  top = 0
   bottom = 4
-  top = 0 
-  extent = [left,right, bottom, top]
+  extent = [left,right, top, bottom]
   im = ax.imshow(x, cmap = 'hot', interpolation = 'hanning', extent = extent)
   cbar = ax.figure.colorbar(im, ax = ax)
   ax.set_title(f"Heatmap PPG: sample {num_sample}")  
   plt.xlabel('Time (s)')
-  plt.ylabel('Frequency (Hz)')
-  plt.savefig(f'./pytorch_benchmarks/imgs/specto{num_sample}.png') 
+  plt.savefig(f'./pytorch_benchmarks/imgs/audio{num_sample}.png') 
 
 
 class LogCosh(nn.Module):
@@ -105,12 +105,23 @@ def train_one_epoch_masked_autoencoder_time(model: torch.nn.Module,
         #samples = [128,4,256] = [batch,channel, time]
         #print(f"sample 0 = {samples[0].shape}") #[4,256]
         
+        if Z_NORM:
+          mean = samples[:,0,:].mean()
+          std = samples[:,0,:].std()
+          samples[:,0,:] = (samples[:,0,:]-mean) / std
+        #print(f" mean = {samples[:,0,:].mean()}")
+        #print(f"std = {samples[:,0,:].std()}")
+        #print(f" max1 = {samples[:,0,:].max()}")
+        #print(f" min1 = {samples[:,0,:].min()}")
+
         #print(f"samples shape = {samples.shape}")
         samples = torch.tensor(np.expand_dims(samples, axis= -1))
+       
         #print(f"samples shape = {samples.shape}")
         #print(f"specto shape = {specto_samples.shape}")
-       #Normalize values into range [0,1] to avoid NaN loss
-        if NORMALIZATION:
+        
+        #Normalize values into range [0,1] to avoid NaN loss
+        if MIN_MAX_NORM:
           channel_1 = samples[:,0,:,:]
           for i in range(samples.shape[0]):
             ch1 = channel_1[i].numpy()
@@ -126,6 +137,19 @@ def train_one_epoch_masked_autoencoder_time(model: torch.nn.Module,
             #print(f"min = {min_ch1}")
             samples[i,0,:,:] = torch.tensor(ch1, dtype = float)
 
+        if PLOT_HEATMAP:
+          idx = 80
+          sample = samples[idx,:,:,:]
+          print(f"sample = {sample.shape}")
+          label = _labels[idx]
+          ch1 = sample[0].numpy()
+          max_ch1 = np.max(ch1)
+          min_ch1 = np.min(ch1)
+          print(f"max ch1 = {max_ch1}")
+          print(f"min ch1 = {min_ch1}")
+          print(f"label = {label} BPM = {float(label/60)} Hz")
+          plot_heatmap_audio(x= ch1, num_sample = idx)
+          
         
         # comment out when not debugging
         # from fvcore.nn import FlopCountAnalysis, parameter_count_table
@@ -196,12 +220,21 @@ def train_one_epoch_hr_detection_time(
       tepoch.set_description(f"Epoch {epoch+1}")
       for sample, target in train:
 
+        if Z_NORM:
+          mean = sample[:,0,:].mean()
+          std = sample[:,0,:].std()
+          sample[:,0,:] = (sample[:,0,:]-mean) / std
+        #print(f" mean = {samples[:,0,:].mean()}")
+        #print(f"std = {samples[:,0,:].std()}")
+        #print(f" max1 = {samples[:,0,:].max()}")
+        #print(f" min1 = {samples[:,0,:].min()}")
+
         sample = torch.tensor(np.expand_dims(sample, axis= -1))
        # print(f"samples shape = {samples.shape}")
         #print(f"specto shape = {specto_samples.shape}")
-        """
+        
        #Normalize values into range [0,1] to avoid NaN loss
-        if NORMALIZATION:
+        if Z_NORM:
           channel_1 = sample[:,0,:,:]
           for i in range(sample.shape[0]):
             ch1 = channel_1[i].numpy()
@@ -216,7 +249,20 @@ def train_one_epoch_hr_detection_time(
             #print(f"max = {max_ch1}")
             #print(f"min = {min_ch1}")
             sample[i,0,:,:] = torch.tensor(ch1, dtype = float)
-        """
+
+        if PLOT_HEATMAP:
+          idx = 80
+          sample = sample[idx,:,:,:]
+          print(f"sample = {sample.shape}")
+          label = target[idx]
+          ch1 = sample[0].numpy()
+          max_ch1 = np.max(ch1)
+          min_ch1 = np.min(ch1)
+          print(f"max ch1 = {max_ch1}")
+          print(f"min ch1 = {min_ch1}")
+          print(f"label = {label} BPM = {float(label/60)} Hz")
+          plot_heatmap_audio(x= ch1, num_sample = idx)
+        
         step += 1
         tepoch.update(1)
         sample, target = sample.to(device), target.to(device)
@@ -255,9 +301,9 @@ def evaluate_time(
           sample = torch.tensor(np.expand_dims(sample, axis= -1))
        # print(f"samples shape = {samples.shape}")
         #print(f"specto shape = {specto_samples.shape}")
-          """
+          
        #Normalize values into range [0,1] to avoid NaN loss
-          if NORMALIZATION:
+          if MIN_MAX_NORM:
             channel_1 = sample[:,0,:,:]
             for i in range(sample.shape[0]):
               ch1 = channel_1[i].numpy()
@@ -272,7 +318,20 @@ def evaluate_time(
               #print(f"max = {max_ch1}")
               #print(f"min = {min_ch1}")
               sample[i,0,:,:] = torch.tensor(ch1, dtype = float)
-          """
+
+          if PLOT_HEATMAP:
+            idx = 80
+            sample = sample[idx,:,:,:]
+            print(f"sample = {sample.shape}")
+            label = target[idx]
+            ch1 = sample[0].numpy()
+            max_ch1 = np.max(ch1)
+            min_ch1 = np.min(ch1)
+            print(f"max ch1 = {max_ch1}")
+            print(f"min ch1 = {min_ch1}")
+            print(f"label = {label} BPM = {float(label/60)} Hz")
+            plot_heatmap_audio(x= ch1, num_sample = idx)
+            
           step += 1
           sample, target = sample.to(device), target.to(device)
           output = model(sample, typeExp= "time")

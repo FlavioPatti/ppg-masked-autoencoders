@@ -4,7 +4,7 @@ import os
 import pytorch_benchmarks.hr_detection as hrd
 from pytorch_benchmarks.utils import seed_all, EarlyStopping
 from util.misc import NativeScalerWithGradNormCount as NativeScaler
-N_PRETRAIN_EPOCHS = 5
+N_PRETRAIN_EPOCHS = 10
 N_FINETUNE_EPOCHS = 20
 
 #Type of experiments: 

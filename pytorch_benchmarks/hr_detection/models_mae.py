@@ -172,6 +172,7 @@ class MaskedAutoencoderViT(nn.Module):
               x = imgs.reshape(shape=(imgs.shape[0], 1, h, p, w, p))
               x = torch.einsum('nchpwq->nhwpqc', x)
               x = x.reshape(shape=(imgs.shape[0], h * w, p**2 )) #(128, 64, 16) 128*64*16 = 131.072
+             #crea 64 patch da 4 infatti 64*4 = 256, 16 è la profondità della patch
 
 
         return x

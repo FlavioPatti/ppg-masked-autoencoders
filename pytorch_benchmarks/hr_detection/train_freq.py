@@ -1,3 +1,4 @@
+from operator import index
 from typing import Dict
 from timm.models.layers import pad_same
 from torch.nn.modules import normalization
@@ -21,7 +22,8 @@ from sklearn.preprocessing import MinMaxScaler, StandardScaler
 import matplotlib.pyplot as plt
 
 RESCALE = True
-NORMALIZATION = True
+Z_NORM = False
+MIN_MAX_NORM = False
 PLOT_HEATMAP = False
 
 """spectogram trasformation and relative parameters"""
@@ -106,7 +108,6 @@ def _run_model(model, sample, target, criterion):
     return output, loss
 
 
-
 def train_one_epoch_masked_autoencoder_freq_time(model: torch.nn.Module,
                     data_loader: DataLoader, criterion: torch.nn.MSELoss, optimizer: torch.optim.Optimizer,
                     device: torch.device, epoch: int, loss_scaler,
@@ -137,6 +138,15 @@ def train_one_epoch_masked_autoencoder_freq_time(model: torch.nn.Module,
         #samples = samples.to(device, non_blocking=True)
         #samples = [128,4,256] = [batch,channel, time]
         #print(f"sample 0 = {samples[0].shape}") #[4,256]
+
+        if Z_NORM:
+          mean = samples[:,0,:].mean()
+          std = samples[:,0,:].std()
+          samples[:,0,:] = (samples[:,0,:]-mean) / std
+        #print(f" mean = {samples[:,0,:].mean()}")
+        #print(f"std = {samples[:,0,:].std()}")
+        #print(f" max1 = {samples[:,0,:].max()}")
+        #print(f" min1 = {samples[:,0,:].min()}")
         
         #print(f"samples shape = {samples.shape}")
         specto_samples = torch.narrow(spectrogram_transform(samples), dim=3, start=0, length=256) 
@@ -145,9 +155,11 @@ def train_one_epoch_masked_autoencoder_freq_time(model: torch.nn.Module,
         #Rescale samples
         if RESCALE:
           specto_samples = np.log10(specto_samples, where=specto_samples>0)
+          print(f" max = {specto_samples.max()}")
+          print(f" min = {specto_samples.min()}")
 
         #Normalize values into range [0,1] to avoid NaN loss
-        if NORMALIZATION:
+        if MIN_MAX_NORM:
           channel_1 = specto_samples[:,0,:,:]
           for i in range(specto_samples.shape[0]):
             ch1 = channel_1[i].numpy()
@@ -162,22 +174,20 @@ def train_one_epoch_masked_autoencoder_freq_time(model: torch.nn.Module,
             #print(f"max = {max_ch1}")
             #print(f"min = {min_ch1}")
             specto_samples[i,0,:,:] = torch.tensor(ch1, dtype = float)
-
-
           
         if PLOT_HEATMAP:
-          sample = specto_samples[80,:,:,:]
+          idx = 80
+          sample = specto_samples[idx,:,:,:]
           print(f"sample = {sample.shape}")
-          label = _labels[80]
+          label = _labels[idx]
           ch1 = sample[0].numpy()
           max_ch1 = np.max(ch1)
           min_ch1 = np.min(ch1)
           print(f"max ch1 = {max_ch1}")
           print(f"min ch1 = {min_ch1}")
           print(f"label = {label} BPM = {float(label/60)} Hz")
-          plot_heatmap_spectogram(x= ch1, num_sample = 80)
+          plot_heatmap_spectogram(x= ch1, num_sample = idx)
       
-
         # comment out when not debugging
         # from fvcore.nn import FlopCountAnalysis, parameter_count_table
         # if data_iter_step == 1:
@@ -247,6 +257,15 @@ def train_one_epoch_hr_detection_freq_time(
       tepoch.set_description(f"Epoch {epoch+1}")
       for sample, target in train:
 
+        if Z_NORM:
+          mean = sample[:,0,:].mean()
+          std = sample[:,0,:].std()
+          sample[:,0,:] = (sample[:,0,:]-mean) / std
+        #print(f" mean = {samples[:,0,:].mean()}")
+        #print(f"std = {samples[:,0,:].std()}")
+        #print(f" max1 = {samples[:,0,:].max()}")
+        #print(f" min1 = {samples[:,0,:].min()}")
+
         #print(f"samples shape = {sample.shape}")
         specto_samples = torch.narrow(spectrogram_transform(sample), dim=3, start=0, length=256) 
         #print(f"specto shape = {specto_samples.shape}")
@@ -256,7 +275,7 @@ def train_one_epoch_hr_detection_freq_time(
           specto_samples = np.log10(specto_samples, where=specto_samples>0)
 
         #Normalize values into range [0,1] to avoid NaN loss
-        if NORMALIZATION:
+        if MIN_MAX_NORM:
           channel_1 = specto_samples[:,0,:,:]
           for i in range(specto_samples.shape[0]):
             ch1 = channel_1[i].numpy()
@@ -273,16 +292,17 @@ def train_one_epoch_hr_detection_freq_time(
             specto_samples[i,0,:,:] = torch.tensor(ch1, dtype = float)
 
         if PLOT_HEATMAP:
-          sample = specto_samples[80,:,:,:]
+          idx = 80
+          sample = specto_samples[idx,:,:,:]
           print(f"sample = {sample.shape}")
-          label = target[80]
+          label = target[idx]
           ch1 = sample[0].numpy()
           max_ch1 = np.max(ch1)
           min_ch1 = np.min(ch1)
           print(f"max ch1 = {max_ch1}")
           print(f"min ch1 = {min_ch1}")
           print(f"label = {label} BPM = {float(label/60)} Hz")
-          plot_heatmap_spectogram(x= ch1, num_sample = 80)
+          plot_heatmap_spectogram(x= ch1, num_sample = idx)
           
         step += 1
         tepoch.update(1)
@@ -322,6 +342,16 @@ def evaluate_freq_time(
     step = 0
     with torch.no_grad():
         for sample, target in data:
+
+          if Z_NORM:
+            mean = sample[:,0,:].mean()
+            std = sample[:,0,:].std()
+            sample[:,0,:] = (sample[:,0,:]-mean) / std
+            #print(f" mean = {samples[:,0,:].mean()}")
+            #print(f"std = {samples[:,0,:].std()}")
+            #print(f" max1 = {samples[:,0,:].max()}")
+            #print(f" min1 = {samples[:,0,:].min()}")
+
           #print(f"samples shape = {sample.shape}")
           specto_samples = torch.narrow(spectrogram_transform(sample), dim=3, start=0, length=256) 
           #print(f"specto shape = {specto_samples.shape}")
@@ -331,7 +361,7 @@ def evaluate_freq_time(
             specto_samples = np.log10(specto_samples, where=specto_samples>0)
 
           #Normalize values into range [0,1] to avoid NaN loss
-          if NORMALIZATION:
+          if MIN_MAX_NORM:
             channel_1 = specto_samples[:,0,:,:]
             for i in range(specto_samples.shape[0]):
               ch1 = channel_1[i].numpy()
@@ -348,16 +378,17 @@ def evaluate_freq_time(
               specto_samples[i,0,:,:] = torch.tensor(ch1, dtype = float)
             
           if PLOT_HEATMAP:
-            sample = specto_samples[80,:,:,:]
+            idx = 80
+            sample = specto_samples[idx,:,:,:]
             print(f"sample = {sample.shape}")
-            label = target[80]
+            label = target[idx]
             ch1 = sample[0].numpy()
             max_ch1 = np.max(ch1)
             min_ch1 = np.min(ch1)
             print(f"max ch1 = {max_ch1}")
             print(f"min ch1 = {min_ch1}")
             print(f"label = {label} BPM = {float(label/60)} Hz")
-            plot_heatmap_spectogram(x= ch1, num_sample = 80)
+            plot_heatmap_spectogram(x= ch1, num_sample = idx)
 
           step += 1
           sample, target = specto_samples.to(device), target.to(device)
