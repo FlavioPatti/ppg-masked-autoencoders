@@ -297,7 +297,7 @@ def evaluate_time(
     step = 0
     with torch.no_grad():
         for sample, target in data:
-              
+
           if Z_NORM:
             mean = sample[:,0,:].mean()
             std = sample[:,0,:].std()
@@ -307,10 +307,10 @@ def evaluate_time(
             #print(f" max1 = {samples[:,0,:].max()}")
             #print(f" min1 = {samples[:,0,:].min()}")
           sample = torch.tensor(np.expand_dims(sample, axis= -1))
-          # print(f"samples shape = {samples.shape}")
-          #print(f"specto shape = {specto_samples.shape}")
+       # print(f"samples shape = {samples.shape}")
+        #print(f"specto shape = {specto_samples.shape}")
           
-          #Normalize values into range [0,1] to avoid NaN loss
+       #Normalize values into range [0,1] to avoid NaN loss
           if MIN_MAX_NORM:
             channel_1 = sample[:,0,:,:]
             for i in range(sample.shape[0]):

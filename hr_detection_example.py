@@ -71,16 +71,9 @@ for datasets in data_gen:
             log_writer=None,
             args=None
         )
-        
-      print(f" train_stats = {train_stats}")
       
-      log_stats = {**{f'train_{k}': v for k, v in train_stats.items()},
-                      'epoch': epoch,}
-      
-      print(f" log_stats = {log_stats}")
-      
-      if earlystop(log_stats['train_loss']):
-          break
+      #if earlystop(log_stats['train_loss']):
+      #    break
     
     #salvo i pesi del vecchio modello
     torch.save(model.state_dict(), "./pytorch_benchmarks/checkpoint")
@@ -115,7 +108,6 @@ for datasets in data_gen:
 
     #salvo i pesi del vecchio modello
     torch.save(model.state_dict(), "./pytorch_benchmarks/checkpoint")
-    
     
     if FREQ_PLUS_TIME:
       test_metrics = hrd.evaluate_freq_time(model, criterion, test_dl, device)
