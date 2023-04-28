@@ -155,8 +155,8 @@ def train_one_epoch_masked_autoencoder_freq_time(model: torch.nn.Module,
         #Rescale samples
         if RESCALE:
           specto_samples = np.log10(specto_samples, where=specto_samples>0)
-          print(f" max = {specto_samples.max()}")
-          print(f" min = {specto_samples.min()}")
+          #print(f" max = {specto_samples.max()}")
+          #print(f" min = {specto_samples.min()}")
 
         #Normalize values into range [0,1] to avoid NaN loss
         if MIN_MAX_NORM:
@@ -314,7 +314,7 @@ def train_one_epoch_hr_detection_freq_time(
         optimizer.zero_grad()
         loss.backward()
         optimizer.step()
-        mae_val = F.l1_loss(output, target) # Mean absolute error for hr detection
+        mae_val = F.l1_loss(output, target) # Mean absolute error 
         avgmae.update(mae_val, sample.size(0))
         avgloss.update(loss, sample.size(0))
         if step % 100 == 99:
