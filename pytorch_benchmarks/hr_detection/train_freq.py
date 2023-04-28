@@ -50,7 +50,7 @@ spectrogram_transform = torchaudio.transforms.MelSpectrogram(
 )
 
 """plot heatmap"""
-def plot_heatmap_spectogram(x, num_sample):
+def plot_heatmap_spectogram(x, typeExp, num_sample):
   fig, ax = plt.subplots()
   left = 0
   right= 8
@@ -62,7 +62,7 @@ def plot_heatmap_spectogram(x, num_sample):
   ax.set_title(f"Heatmap PPG: sample {num_sample}")  
   plt.xlabel('Time (s)')
   plt.ylabel('Frequency (Hz)')
-  plt.savefig(f'./pytorch_benchmarks/imgs/specto{num_sample}.png') 
+  plt.savefig(f'./pytorch_benchmarks/imgs/{typeExp}/specto{num_sample}.png') 
 
 
 class LogCosh(nn.Module):
@@ -119,22 +119,24 @@ def train_one_epoch_masked_autoencoder_freq_time(model: torch.nn.Module,
     header = 'Epoch: [{}]'.format(epoch)
     print_freq = 50
     accum_iter = 10
-
+    accum_iter2 = 366
     optimizer.zero_grad()
-    
     # set model epoch
     model.epoch = epoch
     #print(f" optm = {optimizer}")
-
     for data_iter_step, (samples, _labels) in enumerate(metric_logger.log_every(data_loader, print_freq, header)):
-        #print(f"data_iter_step = {data_iter_step}")
+        PLOT_HEATMAP = False
         # we use a per iteration (instead of per epoch) lr scheduler
-        if data_iter_step % accum_iter == 0:
-          #print(f"data_iter_step = {data_iter_step}, len = {len(data_loader)}, epoch = {epoch}, sum = {data_iter_step / len(data_loader) + epoch + 1}")
-          lr_sched.adjust_learning_rate(optimizer, data_iter_step / len(data_loader) + epoch + 1, args)
+        print(f"data_iter_step = {data_iter_step}")
+        #print(f"check = { (data_iter_step + 1 % accum_iter2) }")
+       # if (data_iter_step % accum_iter) == 0:
+        lr_sched.adjust_learning_rate(optimizer, data_iter_step / len(data_loader) + epoch + 1, args)
 
+        if data_iter_step == accum_iter2:
+          PLOT_HEATMAP = True
+
+        print(f"plot = {PLOT_HEATMAP}")
         #print(f"optimizer = {optimizer}")
-            
         #samples = samples.to(device, non_blocking=True)
         #samples = [128,4,256] = [batch,channel, time]
         #print(f"sample 0 = {samples[0].shape}") #[4,256]
@@ -176,17 +178,12 @@ def train_one_epoch_masked_autoencoder_freq_time(model: torch.nn.Module,
             specto_samples[i,0,:,:] = torch.tensor(ch1, dtype = float)
           
         if PLOT_HEATMAP:
-          idx = 80
-          sample = specto_samples[idx,:,:,:]
-          print(f"sample = {sample.shape}")
-          label = _labels[idx]
-          ch1 = sample[0].numpy()
-          max_ch1 = np.max(ch1)
-          min_ch1 = np.min(ch1)
-          print(f"max ch1 = {max_ch1}")
-          print(f"min ch1 = {min_ch1}")
-          print(f"label = {label} BPM = {float(label/60)} Hz")
-          plot_heatmap_spectogram(x= ch1, num_sample = idx)
+          print("entro")
+          for idx in range(80,85):
+            sample = specto_samples[idx,:,:,:]
+            ch1 = sample[0].numpy()
+            plot_heatmap_spectogram(x= ch1, typeExp = "input",num_sample = idx)
+            print(f"specto {idx} creato")
       
         # comment out when not debugging
         # from fvcore.nn import FlopCountAnalysis, parameter_count_table
@@ -203,8 +200,20 @@ def train_one_epoch_masked_autoencoder_freq_time(model: torch.nn.Module,
 
         with torch.cuda.amp.autocast():
            # output, loss = _run_model(specto_samples, mask_ratio=0.1)
-            loss_a, _, _, _ = model(specto_samples, "freq+time", mask_ratio = 0.8)
-        #print(f"loss = {loss_a}")
+            loss_a, pred, mask, x_masked = model(specto_samples, "freq+time", mask_ratio = 0.1)
+            x_masked = x_masked.to('cpu')
+            pred = pred.to('cpu')
+       
+        if PLOT_HEATMAP:
+          for idx in range(80,85):
+            sample = x_masked[idx,:,:].detach().numpy()
+            plot_heatmap_spectogram(x= sample, typeExp = "input_masked",num_sample = idx)
+
+        if PLOT_HEATMAP:
+          for idx in range(80,85):
+            sample = pred[idx,:,:].detach().numpy()
+            plot_heatmap_spectogram(x= sample, typeExp = "output",num_sample = idx)
+
         loss_value = loss_a.item()
         loss_total = loss_a
 

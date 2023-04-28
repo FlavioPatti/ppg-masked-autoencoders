@@ -402,11 +402,12 @@ class MaskedAutoencoderViT(nn.Module):
         return loss      
 
     def forward(self, imgs, typeExp="freq+time", mask_ratio=0.1):
-        print(f"imgs = {imgs.shape}")
+        # print(f"imgs = {imgs.shape}")
         emb_enc, mask, ids_restore, _ = self.forward_encoder(imgs, mask_ratio, mask_2d=self.mask_2d)
-        print(f"emb_enc = {emb_enc.shape}")
+        #print(f"emb_enc = {emb_enc.shape}")
         #print(f"mask = {mask.shape}")
-        pred, _, _ = self.forward_decoder(emb_enc, ids_restore, typeExp)  # [N, L, p*p*3]
+        pred, _, _ = self.forward_decoder(emb_enc, ids_restore, typeExp) 
+        #print(f"pred = {pred.shape}")
         loss_recon = self.forward_loss(imgs, pred, mask, typeExp, norm_pix_loss=self.norm_pix_loss)
         #loss_contrastive = torch.FloatTensor([0.0]).cuda()
         return loss_recon, pred, mask, emb_enc

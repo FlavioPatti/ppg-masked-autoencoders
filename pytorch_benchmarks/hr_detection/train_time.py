@@ -36,7 +36,7 @@ def plot_heatmap_audio(x, typeExp, num_sample):
   cbar = ax.figure.colorbar(im, ax = ax)
   ax.set_title(f"Heatmap PPG: sample {num_sample}")  
   plt.xlabel('Time (s)')
-  plt.savefig(f'./pytorch_benchmarks/imgs/typeExp/audio{num_sample}.png') 
+  plt.savefig(f'./pytorch_benchmarks/imgs/{typeExp}/audio{num_sample}.png') 
 
 
 class LogCosh(nn.Module):
@@ -87,6 +87,7 @@ def train_one_epoch_masked_autoencoder_time(model: torch.nn.Module,
     header = 'Epoch: [{}]'.format(epoch)
     print_freq = 50
     accum_iter = 10
+    accum_iter2 = 366
 
     optimizer.zero_grad()
 
@@ -94,12 +95,17 @@ def train_one_epoch_masked_autoencoder_time(model: torch.nn.Module,
     model.epoch = epoch
 
     for data_iter_step, (samples, _labels) in enumerate(metric_logger.log_every(data_loader, print_freq, header)):
-        #print(f"data_iter_step = {data_iter_step}")
+        PLOT_HEATMAP = False
+        print(f"data_iter_step = {data_iter_step}")
         # we use a per iteration (instead of per epoch) lr scheduler
-        if data_iter_step % accum_iter == 0:
-            lr_sched.adjust_learning_rate(optimizer, data_iter_step / len(data_loader) + epoch, args)
+        #if data_iter_step % accum_iter == 0:
+        lr_sched.adjust_learning_rate(optimizer, data_iter_step / len(data_loader) + epoch, args)
             #print(f"optimizer = {optimizer}")
-            
+
+        if data_iter_step == accum_iter2:
+          PLOT_HEATMAP = True
+
+        print(f"plot = {PLOT_HEATMAP}")
         #samples = samples.to(device, non_blocking=True)
         #samples = [128,4,256] = [batch,channel, time]
         #print(f"sample 0 = {samples[0].shape}") #[4,256]
@@ -137,11 +143,12 @@ def train_one_epoch_masked_autoencoder_time(model: torch.nn.Module,
             samples[i,0,:,:] = torch.tensor(ch1, dtype = float)
 
         if PLOT_HEATMAP:
+          print("entro")
           for idx in range(80,85):
             sample = samples[idx,:,:,:]
             ch1 = sample[0].numpy()
             plot_heatmap_audio(x= ch1, typeExp = "input",num_sample = idx)
-          
+            print(f"specto {idx} creato")
         
         # comment out when not debugging
         # from fvcore.nn import FlopCountAnalysis, parameter_count_table
