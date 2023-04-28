@@ -22,10 +22,10 @@ import matplotlib.pyplot as plt
 
 Z_NORM = True
 MIN_MAX_NORM = False
-PLOT_HEATMAP = False
+PLOT_HEATMAP = True
 
 """plot heatmap"""
-def plot_heatmap_audio(x, num_sample):
+def plot_heatmap_audio(x, typeExp, num_sample):
   fig, ax = plt.subplots()
   left = 0
   right= 8
@@ -36,7 +36,7 @@ def plot_heatmap_audio(x, num_sample):
   cbar = ax.figure.colorbar(im, ax = ax)
   ax.set_title(f"Heatmap PPG: sample {num_sample}")  
   plt.xlabel('Time (s)')
-  plt.savefig(f'./pytorch_benchmarks/imgs/audio{num_sample}.png') 
+  plt.savefig(f'./pytorch_benchmarks/imgs/typeExp/audio{num_sample}.png') 
 
 
 class LogCosh(nn.Module):
@@ -137,17 +137,10 @@ def train_one_epoch_masked_autoencoder_time(model: torch.nn.Module,
             samples[i,0,:,:] = torch.tensor(ch1, dtype = float)
 
         if PLOT_HEATMAP:
-          idx = 80
-          sample = samples[idx,:,:,:]
-          print(f"sample = {sample.shape}")
-          label = _labels[idx]
-          ch1 = sample[0].numpy()
-          max_ch1 = np.max(ch1)
-          min_ch1 = np.min(ch1)
-          print(f"max ch1 = {max_ch1}")
-          print(f"min ch1 = {min_ch1}")
-          print(f"label = {label} BPM = {float(label/60)} Hz")
-          plot_heatmap_audio(x= ch1, num_sample = idx)
+          for idx in range(80,85):
+            sample = samples[idx,:,:,:]
+            ch1 = sample[0].numpy()
+            plot_heatmap_audio(x= ch1, typeExp = "input",num_sample = idx)
           
         
         # comment out when not debugging
@@ -165,7 +158,19 @@ def train_one_epoch_masked_autoencoder_time(model: torch.nn.Module,
 
         with torch.cuda.amp.autocast():
             #loss_a, _, _, _ = _run_model(specto_samples, mask_ratio=0.1)
-            loss_a, _, _, _ = model(samples, "time",mask_ratio=0.1)
+            loss_a, pred, mask, x_masked = model(samples, "time",mask_ratio=0.1)
+            
+        if PLOT_HEATMAP:
+          for idx in range(80,85):
+            sample = x_masked[idx,:,:]
+            #ch1 = sample[0].numpy()
+            plot_heatmap_audio(x= ch1, typeExp = "input_masked", num_sample = idx)
+          for idx in range(80,85):
+              sample = pred[idx,:,:]
+              #ch1 = sample[0].numpy()
+              plot_heatmap_audio(x= ch1, typeExp = "output", num_sample = idx)
+            
+        
         #print(f"loss = {loss_a}")
         loss_value = loss_a.item()
         loss_total = loss_a

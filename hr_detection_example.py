@@ -4,7 +4,7 @@ import os
 import pytorch_benchmarks.hr_detection as hrd
 from pytorch_benchmarks.utils import seed_all, EarlyStopping
 from util.misc import NativeScalerWithGradNormCount as NativeScaler
-N_PRETRAIN_EPOCHS = 10
+N_PRETRAIN_EPOCHS = 200
 N_FINETUNE_EPOCHS = 20
 
 #Type of experiments: 
@@ -15,12 +15,6 @@ TIME = 1
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 print("Training on:", device)
 
-# Ensure deterministic execution
-#seed = seed_all(seed=42)
-
-# Model Summary
-#input_example = torch.rand((1,) + model.input_shape)
-#print(summary(model, input_example.to(device), show_input=False, show_hierarchical=True))
 
 # Get the Data and perform cross-validation
 mae_dict = dict()
@@ -72,9 +66,10 @@ for datasets in data_gen:
             args=None
         )
       
-      #if earlystop(log_stats['train_loss']):
-      #    break
+      if earlystop(train_stats['loss']):
+        break
     
+    """
     #salvo i pesi del vecchio modello
     torch.save(model.state_dict(), "./pytorch_benchmarks/checkpoint")
     
@@ -119,4 +114,4 @@ for datasets in data_gen:
 
     print(f'MAE: {mae_dict}')
     print(f'Average MAE: {sum(mae_dict.values()) / len(mae_dict)}')
-  
+  """
