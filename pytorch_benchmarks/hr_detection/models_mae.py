@@ -54,6 +54,7 @@ class MaskedAutoencoderViT(nn.Module):
 
         self.mask_token = nn.Parameter(torch.zeros(1, 1, decoder_embed_dim))
         self.decoder_pos_embed = nn.Parameter(torch.zeros(1, num_patches + 1, decoder_embed_dim), requires_grad=pos_trainable)  # fixed sin-cos embedding
+        print(f"decoder_pos_emb = {self.decoder_pos_embed.shape}")
 
         self.no_shift=no_shift
 
@@ -72,9 +73,9 @@ class MaskedAutoencoderViT(nn.Module):
 
         if typeExp == "freq+time":
           self.decoder_pred = nn.Linear(decoder_embed_dim, patch_size**2  * in_chans, bias=True) # decoder to patch
+          print(f" decoder pred = {self.decoder_pred}")
         if typeExp == "time":
           self.decoder_pred = nn.Linear(decoder_embed_dim, patch_size**2 , bias=True) # decoder to patch
-
         # --------------------------------------------------------------------------
 
         self.norm_pix_loss = norm_pix_loss
@@ -273,7 +274,9 @@ class MaskedAutoencoderViT(nn.Module):
 
     def forward_encoder(self, x, mask_ratio, mask_2d=False):
         # embed patches
+        #print(f" x0 = {x.shape}")
         x = self.patch_embed(x)
+        #print(f" x1 = {x.shape}")
 
         # add pos embed w/o cls token
         #print(f"size ={self.pos_embed[:,1:65,:].shape}")
@@ -281,8 +284,8 @@ class MaskedAutoencoderViT(nn.Module):
 
         # masking: length -> length * mask_ratio
         if mask_2d:
-          x, mask, ids_restore = self.random_masking_2d(x, mask_t_prob=self.mask_t_prob, mask_f_prob=self.mask_f_prob)
-          #print(f" x = {x.shape}")
+          x, mask, ids_restore = self.random_masking_2d(x, mask_t_prob=0.125, mask_f_prob=0.125)
+          #print(f" x2 = {x.shape}")
           #print(f"mask = {mask.shape}")
           #print(f"ids_restore = {ids_restore.shape}")
         else:
@@ -300,7 +303,7 @@ class MaskedAutoencoderViT(nn.Module):
             x = blk(x)
         x = self.norm(x)
         #emb = self.encoder_emb(x)
-
+        #print(f" x3 = {x.shape}")
         return x, mask, ids_restore, None
 
     def forward_encoder_no_mask(self, x):
@@ -341,7 +344,6 @@ class MaskedAutoencoderViT(nn.Module):
 
         # add pos embed
         x = x + self.decoder_pos_embed
-        
         if self.decoder_mode != 0:
             B,L,D=x.shape
             x = x[:,1:,:]
@@ -402,12 +404,11 @@ class MaskedAutoencoderViT(nn.Module):
         return loss      
 
     def forward(self, imgs, typeExp="freq+time", mask_ratio=0.1):
-        # print(f"imgs = {imgs.shape}")
+        #print(f"imgs = {imgs.shape}")
         emb_enc, mask, ids_restore, _ = self.forward_encoder(imgs, mask_ratio, mask_2d=self.mask_2d)
         #print(f"emb_enc = {emb_enc.shape}")
-        #print(f"mask = {mask.shape}")
         pred, _, _ = self.forward_decoder(emb_enc, ids_restore, typeExp) 
-        #print(f"pred = {pred.shape}")
+       # print(f"pred = {pred.shape}")
         loss_recon = self.forward_loss(imgs, pred, mask, typeExp, norm_pix_loss=self.norm_pix_loss)
         #loss_contrastive = torch.FloatTensor([0.0]).cuda()
         return loss_recon, pred, mask, emb_enc

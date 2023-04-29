@@ -127,15 +127,15 @@ def train_one_epoch_masked_autoencoder_freq_time(model: torch.nn.Module,
     for data_iter_step, (samples, _labels) in enumerate(metric_logger.log_every(data_loader, print_freq, header)):
         PLOT_HEATMAP = False
         # we use a per iteration (instead of per epoch) lr scheduler
-        print(f"data_iter_step = {data_iter_step}")
+        #print(f"data_iter_step = {data_iter_step}")
         #print(f"check = { (data_iter_step + 1 % accum_iter2) }")
        # if (data_iter_step % accum_iter) == 0:
-        lr_sched.adjust_learning_rate(optimizer, data_iter_step / len(data_loader) + epoch + 1, args)
+        lr_sched.adjust_learning_rate(optimizer, epoch)
 
         if data_iter_step == accum_iter2:
           PLOT_HEATMAP = True
 
-        print(f"plot = {PLOT_HEATMAP}")
+        #print(f"plot = {PLOT_HEATMAP}")
         #print(f"optimizer = {optimizer}")
         #samples = samples.to(device, non_blocking=True)
         #samples = [128,4,256] = [batch,channel, time]
