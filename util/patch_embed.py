@@ -34,7 +34,7 @@ class PatchEmbed_org(nn.Module):
         if type == "time":
             img_size = (256,1)
             print(f"img_size = {img_size}")
-            patch_size = (4,1)
+            patch_size = (1,1)
             print(f"patch_size = {patch_size}")
             num_patches = (img_size[1] // patch_size[1]) * (img_size[0] // patch_size[0])
             print(f"num_patch = {num_patches}")

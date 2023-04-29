@@ -165,7 +165,7 @@ def train_one_epoch_masked_autoencoder_time(model: torch.nn.Module,
 
         with torch.cuda.amp.autocast():
             #loss_a, _, _, _ = _run_model(specto_samples, mask_ratio=0.1)
-            loss_a, pred, mask, x_masked = model(samples, "time",mask_ratio=0.1)
+            loss_a, pred, mask, x_masked = model(samples, "time",mask_ratio=0.125)
             
         if PLOT_HEATMAP:
           for idx in range(80,85):
