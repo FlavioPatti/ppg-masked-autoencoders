@@ -4,7 +4,7 @@ import os
 import pytorch_benchmarks.hr_detection as hrd
 from pytorch_benchmarks.utils import seed_all, EarlyStopping
 from util.misc import NativeScalerWithGradNormCount as NativeScaler
-N_PRETRAIN_EPOCHS = 5
+N_PRETRAIN_EPOCHS = 200
 N_FINETUNE_EPOCHS = 20
 
 #Type of experiments: 
@@ -42,6 +42,7 @@ for datasets in data_gen:
     # Get Training Settings
     criterion = hrd.get_default_criterion("pretrain")
     optimizer = hrd.get_default_optimizer(model, "pretrain")
+    best_loss = 1000
 
     #If checkpoint already exists take weights from it
     #if os.path.isdir('./pytorch_benchmarks/checkpoint'):
@@ -66,14 +67,16 @@ for datasets in data_gen:
             log_writer=None,
             args=None
         )
+        
+      loss = train_stats['loss']
+      if loss < best_loss:
+        best_loss = loss
+        #salvo i pesi del vecchio modello
+        torch.save(model.state_dict(), "./pytorch_benchmarks/checkpoint")
       
       if earlystop(train_stats['loss']):
         break
     
-    
-    #salvo i pesi del vecchio modello
-    torch.save(model.state_dict(), "./pytorch_benchmarks/checkpoint")
-    #50epochs
     """
     #Finetune for hr estimation
     
