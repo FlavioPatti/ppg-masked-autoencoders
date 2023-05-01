@@ -47,7 +47,7 @@ for datasets in data_gen:
     #If checkpoint already exists take weights from it
     #if os.path.isdir('./pytorch_benchmarks/checkpoint'):
     #print("entro")
-    #model.load_state_dict(torch.load("./pytorch_benchmarks/checkpoint"))
+    model.load_state_dict(torch.load("./pytorch_benchmarks/checkpoint"))
     
     #Pretraining for recostruct input signals
     for epoch in range(N_PRETRAIN_EPOCHS):

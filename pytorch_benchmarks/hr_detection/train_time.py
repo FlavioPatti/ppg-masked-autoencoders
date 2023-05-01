@@ -31,6 +31,7 @@ def plot_heatmap_audio(x, typeExp, num_sample):
   right= 8
   top = 0
   bottom = 4
+  #QUANTO DEVE ESSERE L'ASSE Y??
   extent = [left,right, top, bottom]
   im = ax.imshow(x, cmap = 'hot', interpolation = 'hanning', extent = extent)
   cbar = ax.figure.colorbar(im, ax = ax)
@@ -86,7 +87,7 @@ def train_one_epoch_masked_autoencoder_time(model: torch.nn.Module,
     metric_logger.add_meter('lr', misc.SmoothedValue(window_size=1, fmt='{value:.6f}'))
     header = 'Epoch: [{}]'.format(epoch)
     print_freq = 50
-    accum_iter = 10
+    accum_iter = 1
     accum_iter2 = 366
 
     optimizer.zero_grad()
@@ -98,32 +99,30 @@ def train_one_epoch_masked_autoencoder_time(model: torch.nn.Module,
         PLOT_HEATMAP = False
         print(f"data_iter_step = {data_iter_step}")
         # we use a per iteration (instead of per epoch) lr scheduler
-        #if data_iter_step % accum_iter == 0:
-        lr_sched.adjust_learning_rate(optimizer, epoch)
+        if data_iter_step % accum_iter == 0:
+            print(f"adjust_learning_rate")
+            print(f"epoch = {data_iter_step / len(data_loader) + epoch}")
+            lr_sched.adjust_learning_rate(optimizer, data_iter_step / len(data_loader) + epoch, args)
             #print(f"optimizer = {optimizer}")
 
         if data_iter_step == accum_iter2:
           PLOT_HEATMAP = True
 
-        print(f"plot = {PLOT_HEATMAP}")
-        #samples = samples.to(device, non_blocking=True)
-        #samples = [128,4,256] = [batch,channel, time]
-        #print(f"sample 0 = {samples[0].shape}") #[4,256]
+        #SENZA NORMALIZZAZIONE
+        for i in range(4):
+            print(f" max channel {i} = {samples[:,i,:].max()}")
+            print(f" min channel {i} = {samples[:,i,:].min()}")
         
+        #COME NORMALIZZAZIONE E' GIUSTA?
         if Z_NORM:
-          mean = samples[:,0,:].mean()
-          std = samples[:,0,:].std()
-          samples[:,0,:] = (samples[:,0,:]-mean) / std
-        #print(f" mean = {samples[:,0,:].mean()}")
-        #print(f"std = {samples[:,0,:].std()}")
-        #print(f" max1 = {samples[:,0,:].max()}")
-        #print(f" min1 = {samples[:,0,:].min()}")
+          for i in range(4):
+            print(f" max channel {i} = {samples[:,i,:].max()}")
+            print(f" min channel {i} = {samples[:,i,:].min()}")
+            mean = samples[:,i,:].mean()
+            std = samples[:,i,:].std()
+            samples[:,i,:] = (samples[:,i,:]-mean) / std
 
-        #print(f"samples shape = {samples.shape}")
         samples = torch.tensor(np.expand_dims(samples, axis= -1))
-       
-        #print(f"samples shape = {samples.shape}")
-        #print(f"specto shape = {specto_samples.shape}")
         
         #Normalize values into range [0,1] to avoid NaN loss
         if MIN_MAX_NORM:
@@ -146,16 +145,13 @@ def train_one_epoch_masked_autoencoder_time(model: torch.nn.Module,
           print("entro")
           for idx in range(80,85):
             sample = samples[idx,:,:,:]
-            ch1 = sample[0].numpy()
+            #STAMPO SOLO IL SEGNALE PPG O DEVO STAMPARE ANCHE TUTTO IL SEGNALE CON I 4 CHANNEL?
+            #SE DEVO STAMPARE SOLO IL SEGNALE PPG, COME FACCIO A STAMPARE ANCHE SOLO IL CORRISPONDENTE
+            #SEGNALE PPG IN INPUT_MASKED E PRED DOVE NON HO PIU' I CHANNELS
+            ch1 = sample[0].numpy() 
             plot_heatmap_audio(x= ch1, typeExp = "input",num_sample = idx)
             print(f"specto {idx} creato")
-        
-        # comment out when not debugging
-        # from fvcore.nn import FlopCountAnalysis, parameter_count_table
-        # if data_iter_step == 1:
-        #     flops = FlopCountAnalysis(model, samples)
-        #     print(flops.total())
-        #     print(parameter_count_table(model))
+    
         samples = samples.to(device, non_blocking=True)
 
         #print(f"specto_samples = {specto_samples.shape}") #[128,4,256,256] = [batch,channels,freq, time]
@@ -165,7 +161,7 @@ def train_one_epoch_masked_autoencoder_time(model: torch.nn.Module,
 
         with torch.cuda.amp.autocast():
             #loss_a, _, _, _ = _run_model(specto_samples, mask_ratio=0.1)
-            loss_a, pred, mask, x_masked = model(samples, "time",mask_ratio=0.125)
+            loss_a, pred, _, x_masked = model(samples, "time",mask_ratio=0.125)
             
         if PLOT_HEATMAP:
           for idx in range(80,85):
@@ -177,8 +173,6 @@ def train_one_epoch_masked_autoencoder_time(model: torch.nn.Module,
               #ch1 = sample[0].numpy()
               plot_heatmap_audio(x= ch1, typeExp = "output", num_sample = idx)
             
-        
-        #print(f"loss = {loss_a}")
         loss_value = loss_a.item()
         loss_total = loss_a
 
@@ -186,7 +180,6 @@ def train_one_epoch_masked_autoencoder_time(model: torch.nn.Module,
             print("Loss is {}, stopping training".format(loss_value))
             sys.exit(1)
 
-        #loss /= accum_iter
         loss_total = loss_total / accum_iter
         loss_scaler(loss_total, optimizer, parameters=model.parameters(),
                     update_grad=(data_iter_step + 1) % accum_iter == 0)
@@ -211,7 +204,7 @@ def train_one_epoch_masked_autoencoder_time(model: torch.nn.Module,
 
     # gather the stats from all processes
     metric_logger.synchronize_between_processes()
-    print("Averaged stats:", metric_logger)
+    #print("Averaged stats:", metric_logger)
     return {k: meter.global_avg for k, meter in metric_logger.meters.items()}
 
 
