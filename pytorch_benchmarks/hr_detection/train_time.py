@@ -31,7 +31,6 @@ def plot_heatmap_audio(x, typeExp, num_sample):
   right= 8
   top = 0
   bottom = 4
-  #QUANTO DEVE ESSERE L'ASSE Y??
   extent = [left,right, top, bottom]
   im = ax.imshow(x, cmap = 'hot', interpolation = 'hanning', extent = extent)
   cbar = ax.figure.colorbar(im, ax = ax)
@@ -97,30 +96,24 @@ def train_one_epoch_masked_autoencoder_time(model: torch.nn.Module,
 
     for data_iter_step, (samples, _labels) in enumerate(metric_logger.log_every(data_loader, print_freq, header)):
         PLOT_HEATMAP = False
-        print(f"data_iter_step = {data_iter_step}")
+        #print(f"data_iter_step = {data_iter_step}")
         # we use a per iteration (instead of per epoch) lr scheduler
         if data_iter_step % accum_iter == 0:
-            print(f"adjust_learning_rate")
-            print(f"epoch = {data_iter_step / len(data_loader) + epoch}")
+            #print(f"adjust_learning_rate")
+            #print(f"epoch = {data_iter_step / len(data_loader) + epoch}")
             lr_sched.adjust_learning_rate(optimizer, data_iter_step / len(data_loader) + epoch, args)
             #print(f"optimizer = {optimizer}")
 
         if data_iter_step == accum_iter2:
           PLOT_HEATMAP = True
-
-        #SENZA NORMALIZZAZIONE
-        for i in range(4):
-            print(f" max channel {i} = {samples[:,i,:].max()}")
-            print(f" min channel {i} = {samples[:,i,:].min()}")
         
         #COME NORMALIZZAZIONE E' GIUSTA?
         if Z_NORM:
-          for i in range(4):
-            print(f" max channel {i} = {samples[:,i,:].max()}")
-            print(f" min channel {i} = {samples[:,i,:].min()}")
-            mean = samples[:,i,:].mean()
-            std = samples[:,i,:].std()
-            samples[:,i,:] = (samples[:,i,:]-mean) / std
+          mean = samples[:,0,:].mean()
+          std = samples[:,0,:].std()
+          samples[:,0,:] = (samples[:,0,:]-mean) / std
+           # print(f" max channel {i} = {samples[:,i,:].max()}")
+           # print(f" min channel {i} = {samples[:,i,:].min()}")
 
         samples = torch.tensor(np.expand_dims(samples, axis= -1))
         
@@ -143,7 +136,7 @@ def train_one_epoch_masked_autoencoder_time(model: torch.nn.Module,
 
         if PLOT_HEATMAP:
           print("entro")
-          for idx in range(80,85):
+          for idx in range(50,55):
             sample = samples[idx,:,:,:]
             #STAMPO SOLO IL SEGNALE PPG O DEVO STAMPARE ANCHE TUTTO IL SEGNALE CON I 4 CHANNEL?
             #SE DEVO STAMPARE SOLO IL SEGNALE PPG, COME FACCIO A STAMPARE ANCHE SOLO IL CORRISPONDENTE
@@ -164,11 +157,13 @@ def train_one_epoch_masked_autoencoder_time(model: torch.nn.Module,
             loss_a, pred, _, x_masked = model(samples, "time",mask_ratio=0.125)
             
         if PLOT_HEATMAP:
+          """
           for idx in range(80,85):
             sample = x_masked[idx,:,:]
             #ch1 = sample[0].numpy()
             plot_heatmap_audio(x= ch1, typeExp = "input_masked", num_sample = idx)
-          for idx in range(80,85):
+          """
+          for idx in range(50,55):
               sample = pred[idx,:,:]
               #ch1 = sample[0].numpy()
               plot_heatmap_audio(x= ch1, typeExp = "output", num_sample = idx)

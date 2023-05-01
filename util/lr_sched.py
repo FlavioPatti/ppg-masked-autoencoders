@@ -13,11 +13,14 @@ blr = 1e-3
 
 def adjust_learning_rate(optimizer, epoch, args):
     """Decay the learning rate with half-cycle cosine after warmup"""
+    #dopo warmup_epochs lr raggiunge il valore di blr
     if epoch < warmup_epochs:
         lr = blr * epoch / warmup_epochs 
+        #print(f"lr1 = {lr}")
     else:
         lr = min_lr + (blr - min_lr) * 0.5 * \
             (1. + math.cos(math.pi * (epoch - warmup_epochs) / (epochs - warmup_epochs)))
+        #print(f"lr2 = {lr}")
     for param_group in optimizer.param_groups:
         if "lr_scale" in param_group:
             param_group["lr"] = lr * param_group["lr_scale"]
