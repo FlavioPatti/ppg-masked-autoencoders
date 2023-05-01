@@ -19,10 +19,13 @@ import torchaudio
 import numpy as np
 from sklearn.preprocessing import MinMaxScaler, StandardScaler
 import matplotlib.pyplot as plt
+import librosa
 
 Z_NORM = True
 MIN_MAX_NORM = False
 PLOT_HEATMAP = True
+BATCH_NORM = False
+GROUP_NORM = False
 
 """plot heatmap"""
 def plot_heatmap_audio(x, typeExp, num_sample):
@@ -112,10 +115,20 @@ def train_one_epoch_masked_autoencoder_time(model: torch.nn.Module,
           mean = samples[:,0,:].mean()
           std = samples[:,0,:].std()
           samples[:,0,:] = (samples[:,0,:]-mean) / std
-           # print(f" max channel {i} = {samples[:,i,:].max()}")
-           # print(f" min channel {i} = {samples[:,i,:].min()}")
 
         samples = torch.tensor(np.expand_dims(samples, axis= -1))
+
+        if BATCH_NORM:
+          m = nn.BatchNorm2d(4, device = 'cpu')
+          samples = m(samples)
+
+        if GROUP_NORM:
+          m = nn.GroupNorm(4,4)
+          samples = m(samples)
+
+        #print(f"shape = {samples.shape}")
+        #print(f" max channel 0 = {samples[:,0,:,:].max()}")
+        #print(f" min channel 0 = {samples[:,0,:,:].min()}")
         
         #Normalize values into range [0,1] to avoid NaN loss
         if MIN_MAX_NORM:
@@ -141,7 +154,7 @@ def train_one_epoch_masked_autoencoder_time(model: torch.nn.Module,
             #STAMPO SOLO IL SEGNALE PPG O DEVO STAMPARE ANCHE TUTTO IL SEGNALE CON I 4 CHANNEL?
             #SE DEVO STAMPARE SOLO IL SEGNALE PPG, COME FACCIO A STAMPARE ANCHE SOLO IL CORRISPONDENTE
             #SEGNALE PPG IN INPUT_MASKED E PRED DOVE NON HO PIU' I CHANNELS
-            ch1 = sample[0].numpy() 
+            ch1 = sample[0].detach().numpy() 
             plot_heatmap_audio(x= ch1, typeExp = "input",num_sample = idx)
             print(f"specto {idx} creato")
     
@@ -159,14 +172,16 @@ def train_one_epoch_masked_autoencoder_time(model: torch.nn.Module,
         if PLOT_HEATMAP:
           """
           for idx in range(80,85):
-            sample = x_masked[idx,:,:]
-            #ch1 = sample[0].numpy()
-            plot_heatmap_audio(x= ch1, typeExp = "input_masked", num_sample = idx)
+            masked = x_masked[idx,:,0].to('cpu')
+            masked = masked.detach().numpy()
+            masked = torch.tensor(np.expand_dims(masked, axis= -1))
+            plot_heatmap_audio(x= masked, typeExp = "input_masked", num_sample = idx)
           """
           for idx in range(50,55):
-              sample = pred[idx,:,:]
-              #ch1 = sample[0].numpy()
-              plot_heatmap_audio(x= ch1, typeExp = "output", num_sample = idx)
+            preds = pred[idx,:,0].to('cpu')
+            preds = preds.detach().numpy()
+            preds = torch.tensor(np.expand_dims(preds, axis= -1))
+            plot_heatmap_audio(x= preds, typeExp = "output", num_sample = idx)
             
         loss_value = loss_a.item()
         loss_total = loss_a

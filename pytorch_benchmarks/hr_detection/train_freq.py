@@ -118,7 +118,7 @@ def train_one_epoch_masked_autoencoder_freq_time(model: torch.nn.Module,
     metric_logger.add_meter('lr', misc.SmoothedValue(window_size=1, fmt='{value:.6f}'))
     header = 'Epoch: [{}]'.format(epoch)
     print_freq = 50
-    accum_iter = 10
+    accum_iter = 1
     accum_iter2 = 366
     optimizer.zero_grad()
     # set model epoch
@@ -129,8 +129,11 @@ def train_one_epoch_masked_autoencoder_freq_time(model: torch.nn.Module,
         # we use a per iteration (instead of per epoch) lr scheduler
         #print(f"data_iter_step = {data_iter_step}")
         #print(f"check = { (data_iter_step + 1 % accum_iter2) }")
-       # if (data_iter_step % accum_iter) == 0:
-        lr_sched.adjust_learning_rate(optimizer, epoch)
+        if data_iter_step % accum_iter == 0:
+            #print(f"adjust_learning_rate")
+            #print(f"epoch = {data_iter_step / len(data_loader) + epoch}")
+            lr_sched.adjust_learning_rate(optimizer, data_iter_step / len(data_loader) + epoch, args)
+            #print(f"optimizer = {optimizer}")
 
         if data_iter_step == accum_iter2:
           PLOT_HEATMAP = True
@@ -179,9 +182,9 @@ def train_one_epoch_masked_autoencoder_freq_time(model: torch.nn.Module,
           
         if PLOT_HEATMAP:
           print("entro")
-          for idx in range(80,85):
+          for idx in range(50,55):
             sample = specto_samples[idx,:,:,:]
-            ch1 = sample[0].numpy()
+            ch1 = sample[0].detach().numpy()
             plot_heatmap_spectogram(x= ch1, typeExp = "input",num_sample = idx)
             print(f"specto {idx} creato")
       
@@ -200,19 +203,22 @@ def train_one_epoch_masked_autoencoder_freq_time(model: torch.nn.Module,
 
         with torch.cuda.amp.autocast():
            # output, loss = _run_model(specto_samples, mask_ratio=0.1)
-            loss_a, pred, mask, x_masked = model(specto_samples, "freq+time", mask_ratio = 0.1)
-            x_masked = x_masked.to('cpu')
-            pred = pred.to('cpu')
-       
+            loss_a, pred, _, x_masked = model(specto_samples, "freq+time", mask_ratio = 0.1)
+           
         if PLOT_HEATMAP:
-          for idx in range(80,85):
-            sample = x_masked[idx,:,:].detach().numpy()
-            plot_heatmap_spectogram(x= sample, typeExp = "input_masked",num_sample = idx)
+          """
+          for idx in range(50,55):
+            masked = x_masked[idx,:,0].to('cpu')
+            masked = masked.detach().numpy()
+            plot_heatmap_spectogram(x= masked, typeExp = "input_masked",num_sample = idx)
+          """
 
         if PLOT_HEATMAP:
-          for idx in range(80,85):
-            sample = pred[idx,:,:].detach().numpy()
-            plot_heatmap_spectogram(x= sample, typeExp = "output",num_sample = idx)
+          for idx in range(50,55):
+            preds = pred[idx,:,0:256].to('cpu')
+            #print(f"pred shape = {preds.shape}")
+            preds = preds.detach().numpy()
+            plot_heatmap_spectogram(x= preds, typeExp = "output",num_sample = idx)
 
         loss_value = loss_a.item()
         loss_total = loss_a
