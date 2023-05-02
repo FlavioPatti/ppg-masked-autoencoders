@@ -287,7 +287,7 @@ def train_one_epoch_hr_detection_freq_time(
         
         #Rescale samples
         if RESCALE:
-          specto_samples = np.log10(specto_samples, where=specto_samples>0)
+          specto_samples = np.log10(specto_samples, where=specto_samples!=0)
 
         #Normalize values into range [0,1] to avoid NaN loss
         if MIN_MAX_NORM:
