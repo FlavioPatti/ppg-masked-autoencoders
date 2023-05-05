@@ -21,9 +21,9 @@ import numpy as np
 from sklearn.preprocessing import MinMaxScaler, StandardScaler
 import matplotlib.pyplot as plt
 
-RESCALE = True
+RESCALE = False
 Z_NORM = False
-MIN_MAX_NORM = False
+MIN_MAX_NORM = True
 PLOT_HEATMAP = False
 
 """spectogram trasformation and relative parameters"""
@@ -31,7 +31,7 @@ sample_rate= 32
 n_fft = 510 #freq = nfft/2 + 1 = 256 => risoluzione/granularità dello spettrogramma
 win_length = 32
 hop_length = 1 # window length = time instants
-n_mels = 256 #definisce la dimensione della frequenza di uscita
+n_mels = 64 #definisce la dimensione della frequenza di uscita
 f_min = 0
 f_max = 4
 
@@ -159,7 +159,7 @@ def train_one_epoch_masked_autoencoder_freq_time(model: torch.nn.Module,
         
         #Rescale samples
         if RESCALE:
-          specto_samples = np.log10(specto_samples, where=specto_samples>0)
+          specto_samples = np.log10(specto_samples, where=specto_samples!=0)
           #print(f" max = {specto_samples.max()}")
           #print(f" min = {specto_samples.min()}")
 
@@ -173,20 +173,7 @@ def train_one_epoch_masked_autoencoder_freq_time(model: torch.nn.Module,
             #print(f"max = {max_ch1}")
             #print(f"min = {min_ch1}")
             ch1 = (ch1 - min_ch1) / (max_ch1-min_ch1)
-
-            max_ch1 = np.max(ch1)
-            min_ch1 = np.min(ch1)
-            #print(f"max = {max_ch1}")
-            #print(f"min = {min_ch1}")
             specto_samples[i,0,:,:] = torch.tensor(ch1, dtype = float)
-          
-        if PLOT_HEATMAP:
-          print("entro")
-          for idx in range(50,55):
-            sample = specto_samples[idx,:,:,:]
-            ch1 = sample[0].detach().numpy()
-            plot_heatmap_spectogram(x= ch1, typeExp = "input",num_sample = idx)
-            print(f"specto {idx} creato")
       
         # comment out when not debugging
         # from fvcore.nn import FlopCountAnalysis, parameter_count_table
@@ -203,19 +190,27 @@ def train_one_epoch_masked_autoencoder_freq_time(model: torch.nn.Module,
 
         with torch.cuda.amp.autocast():
            # output, loss = _run_model(specto_samples, mask_ratio=0.1)
-            loss_a, pred, _, x_masked = model(specto_samples, "freq+time", mask_ratio = 0.1)
-           
+            loss_a, pred, target, x_masked = model(specto_samples, "freq+time", mask_ratio = 0.1)
+
         if PLOT_HEATMAP:
-          """
+          print("entro")
           for idx in range(50,55):
-            masked = x_masked[idx,:,0].to('cpu')
-            masked = masked.detach().numpy()
-            plot_heatmap_spectogram(x= masked, typeExp = "input_masked",num_sample = idx)
-          """
+            sample = specto_samples[idx,:,:,:].to('cpu')
+            ch1 = sample[0].detach().numpy()
+            plot_heatmap_spectogram(x= ch1, typeExp = "input",num_sample = idx)
+            print(f"specto {idx} creato")
+
+        if PLOT_HEATMAP:
+          print("entro")
+          for idx in range(50,55):
+            sample = target[idx,:,:].to('cpu')
+            ch1 = sample.detach().numpy()
+            plot_heatmap_spectogram(x= ch1, typeExp = "input_masked",num_sample = idx)
+            print(f"specto {idx} creato")
 
         if PLOT_HEATMAP:
           for idx in range(50,55):
-            preds = pred[idx,:,0:256].to('cpu')
+            preds = pred[idx,:,:].to('cpu')
             #print(f"pred shape = {preds.shape}")
             preds = preds.detach().numpy()
             plot_heatmap_spectogram(x= preds, typeExp = "output",num_sample = idx)

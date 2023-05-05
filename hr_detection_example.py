@@ -8,8 +8,8 @@ N_PRETRAIN_EPOCHS = 25
 N_FINETUNE_EPOCHS = 20
 
 #Type of experiments: 
-FREQ_PLUS_TIME = 0
-TIME = 1
+FREQ_PLUS_TIME = 1
+TIME = 0
 
 # Check CUDA availability
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
@@ -47,7 +47,7 @@ for datasets in data_gen:
     #If checkpoint already exists take weights from it
     #if os.path.isdir('./pytorch_benchmarks/checkpoint'):
     #print("entro")
-    model.load_state_dict(torch.load("./pytorch_benchmarks/checkpoint/checkpoint_25epochs_time_0.2"))
+    #model.load_state_dict(torch.load("./pytorch_benchmarks/checkpoint/checkpoint_10epochs_freq_0.04"))
     
     #Pretraining for recostruct input signals
     for epoch in range(N_PRETRAIN_EPOCHS):

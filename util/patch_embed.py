@@ -23,9 +23,9 @@ class PatchEmbed_org(nn.Module):
     def __init__(self, img_size=224, patch_size=16, in_chans=3, embed_dim=768, type = "freq+time"):
         super().__init__()
         if type == "freq+time":
-            img_size = (256,256)#to_2tuple(img_size)
+            img_size = (64,256)#to_2tuple(img_size)
             print(f"img_size = {img_size}")
-            patch_size =  (16,16)#to_2tuple(patch_size)
+            patch_size =  (4,16)#to_2tuple(patch_size)
             print(f"patch_size = {patch_size}")
             num_patches = (img_size[1] // patch_size[1]) * (img_size[0] // patch_size[0])
             print(f"num_patch = {num_patches}")
