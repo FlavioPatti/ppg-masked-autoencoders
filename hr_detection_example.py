@@ -15,6 +15,9 @@ TIME = 0
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 print("Training on:", device)
 
+def save_checkpoint(state, filename="my_checkpoint.pth.tar"):
+  print("=> Saving checkpoint")
+  torch.save(state,filename)
 
 # Get the Data and perform cross-validation
 mae_dict = dict()
@@ -74,7 +77,8 @@ for datasets in data_gen:
         best_loss = loss
         print(f"new best loss found = {best_loss}")
         #salvo i pesi del vecchio modello
-        #torch.save(model.state_dict(), "./pytorch_benchmarks/checkpoint")
+        checkpoint = {'state_dict': model.state_dict(), 'optimizer': optimizer.state_dict()}
+        save_checkpoint(checkpoint)
       
       if earlystop(train_stats['loss']):
         break

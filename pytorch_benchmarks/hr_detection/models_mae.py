@@ -73,7 +73,7 @@ class MaskedAutoencoderViT(nn.Module):
         self.decoder_norm = norm_layer(decoder_embed_dim)
 
         if typeExp == "freq+time":
-          self.decoder_pred = nn.Linear(decoder_embed_dim, patch_size**2, bias=True) # decoder to patch
+          self.decoder_pred = nn.Linear(decoder_embed_dim, patch_size**2 * in_chans, bias=True) # decoder to patch
           print(f" decoder pred = {self.decoder_pred}")
         if typeExp == "time":
           self.decoder_pred = nn.Linear(decoder_embed_dim, patch_size**2 * in_chans, bias=True) # decoder to patch
@@ -163,11 +163,13 @@ class MaskedAutoencoderViT(nn.Module):
                 x = x.reshape(shape=(imgs.shape[0], h * w, p**2 * 1))
         else:
             if typeExp == "freq+time": 
-              h = w = imgs.shape[2] // p
+             # h = w = imgs.shape[2] // p
+              h = 8
+              w = 8
               #print(f"h = {h}, w = {w}, p = {p}, shape = {imgs.shape[2]}")
-              x = imgs.reshape(shape=(imgs.shape[0], 16, h, p, w, p))
+              x = imgs.reshape(shape=(imgs.shape[0], 4, h, p, w, p))
               x = torch.einsum('nchpwq->nhwpqc', x)
-              x = x.reshape(shape=(imgs.shape[0], h * w, p**2 *16))
+              x = x.reshape(shape=(imgs.shape[0], h * w, p**2 *4))
             else:
               h = imgs.shape[2] // p
               w = 1
@@ -232,8 +234,8 @@ class MaskedAutoencoderViT(nn.Module):
             T=101
             F=12
         else:            
-            T=16
-            F=16
+            T=8
+            F=8
         #x = x.reshape(N, T, F, D)
         len_keep_t = int(T * (1 - mask_t_prob))
         len_keep_f = int(F * (1 - mask_f_prob))
@@ -278,11 +280,11 @@ class MaskedAutoencoderViT(nn.Module):
         # embed patches
         #print(f" x0 = {x.shape}")
         x = self.patch_embed(x)
-        #print(f" x1 = {x.shape}")
 
         # add pos embed w/o cls token
         #print(f"size ={self.pos_embed[:,1:65,:].shape}")
         x = x + self.pos_embed[:, 1:, :]
+        #print(f" x1 = {x.shape}")
 
         # masking: length -> length * mask_ratio
         if mask_2d:
@@ -366,7 +368,7 @@ class MaskedAutoencoderViT(nn.Module):
         #print(f"x6 = {x.shape}")
         # predictor projection
         pred = self.decoder_pred(x)
-       # print(f"pred = {pred.shape}")
+        #print(f"pred = {pred.shape}")
 
         # remove cls token
         if self.decoder_mode != 0:
@@ -392,7 +394,7 @@ class MaskedAutoencoderViT(nn.Module):
         """
         target = self.patchify(imgs, typeExp)
         #target = target[:,:,0:256]
-        print(f"target = {target.shape}")
+       # print(f"target = {target.shape}")
 
         if norm_pix_loss:
             mean = target.mean(dim=-1, keepdim=True)
@@ -403,7 +405,7 @@ class MaskedAutoencoderViT(nn.Module):
         
         #print(f"pred shape = {pred.shape}")
         #print(f"pred = {pred}")
-        #print(f"target shape = {target.shape}")
+        #print(f"target = {target.shape}")
         #print(f"target = {target}")
         loss = (pred - target) ** 2
         loss = loss.mean(dim=-1)  # [N, L], mean loss per patch
@@ -416,7 +418,7 @@ class MaskedAutoencoderViT(nn.Module):
         emb_enc, mask, ids_restore, _ = self.forward_encoder(imgs, mask_ratio, mask_2d=self.mask_2d)
         #print(f"emb_enc = {emb_enc.shape}")
         pred, _, _ = self.forward_decoder(emb_enc, ids_restore, typeExp) 
-        print(f"pred = {pred.shape}")
+        #print(f"pred = {pred.shape}")
         loss_recon, target = self.forward_loss(imgs, pred, mask, typeExp, norm_pix_loss=self.norm_pix_loss)
         #loss_contrastive = torch.FloatTensor([0.0]).cuda()
         return loss_recon, pred, target, emb_enc

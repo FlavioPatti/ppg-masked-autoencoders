@@ -25,7 +25,7 @@ class PatchEmbed_org(nn.Module):
         if type == "freq+time":
             img_size = (64,256)#to_2tuple(img_size)
             print(f"img_size = {img_size}")
-            patch_size =  (4,16)#to_2tuple(patch_size)
+            patch_size =  (16,16)#to_2tuple(patch_size)
             print(f"patch_size = {patch_size}")
             num_patches = (img_size[1] // patch_size[1]) * (img_size[0] // patch_size[0])
             print(f"num_patch = {num_patches}")
