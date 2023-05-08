@@ -172,8 +172,8 @@ def train_one_epoch_masked_autoencoder_freq_time(model: torch.nn.Module,
             min_ch0 = np.min(ch0)
             ch0 = (ch0 - min_ch0) / (max_ch0-min_ch0)
             specto_samples[i,0,:,:] = torch.tensor(ch0, dtype = float)
-            print(f"max0 = {np.max(specto_samples[i,0,:,:].numpy())}")
-            print(f"min0 = {np.min(specto_samples[i,0,:,:].numpy())}")
+            #print(f"max0 = {np.max(specto_samples[i,0,:,:].numpy())}")
+            #print(f"min0 = {np.min(specto_samples[i,0,:,:].numpy())}")
 
           channel_1 = specto_samples[:,1,:,:]
           for i in range(specto_samples.shape[0]):
@@ -182,18 +182,20 @@ def train_one_epoch_masked_autoencoder_freq_time(model: torch.nn.Module,
             min_ch1 = np.min(ch1)
             ch1 = (ch1 - min_ch1) / (max_ch1-min_ch1)
             specto_samples[i,1,:,:] = torch.tensor(ch1, dtype = float)
-            print(f"max1 = {np.max(specto_samples[i,1,:,:].numpy())}")
-            print(f"min1 = {np.min(specto_samples[i,1,:,:].numpy())}")
+            #print(f"max1 = {np.max(specto_samples[i,1,:,:].numpy())}")
+            #print(f"min1 = {np.min(specto_samples[i,1,:,:].numpy())}")
 
           channel_2 = specto_samples[:,2,:,:]
           for i in range(specto_samples.shape[0]):
             ch2 = channel_2[i].numpy()
             max_ch2 = np.max(ch2)
             min_ch2 = np.min(ch2)
-            ch2 = (ch2 - min_ch2) / (max_ch2-min_ch2)
+            if (max_ch2 - min_ch2 != 0):
+              ch2 = (ch2 - min_ch2) / (max_ch2-min_ch2)
+            #print(f"ch2 = {ch2}")
             specto_samples[i,2,:,:] = torch.tensor(ch2, dtype = float)
-            print(f"max2 = {np.max(specto_samples[i,2,:,:].numpy())}")
-            print(f"min2 = {np.min(specto_samples[i,2,:,:].numpy())}")
+            #print(f"max2 = {np.max(specto_samples[i,2,:,:].numpy())}")
+            #print(f"min2 = {np.min(specto_samples[i,2,:,:].numpy())}")
 
           channel_3 = specto_samples[:,3,:,:]
           for i in range(specto_samples.shape[0]):
@@ -202,8 +204,8 @@ def train_one_epoch_masked_autoencoder_freq_time(model: torch.nn.Module,
             min_ch3 = np.min(ch3)
             ch3 = (ch3 - min_ch3) / (max_ch3-min_ch3)
             specto_samples[i,3,:,:] = torch.tensor(ch3, dtype = float)
-            print(f"max3 = {np.max(specto_samples[i,3,:,:].numpy())}")
-            print(f"min3 = {np.min(specto_samples[i,3,:,:].numpy())}")
+            #print(f"max3 = {np.max(specto_samples[i,3,:,:].numpy())}")
+            #print(f"min3 = {np.min(specto_samples[i,3,:,:].numpy())}")
       
         # comment out when not debugging
         # from fvcore.nn import FlopCountAnalysis, parameter_count_table
@@ -232,12 +234,24 @@ def train_one_epoch_masked_autoencoder_freq_time(model: torch.nn.Module,
             plot_heatmap_spectogram(x= ch1, typeExp = "input",num_sample = idx, ch = 1)
             ch2 = sample[2].detach().numpy()
             plot_heatmap_spectogram(x= ch2, typeExp = "input",num_sample = idx, ch = 2)
-            ch4 = sample[4].detach().numpy()
+            ch4 = sample[3].detach().numpy()
             plot_heatmap_spectogram(x= ch3, typeExp = "input",num_sample = idx, ch = 3)
             print(f"specto {idx} creato")
 
         if PLOT_HEATMAP:
           print("entro")
+          """
+          selected_time_steps = np.hstack([
+            np.arange(0, 7),
+            np.arange(32, 39),
+            np.arange(64, 71),
+            np.arange(96, 103),
+            np.arange(128, 135),
+            np.arange(160, 167),
+            np.arange(192, 199),
+            np.arange(224, 231)
+          ])
+          """
           for idx in range(50,55):
             sample = target[idx,:,:].to('cpu')
             ch1 = sample.detach().numpy()
@@ -245,6 +259,18 @@ def train_one_epoch_masked_autoencoder_freq_time(model: torch.nn.Module,
             print(f"specto {idx} creato")
 
         if PLOT_HEATMAP:
+          """
+          selected_time_steps = np.hstack([
+            np.arange(0, 7),
+            np.arange(32, 39),
+            np.arange(64, 71),
+            np.arange(96, 103),
+            np.arange(128, 135),
+            np.arange(160, 167),
+            np.arange(192, 199),
+            np.arange(224, 231)
+          ])
+          """
           for idx in range(50,55):
             preds = pred[idx,:,:].to('cpu')
             #print(f"pred shape = {preds.shape}")

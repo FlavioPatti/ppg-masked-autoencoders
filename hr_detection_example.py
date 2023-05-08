@@ -4,7 +4,7 @@ import os
 import pytorch_benchmarks.hr_detection as hrd
 from pytorch_benchmarks.utils import seed_all, EarlyStopping
 from util.misc import NativeScalerWithGradNormCount as NativeScaler
-N_PRETRAIN_EPOCHS = 30
+N_PRETRAIN_EPOCHS = 50
 N_FINETUNE_EPOCHS = 20
 
 #Type of experiments: 
@@ -20,10 +20,10 @@ def save_checkpoint(state, filename1="checkpoint_model", filename2="checkpoint_o
   torch.save(state,filename1)
   torch.save(state,filename2)
 
-def load_checkpoint(checkpoint):
+def load_checkpoint(checkpoint1, checkpoint2):
   print("=> Loading checkpoint")
-  model.load_state_dict(checkpoint['state_dict'])
-  #optimizer.load_state_dict(checkpoint['optimizer'])
+  model.load_state_dict(checkpoint1['state_dict'])
+  optimizer.load_state_dict(checkpoint2['optimizer'])
 
 
 # Get the Data and perform cross-validation
@@ -57,7 +57,7 @@ for datasets in data_gen:
     #If checkpoint already exists take weights from it
     #if os.path.isdir('./pytorch_benchmarks/checkpoint'):
     #print("entro")
-    load_checkpoint(torch.load("./pytorch_benchmarks/checkpoint/checkpoint_40epochs_freq_0.02"))
+    #load_checkpoint(torch.load("./checkpoint_model", "./checkpoint_optimizer"))
     
     #Pretraining for recostruct input signals
     for epoch in range(N_PRETRAIN_EPOCHS):
@@ -84,8 +84,10 @@ for datasets in data_gen:
         best_loss = loss
         print(f"new best loss found = {best_loss}")
         #salvo i pesi del vecchio modello
-        checkpoint = {'state_dict': model.state_dict(), 'optimizer': optimizer.state_dict()}
-        save_checkpoint(checkpoint)
+        checkpoint1 = {'state_dict': model.state_dict()}
+        checkpoint2 = {'optimizer': optimizer.state_dict()}
+
+        #save_checkpoint(checkpoint1, checkpoint2)
       
       if earlystop(train_stats['loss']):
         break
