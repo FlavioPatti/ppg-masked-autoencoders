@@ -4,7 +4,7 @@ import os
 import pytorch_benchmarks.hr_detection as hrd
 from pytorch_benchmarks.utils import seed_all, EarlyStopping
 from util.misc import NativeScalerWithGradNormCount as NativeScaler
-N_PRETRAIN_EPOCHS = 50
+N_PRETRAIN_EPOCHS = 100
 N_FINETUNE_EPOCHS = 20
 
 #Type of experiments: 
@@ -15,16 +15,14 @@ TIME = 0
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 print("Training on:", device)
 
-def save_checkpoint(state, filename1="checkpoint_model", filename2="checkpoint_optimizer"):
+def save_checkpoint(state, filename1="checkpoint_model"):
   print("=> Saving checkpoint")
   torch.save(state,filename1)
-  torch.save(state,filename2)
 
-def load_checkpoint(checkpoint1, checkpoint2):
+def load_checkpoint(checkpoint1):
   print("=> Loading checkpoint")
   model.load_state_dict(checkpoint1['state_dict'])
-  optimizer.load_state_dict(checkpoint2['optimizer'])
-
+  
 
 # Get the Data and perform cross-validation
 mae_dict = dict()
@@ -57,7 +55,7 @@ for datasets in data_gen:
     #If checkpoint already exists take weights from it
     #if os.path.isdir('./pytorch_benchmarks/checkpoint'):
     #print("entro")
-    #load_checkpoint(torch.load("./checkpoint_model", "./checkpoint_optimizer"))
+    load_checkpoint(torch.load("./checkpoint_model (3)"))
     
     #Pretraining for recostruct input signals
     for epoch in range(N_PRETRAIN_EPOCHS):
@@ -85,9 +83,7 @@ for datasets in data_gen:
         print(f"new best loss found = {best_loss}")
         #salvo i pesi del vecchio modello
         checkpoint1 = {'state_dict': model.state_dict()}
-        checkpoint2 = {'optimizer': optimizer.state_dict()}
-
-        #save_checkpoint(checkpoint1, checkpoint2)
+        save_checkpoint(checkpoint1)
       
       if earlystop(train_stats['loss']):
         break

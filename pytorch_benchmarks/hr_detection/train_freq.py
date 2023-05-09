@@ -20,11 +20,26 @@ import torchaudio
 import numpy as np
 from sklearn.preprocessing import MinMaxScaler, StandardScaler
 import matplotlib.pyplot as plt
+#from pytorch_benchmarks.hr_detection.models_mae import unpatchify
 
 RESCALE = False
-Z_NORM = False
-MIN_MAX_NORM = True
+Z_NORM = True
+MIN_MAX_NORM = False
 PLOT_HEATMAP = False
+
+def unpatchify(x):
+        """
+        x: (N, L, patch_size**2 *3)
+        specs: (N, 1, H, W)
+        """
+       # p = self.patch_embed.patch_size[0]    
+        p = 8
+        h = 64//p
+        w = 256//p
+        x = x.reshape(shape=(x.shape[0], h, w, p, p, 4))
+        x = torch.einsum('nhwpqc->nchpwq', x)
+        specs = x.reshape(shape=(x.shape[0], 4, h * p, w * p))
+        return specs
 
 """spectogram trasformation and relative parameters"""
 sample_rate= 32
@@ -50,7 +65,7 @@ spectrogram_transform = torchaudio.transforms.MelSpectrogram(
 )
 
 """plot heatmap"""
-def plot_heatmap_spectogram(x, typeExp, num_sample, ch = 0):
+def plot_heatmap_spectogram(x, typeExp, num_sample, epoch = 0):
   fig, ax = plt.subplots()
   left = 0
   right= 8
@@ -62,7 +77,7 @@ def plot_heatmap_spectogram(x, typeExp, num_sample, ch = 0):
   ax.set_title(f"Heatmap PPG: sample {num_sample}")  
   plt.xlabel('Time (s)')
   plt.ylabel('Frequency (Hz)')
-  plt.savefig(f'./pytorch_benchmarks/imgs/{typeExp}/specto{num_sample}_{ch}.png') 
+  plt.savefig(f'./pytorch_benchmarks/imgs/{typeExp}/specto{num_sample}_epoch{epoch}.png') 
 
 
 class LogCosh(nn.Module):
@@ -150,8 +165,8 @@ def train_one_epoch_masked_autoencoder_freq_time(model: torch.nn.Module,
           samples[:,0,:] = (samples[:,0,:]-mean) / std
         #print(f" mean = {samples[:,0,:].mean()}")
         #print(f"std = {samples[:,0,:].std()}")
-        #print(f" max1 = {samples[:,0,:].max()}")
-        #print(f" min1 = {samples[:,0,:].min()}")
+          print(f" max1 = {samples[:,0,:].max()}")
+          print(f" min1 = {samples[:,0,:].min()}")
         
         #print(f"samples shape = {samples.shape}")
         specto_samples = torch.narrow(spectrogram_transform(samples), dim=3, start=0, length=256) 
@@ -224,58 +239,39 @@ def train_one_epoch_masked_autoencoder_freq_time(model: torch.nn.Module,
            # output, loss = _run_model(specto_samples, mask_ratio=0.1)
             loss_a, pred, target, x_masked = model(specto_samples, "freq+time", mask_ratio = 0.1)
 
+        signal_rec = unpatchify(pred)
+        #print(f"signal shape = {signal_rec.shape}")
+
+        if PLOT_HEATMAP:
+          print("entro")
+          for idx in range(50,55):
+            sample = signal_rec[idx,:,:,:].to('cpu')
+            ch0 = sample[0].detach().numpy()
+            plot_heatmap_spectogram(x= ch0, typeExp = "rec",num_sample = idx, epoch = epoch)
+            print(f"specto {idx} creato")
+
+
         if PLOT_HEATMAP:
           print("entro")
           for idx in range(50,55):
             sample = specto_samples[idx,:,:,:].to('cpu')
             ch0 = sample[0].detach().numpy()
-            plot_heatmap_spectogram(x= ch0, typeExp = "input",num_sample = idx, ch = 0)
-            ch1 = sample[1].detach().numpy()
-            plot_heatmap_spectogram(x= ch1, typeExp = "input",num_sample = idx, ch = 1)
-            ch2 = sample[2].detach().numpy()
-            plot_heatmap_spectogram(x= ch2, typeExp = "input",num_sample = idx, ch = 2)
-            ch4 = sample[3].detach().numpy()
-            plot_heatmap_spectogram(x= ch3, typeExp = "input",num_sample = idx, ch = 3)
+            plot_heatmap_spectogram(x= ch0, typeExp = "input",num_sample = idx, epoch = epoch)
             print(f"specto {idx} creato")
 
         if PLOT_HEATMAP:
           print("entro")
-          """
-          selected_time_steps = np.hstack([
-            np.arange(0, 7),
-            np.arange(32, 39),
-            np.arange(64, 71),
-            np.arange(96, 103),
-            np.arange(128, 135),
-            np.arange(160, 167),
-            np.arange(192, 199),
-            np.arange(224, 231)
-          ])
-          """
           for idx in range(50,55):
             sample = target[idx,:,:].to('cpu')
             ch1 = sample.detach().numpy()
-            plot_heatmap_spectogram(x= ch1, typeExp = "input_masked",num_sample = idx)
-            print(f"specto {idx} creato")
+            plot_heatmap_spectogram(x= ch1, typeExp = "input_masked",num_sample = idx, epoch = epoch)
 
         if PLOT_HEATMAP:
-          """
-          selected_time_steps = np.hstack([
-            np.arange(0, 7),
-            np.arange(32, 39),
-            np.arange(64, 71),
-            np.arange(96, 103),
-            np.arange(128, 135),
-            np.arange(160, 167),
-            np.arange(192, 199),
-            np.arange(224, 231)
-          ])
-          """
           for idx in range(50,55):
             preds = pred[idx,:,:].to('cpu')
             #print(f"pred shape = {preds.shape}")
             preds = preds.detach().numpy()
-            plot_heatmap_spectogram(x= preds, typeExp = "output",num_sample = idx)
+            plot_heatmap_spectogram(x= preds, typeExp = "output",num_sample = idx, epoch = epoch)
 
         loss_value = loss_a.item()
         loss_total = loss_a
@@ -472,4 +468,4 @@ def evaluate_freq_time(
           'loss': avgloss.get(),
           'MAE': avgmae.get(),
         }
-    return final_metrics
+    return 

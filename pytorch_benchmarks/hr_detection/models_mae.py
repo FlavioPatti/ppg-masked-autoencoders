@@ -136,9 +136,8 @@ class MaskedAutoencoderViT(nn.Module):
         #assert imgs.shape[2] == imgs.shape[3] and imgs.shape[2] % p == 0
     
         if typeExp == "freq+time": 
-            #h = w = imgs.shape[2] // p
-            h = 16
-            w = 16
+            h = imgs.shape[2] // p
+            w = imgs.shape[3] // p
         else:
             h = imgs.shape[2] // p
             w = 1
@@ -152,6 +151,19 @@ class MaskedAutoencoderViT(nn.Module):
 
 
         return x
+
+    def unpatchify(self, x):
+        """
+        x: (N, L, patch_size**2 *3)
+        specs: (N, 1, H, W)
+        """
+        p = self.patch_embed.patch_size[0]    
+        h = 256//p
+        w = 256//p
+        x = x.reshape(shape=(x.shape[0], h, w, p, p, 4))
+        x = torch.einsum('nhwpqc->nchpwq', x)
+        specs = x.reshape(shape=(x.shape[0], 4, h * p, w * p))
+        return specs
 
     def random_masking(self, x, mask_ratio):
         """
@@ -345,7 +357,7 @@ class MaskedAutoencoderViT(nn.Module):
         #print(f"loss = {loss}")
         return loss, target     
 
-    def forward(self, imgs, typeExp="freq+time", mask_ratio=0.125):
+    def forward(self, imgs, typeExp="freq+time", mask_ratio=0.0):
         #print(f"imgs = {imgs.shape}")
         emb_enc, mask, ids_restore, _ = self.forward_encoder(imgs, mask_ratio, mask_2d=self.mask_2d)
         #print(f"emb_enc = {emb_enc.shape}")
