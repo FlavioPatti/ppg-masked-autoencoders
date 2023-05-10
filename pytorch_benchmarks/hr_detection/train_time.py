@@ -152,7 +152,7 @@ def train_one_epoch_masked_autoencoder_time(model: torch.nn.Module,
 
         if PLOT_HEATMAP:
           print("entro")
-          for idx in range(50,55):
+          for idx in range(50,52):
             sample = samples[idx,:,:,:]
             ch1 = sample[0].detach().numpy() 
             plot_heatmap_audio(x= ch1, typeExp = "input",num_sample = idx)
@@ -174,12 +174,12 @@ def train_one_epoch_masked_autoencoder_time(model: torch.nn.Module,
         #print(f"signal shape = {signal_rec.shape}")
             
         if PLOT_HEATMAP:
-          for idx in range(50,55):
+          for idx in range(50,52):
             masked = signal_rec[idx,0,:].to('cpu')
             masked = masked.detach().numpy()
             plot_heatmap_audio(x= masked, typeExp = "rec", num_sample = idx)
         
-          for idx in range(50,55):
+          for idx in range(50,52):
             preds = pred[idx,:,0].to('cpu')
             preds = preds.detach().numpy()
             plot_heatmap_audio(x= preds, typeExp = "output", num_sample = idx)

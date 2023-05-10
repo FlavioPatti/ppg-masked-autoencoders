@@ -244,7 +244,7 @@ def train_one_epoch_masked_autoencoder_freq_time(model: torch.nn.Module,
 
         if PLOT_HEATMAP:
           print("entro")
-          for idx in range(50,55):
+          for idx in range(50,52):
             sample = signal_rec[idx,:,:,:].to('cpu')
             ch0 = sample[0].detach().numpy()
             plot_heatmap_spectogram(x= ch0, typeExp = "rec",num_sample = idx, epoch = epoch)
@@ -253,7 +253,7 @@ def train_one_epoch_masked_autoencoder_freq_time(model: torch.nn.Module,
 
         if PLOT_HEATMAP:
           print("entro")
-          for idx in range(50,55):
+          for idx in range(50,52):
             sample = specto_samples[idx,:,:,:].to('cpu')
             ch0 = sample[0].detach().numpy()
             plot_heatmap_spectogram(x= ch0, typeExp = "input",num_sample = idx, epoch = epoch)
@@ -261,13 +261,13 @@ def train_one_epoch_masked_autoencoder_freq_time(model: torch.nn.Module,
 
         if PLOT_HEATMAP:
           print("entro")
-          for idx in range(50,55):
+          for idx in range(50,52):
             sample = target[idx,:,:].to('cpu')
             ch1 = sample.detach().numpy()
             plot_heatmap_spectogram(x= ch1, typeExp = "input_masked",num_sample = idx, epoch = epoch)
 
         if PLOT_HEATMAP:
-          for idx in range(50,55):
+          for idx in range(50,52):
             preds = pred[idx,:,:].to('cpu')
             #print(f"pred shape = {preds.shape}")
             preds = preds.detach().numpy()
@@ -358,19 +358,6 @@ def train_one_epoch_hr_detection_freq_time(
             #print(f"max = {max_ch1}")
             #print(f"min = {min_ch1}")
             specto_samples[i,0,:,:] = torch.tensor(ch1, dtype = float)
-
-        if PLOT_HEATMAP:
-          idx = 80
-          sample = specto_samples[idx,:,:,:]
-          print(f"sample = {sample.shape}")
-          label = target[idx]
-          ch1 = sample[0].numpy()
-          max_ch1 = np.max(ch1)
-          min_ch1 = np.min(ch1)
-          print(f"max ch1 = {max_ch1}")
-          print(f"min ch1 = {min_ch1}")
-          print(f"label = {label} BPM = {float(label/60)} Hz")
-          plot_heatmap_spectogram(x= ch1, num_sample = idx)
           
         step += 1
         tepoch.update(1)
@@ -445,18 +432,6 @@ def evaluate_freq_time(
               #print(f"min = {min_ch1}")
               specto_samples[i,0,:,:] = torch.tensor(ch1, dtype = float)
             
-          if PLOT_HEATMAP:
-            idx = 80
-            sample = specto_samples[idx,:,:,:]
-            print(f"sample = {sample.shape}")
-            label = target[idx]
-            ch1 = sample[0].numpy()
-            max_ch1 = np.max(ch1)
-            min_ch1 = np.min(ch1)
-            print(f"max ch1 = {max_ch1}")
-            print(f"min ch1 = {min_ch1}")
-            print(f"label = {label} BPM = {float(label/60)} Hz")
-            plot_heatmap_spectogram(x= ch1, num_sample = idx)
 
           step += 1
           sample, target = specto_samples.to(device), target.to(device)
