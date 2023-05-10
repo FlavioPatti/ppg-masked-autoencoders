@@ -4,22 +4,30 @@ import os
 import pytorch_benchmarks.hr_detection as hrd
 from pytorch_benchmarks.utils import seed_all, EarlyStopping
 from util.misc import NativeScalerWithGradNormCount as NativeScaler
-N_PRETRAIN_EPOCHS = 100
-N_FINETUNE_EPOCHS = 20
+N_PRETRAIN_EPOCHS = 50
+N_FINETUNE_EPOCHS = 200
 
 #Type of experiments: 
-FREQ_PLUS_TIME = 1
-TIME = 0
+FREQ_PLUS_TIME = 0
+TIME = 1
 
 # Check CUDA availability
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 print("Training on:", device)
 
-def save_checkpoint(state, filename1="checkpoint_model"):
+def save_checkpoint_pretrain(state, filename1="checkpoint_model_pretrain"):
   print("=> Saving checkpoint")
   torch.save(state,filename1)
 
-def load_checkpoint(checkpoint1):
+def load_checkpoint_pretrain(checkpoint1):
+  print("=> Loading checkpoint")
+  model.load_state_dict(checkpoint1['state_dict'])
+
+def save_checkpoint_finetune(state, filename1="checkpoint_model_finetune"):
+  print("=> Saving checkpoint")
+  torch.save(state,filename1)
+
+def load_checkpoint_finetune(checkpoint1):
   print("=> Loading checkpoint")
   model.load_state_dict(checkpoint1['state_dict'])
   
@@ -55,7 +63,7 @@ for datasets in data_gen:
     #If checkpoint already exists take weights from it
     #if os.path.isdir('./pytorch_benchmarks/checkpoint'):
     #print("entro")
-    load_checkpoint(torch.load("./checkpoint_model (3)"))
+    #load_checkpoint(torch.load("./checkpoint_model"))
     
     #Pretraining for recostruct input signals
     for epoch in range(N_PRETRAIN_EPOCHS):
@@ -83,12 +91,11 @@ for datasets in data_gen:
         print(f"new best loss found = {best_loss}")
         #salvo i pesi del vecchio modello
         checkpoint1 = {'state_dict': model.state_dict()}
-        save_checkpoint(checkpoint1)
+        save_checkpoint_pretrain(checkpoint1)
       
       if earlystop(train_stats['loss']):
         break
-    
-    """
+   
     #Finetune for hr estimation
     
     if FREQ_PLUS_TIME:
@@ -102,7 +109,8 @@ for datasets in data_gen:
     optimizer = hrd.get_default_optimizer(model, "finetune")
     
     #loddo i pesi del vecchio modello al nuovo modello
-    model.load_state_dict(torch.load("./pytorch_benchmarks/checkpoint"))
+    #model.load_state_dict(torch.load("./pytorch_benchmarks/checkpoint"))
+    load_checkpoint_pretrain(torch.load("./checkpoint_model_pretrain"))
     
     for epoch in range(N_FINETUNE_EPOCHS):
       if FREQ_PLUS_TIME:
@@ -111,12 +119,20 @@ for datasets in data_gen:
       if TIME:
         metrics = hrd.train_one_epoch_hr_detection_time(
             epoch, model, criterion, optimizer, train_dl, val_dl, device)
+
+      print(f"metrics = {metrics}")
+      loss = metrics['loss']
+      if loss < best_loss:
+        best_loss = loss
+        print(f"new best loss found = {best_loss}")
+        #salvo i pesi del vecchio modello
+        checkpoint1 = {'state_dict': model.state_dict()}
+        save_checkpoint_finetune(checkpoint1)
       
       if earlystop(metrics['val_MAE']):
           break
-    #salvo i pesi del vecchio modello
-    torch.save(model.state_dict(), "./pytorch_benchmarks/checkpoint")
     
+"""
     if FREQ_PLUS_TIME:
       test_metrics = hrd.evaluate_freq_time(model, criterion, test_dl, device)
     if TIME:
@@ -126,4 +142,4 @@ for datasets in data_gen:
     mae_dict[test_subj] = test_metrics['MAE']
     print(f'MAE: {mae_dict}')
     print(f'Average MAE: {sum(mae_dict.values()) / len(mae_dict)}')
-  """
+"""

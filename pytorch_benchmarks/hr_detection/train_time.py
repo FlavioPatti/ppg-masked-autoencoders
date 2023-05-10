@@ -27,18 +27,29 @@ PLOT_HEATMAP = True
 BATCH_NORM = False
 GROUP_NORM = False
 
+def unpatchify(x):
+        """
+        x: (N, L, patch_size**2 *3)
+        specs: (N, 1, H, W)
+        """
+       # p = self.patch_embed.patch_size[0]    
+        p = 1
+        h = 256//p
+        w = 1//p
+        x = x.reshape(shape=(x.shape[0], h, w, p, p, 4))
+        x = torch.einsum('nhwpqc->nchpwq', x)
+        specs = x.reshape(shape=(x.shape[0], 4, h * p, w * p))
+        return specs
+
 """plot heatmap"""
 def plot_heatmap_audio(x, typeExp, num_sample):
-  fig, ax = plt.subplots()
-  left = 0
-  right= 8
-  top = 0
-  bottom = 4
-  extent = [left,right, top, bottom]
-  im = ax.imshow(x, cmap = 'hot', interpolation = 'hanning', extent = extent)
-  cbar = ax.figure.colorbar(im, ax = ax)
-  ax.set_title(f"Heatmap PPG: sample {num_sample}")  
-  plt.xlabel('Time (s)')
+  plt.figure(figsize=(15, 5))
+  time = np.linspace(0, 8, num=256)
+  plt.xlim([0,8])
+  plt.plot(time, x)
+  plt.ylabel(' signal wave')
+  plt.xlabel('time (s)')
+  plt.title(f"Heatmap PPG: sample {num_sample}")  
   plt.savefig(f'./pytorch_benchmarks/imgs/{typeExp}/audio{num_sample}.png') 
 
 
@@ -118,14 +129,6 @@ def train_one_epoch_masked_autoencoder_time(model: torch.nn.Module,
 
         samples = torch.tensor(np.expand_dims(samples, axis= -1))
 
-        if BATCH_NORM:
-          m = nn.BatchNorm2d(4, device = 'cpu')
-          samples = m(samples)
-
-        if GROUP_NORM:
-          m = nn.GroupNorm(4,4)
-          samples = m(samples)
-
         #print(f"shape = {samples.shape}")
         #print(f" max channel 0 = {samples[:,0,:,:].max()}")
         #print(f" min channel 0 = {samples[:,0,:,:].min()}")
@@ -151,9 +154,6 @@ def train_one_epoch_masked_autoencoder_time(model: torch.nn.Module,
           print("entro")
           for idx in range(50,55):
             sample = samples[idx,:,:,:]
-            #STAMPO SOLO IL SEGNALE PPG O DEVO STAMPARE ANCHE TUTTO IL SEGNALE CON I 4 CHANNEL?
-            #SE DEVO STAMPARE SOLO IL SEGNALE PPG, COME FACCIO A STAMPARE ANCHE SOLO IL CORRISPONDENTE
-            #SEGNALE PPG IN INPUT_MASKED E PRED DOVE NON HO PIU' I CHANNELS
             ch1 = sample[0].detach().numpy() 
             plot_heatmap_audio(x= ch1, typeExp = "input",num_sample = idx)
             print(f"specto {idx} creato")
@@ -167,20 +167,21 @@ def train_one_epoch_masked_autoencoder_time(model: torch.nn.Module,
 
         with torch.cuda.amp.autocast():
             #loss_a, _, _, _ = _run_model(specto_samples, mask_ratio=0.1)
-            loss_a, pred, _, x_masked = model(samples, "time",mask_ratio=0.125)
+            loss_a, pred, _, x_masked = model(samples, "time",mask_ratio=0.1)
+
+        signal_rec = unpatchify(pred)
+        signal_rec = np.squeeze(signal_rec.to('cpu').detach())
+        #print(f"signal shape = {signal_rec.shape}")
             
         if PLOT_HEATMAP:
-          """
-          for idx in range(80,85):
-            masked = x_masked[idx,:,0].to('cpu')
+          for idx in range(50,55):
+            masked = signal_rec[idx,0,:].to('cpu')
             masked = masked.detach().numpy()
-            masked = torch.tensor(np.expand_dims(masked, axis= -1))
-            plot_heatmap_audio(x= masked, typeExp = "input_masked", num_sample = idx)
-          """
+            plot_heatmap_audio(x= masked, typeExp = "rec", num_sample = idx)
+        
           for idx in range(50,55):
             preds = pred[idx,:,0].to('cpu')
             preds = preds.detach().numpy()
-            preds = torch.tensor(np.expand_dims(preds, axis= -1))
             plot_heatmap_audio(x= preds, typeExp = "output", num_sample = idx)
             
         loss_value = loss_a.item()
@@ -263,19 +264,6 @@ def train_one_epoch_hr_detection_time(
             #print(f"max = {max_ch1}")
             #print(f"min = {min_ch1}")
             sample[i,0,:,:] = torch.tensor(ch1, dtype = float)
-
-        if PLOT_HEATMAP:
-          idx = 80
-          sample = sample[idx,:,:,:]
-          print(f"sample = {sample.shape}")
-          label = target[idx]
-          ch1 = sample[0].numpy()
-          max_ch1 = np.max(ch1)
-          min_ch1 = np.min(ch1)
-          print(f"max ch1 = {max_ch1}")
-          print(f"min ch1 = {min_ch1}")
-          print(f"label = {label} BPM = {float(label/60)} Hz")
-          plot_heatmap_audio(x= ch1, num_sample = idx)
         
         step += 1
         tepoch.update(1)
@@ -342,19 +330,6 @@ def evaluate_time(
               #print(f"min = {min_ch1}")
               sample[i,0,:,:] = torch.tensor(ch1, dtype = float)
 
-          if PLOT_HEATMAP:
-            idx = 80
-            sample = sample[idx,:,:,:]
-            print(f"sample = {sample.shape}")
-            label = target[idx]
-            ch1 = sample[0].numpy()
-            max_ch1 = np.max(ch1)
-            min_ch1 = np.min(ch1)
-            print(f"max ch1 = {max_ch1}")
-            print(f"min ch1 = {min_ch1}")
-            print(f"label = {label} BPM = {float(label/60)} Hz")
-            plot_heatmap_audio(x= ch1, num_sample = idx)
-            
           step += 1
           sample, target = sample.to(device), target.to(device)
           output = model(sample, typeExp= "time")

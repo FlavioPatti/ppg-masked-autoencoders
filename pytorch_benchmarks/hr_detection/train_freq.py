@@ -165,8 +165,8 @@ def train_one_epoch_masked_autoencoder_freq_time(model: torch.nn.Module,
           samples[:,0,:] = (samples[:,0,:]-mean) / std
         #print(f" mean = {samples[:,0,:].mean()}")
         #print(f"std = {samples[:,0,:].std()}")
-          print(f" max1 = {samples[:,0,:].max()}")
-          print(f" min1 = {samples[:,0,:].min()}")
+          #print(f" max1 = {samples[:,0,:].max()}")
+          #print(f" min1 = {samples[:,0,:].min()}")
         
         #print(f"samples shape = {samples.shape}")
         specto_samples = torch.narrow(spectrogram_transform(samples), dim=3, start=0, length=256) 

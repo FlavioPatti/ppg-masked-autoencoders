@@ -76,10 +76,8 @@ class MaskedAutoencoderViT_without_decoder(nn.Module):
             for i in range(decoder_depth)])
 
         self.decoder_norm = norm_layer(decoder_embed_dim)
-        if typeExp == "freq+time":
-          self.decoder_pred = nn.Linear(decoder_embed_dim, patch_size**2  * in_chans, bias=True) # decoder to patch
-        if typeExp == "time":
-          self.decoder_pred = nn.Linear(decoder_embed_dim, patch_size**2 , bias=True) # decoder to patch
+      
+        self.decoder_pred = nn.Linear(decoder_embed_dim, patch_size**2  * in_chans, bias=True) # decoder to patch
 
         # --------------------------------------------------------------------------
         
@@ -176,7 +174,7 @@ class MaskedAutoencoderViT_without_decoder(nn.Module):
         if typeExp == "freq+time":
           m = nn.BatchNorm1d(num_features=257, device = 'cuda')
         if typeExp == "time":
-          m = nn.BatchNorm1d(num_features=65, device = 'cuda')
+          m = nn.BatchNorm1d(num_features=257, device = 'cuda')
         x=m(x)
         m = nn.ReLU()
         x=m(x)
@@ -196,7 +194,7 @@ class MaskedAutoencoderViT_without_decoder(nn.Module):
         if typeExp == "freq+time":
           m = nn.AvgPool2d((16, 4)) 
         else: 
-          m = nn.AvgPool2d((4,4))
+          m = nn.AvgPool2d((16,4))
         x = m(x)
         #print(f"x2 = {x.shape}")
         x = x.flatten(1)
