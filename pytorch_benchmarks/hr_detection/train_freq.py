@@ -15,7 +15,7 @@ import torchaudio
 import numpy as np
 from sklearn.preprocessing import MinMaxScaler
 import matplotlib.pyplot as plt
-from models_mae import unpatchify_freq
+from pytorch_benchmarks.hr_detection.models_mae import unpatchify_freq
 
 RESCALE = False
 Z_NORM = False

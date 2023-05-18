@@ -5,6 +5,34 @@ from util.pos_embed import get_2d_sincos_pos_embed
 from util.misc import concat_all_gather
 from util.patch_embed import PatchEmbed_org
 
+def unpatchify_freq(x):
+  """
+  x: (N, L, patch_size**2 *4)
+  specs: (N, 4, H, W)
+  """
+  #p = self.patch_embed.patch_size[0]    
+  p = 8
+  h = 64//p
+  w = 256//p
+  x = x.reshape(shape=(x.shape[0], h, w, p, p, 4))
+  x = torch.einsum('nhwpqc->nchpwq', x)
+  specs = x.reshape(shape=(x.shape[0], 4, h * p, w * p))
+  return specs
+    
+def unpatchify_time(x):
+  """
+  x: (N, L, patch_size**2 *4)
+  specs: (N, 4, H, W)
+  """
+  # p = self.patch_embed.patch_size[0]    
+  p = 1
+  h = 256//p
+  w = 1//p
+  x = x.reshape(shape=(x.shape[0], h, w, p, p, 4))
+  x = torch.einsum('nhwpqc->nchpwq', x)
+  specs = x.reshape(shape=(x.shape[0], 4, h * p, w * p))
+  return specs
+
 class MaskedAutoencoderViT(nn.Module):
     """ Masked Autoencoder with VisionTransformer backbone
     """
@@ -139,34 +167,6 @@ class MaskedAutoencoderViT(nn.Module):
         x = x.reshape(shape=(imgs.shape[0], h * w, p**2 *4)) 
         
         return x
-
-    def unpatchify_freq(x):
-        """
-        x: (N, L, patch_size**2 *4)
-        specs: (N, 4, H, W)
-        """
-        #p = self.patch_embed.patch_size[0]    
-        p = 8
-        h = 64//p
-        w = 256//p
-        x = x.reshape(shape=(x.shape[0], h, w, p, p, 4))
-        x = torch.einsum('nhwpqc->nchpwq', x)
-        specs = x.reshape(shape=(x.shape[0], 4, h * p, w * p))
-        return specs
-    
-    def unpatchify_time(x):
-        """
-        x: (N, L, patch_size**2 *4)
-        specs: (N, 4, H, W)
-        """
-       # p = self.patch_embed.patch_size[0]    
-        p = 1
-        h = 256//p
-        w = 1//p
-        x = x.reshape(shape=(x.shape[0], h, w, p, p, 4))
-        x = torch.einsum('nhwpqc->nchpwq', x)
-        specs = x.reshape(shape=(x.shape[0], 4, h * p, w * p))
-        return specs
 
     def random_masking(self, x, mask_ratio):
         """

@@ -14,7 +14,7 @@ import timm.optim.optim_factory as optim_factory
 import numpy as np
 from sklearn.preprocessing import MinMaxScaler
 import matplotlib.pyplot as plt
-from models_mae import unpatchify_time
+from pytorch_benchmarks.hr_detection.models_mae  import unpatchify_time
 
 Z_NORM = True
 MIN_MAX_NORM = False
