@@ -42,7 +42,7 @@ def unpatchify(x):
         return specs
 
 """plot heatmap"""
-def plot_heatmap_audio(x, typeExp, num_sample):
+def plot_audio(x, typeExp, num_sample, epoch):
   plt.figure(figsize=(15, 5))
   time = np.linspace(0, 8, num=256)
   plt.xlim([0,8])
@@ -50,7 +50,7 @@ def plot_heatmap_audio(x, typeExp, num_sample):
   plt.ylabel(' signal wave')
   plt.xlabel('time (s)')
   plt.title(f"Heatmap PPG: sample {num_sample}")  
-  plt.savefig(f'./pytorch_benchmarks/imgs/{typeExp}/audio{num_sample}.png') 
+  plt.savefig(f'./Benchmark_hr_detection/pytorch_benchmarks/imgs/{typeExp}/audio{num_sample}_epoch{epoch}.png') 
 
 
 class LogCosh(nn.Module):
@@ -151,12 +151,12 @@ def train_one_epoch_masked_autoencoder_time(model: torch.nn.Module,
             samples[i,0,:,:] = torch.tensor(ch1, dtype = float)
 
         if PLOT_HEATMAP:
-          print("entro")
-          for idx in range(50,52):
+          #print("entro")
+          for idx in range(50,51):
             sample = samples[idx,:,:,:]
             ch1 = sample[0].detach().numpy() 
-            plot_heatmap_audio(x= ch1, typeExp = "input",num_sample = idx)
-            print(f"specto {idx} creato")
+            plot_audio(x= ch1, typeExp = "input",num_sample = idx, epoch=epoch)
+            #print(f"specto {idx} creato")
     
         samples = samples.to(device, non_blocking=True)
 
@@ -174,16 +174,11 @@ def train_one_epoch_masked_autoencoder_time(model: torch.nn.Module,
         #print(f"signal shape = {signal_rec.shape}")
             
         if PLOT_HEATMAP:
-          for idx in range(50,52):
+          for idx in range(50,51):
             masked = signal_rec[idx,0,:].to('cpu')
             masked = masked.detach().numpy()
-            plot_heatmap_audio(x= masked, typeExp = "rec", num_sample = idx)
-        
-          for idx in range(50,52):
-            preds = pred[idx,:,0].to('cpu')
-            preds = preds.detach().numpy()
-            plot_heatmap_audio(x= preds, typeExp = "output", num_sample = idx)
-            
+            plot_audio(x= masked, typeExp = "rec", num_sample = idx, epoch = epoch)
+                    
         loss_value = loss_a.item()
         loss_total = loss_a
 
@@ -232,7 +227,7 @@ def train_one_epoch_hr_detection_time(
     avgloss = AverageMeter('2.5f')
     step = 0
     with tqdm(total=len(train), unit="batch") as tepoch:
-      tepoch.set_description(f"Epoch {epoch+1}")
+      #tepoch.set_description(f"Epoch {epoch+1}")
       for sample, target in train:
 
         if Z_NORM:
@@ -276,8 +271,8 @@ def train_one_epoch_hr_detection_time(
         mae_val = F.l1_loss(output, target) # Mean absolute error for hr detection
         avgmae.update(mae_val, sample.size(0))
         avgloss.update(loss, sample.size(0))
-        if step % 100 == 99:
-          tepoch.set_postfix({'loss': avgloss, 'MAE': avgmae})
+        #if step % 100 == 99:
+          #tepoch.set_postfix({'loss': avgloss, 'MAE': avgmae})
       val_metrics = evaluate_time(model, criterion, val, device)
       val_metrics = {'val_' + k: v for k, v in val_metrics.items()}
       final_metrics = {
@@ -285,7 +280,7 @@ def train_one_epoch_hr_detection_time(
           'MAE': avgmae.get(),
       }
       final_metrics.update(val_metrics)
-      tepoch.set_postfix(final_metrics)
+      #tepoch.set_postfix(final_metrics)
       tepoch.close()
     return final_metrics
 

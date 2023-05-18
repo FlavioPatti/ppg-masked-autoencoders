@@ -98,7 +98,7 @@ class MaskedAutoencoderViT_without_decoder(nn.Module):
         self.epoch = epoch
 
         # Output layer
-        self.out_neuron = nn.Linear(in_features=256, out_features=1)
+        self.out_neuron = nn.Linear(in_features=64, out_features=1)
         
         self.initialize_weights()
         
@@ -185,20 +185,23 @@ class MaskedAutoencoderViT_without_decoder(nn.Module):
 
     def forward(self, imgs, typeExp="freq+time", mask_ratio=0.1):
 
-        #print("")
+        print("")
         #print(f"imgs = {imgs.shape}") 
         #(128,4,256,1) for time, (128, 4, 64, 256) for freq+time
         x = self.forward_encoder_no_mask(imgs, typeExp)
         #print(f"x1 = {x.shape}") 
-        #(128,65,64) for time, (128,257,64) for freq+time
-        if typeExp == "freq+time":
-          m = nn.AvgPool2d((16, 4)) 
-        else: 
-          m = nn.AvgPool2d((16,4))
+        #(128,257,256) for time, (128,257,256) for freq+time = (N,C,T)
+        m = nn.Conv1d(in_channels=257,out_channels=128,kernel_size=4, stride=4, device='cuda')
         x = m(x)
-        #print(f"x2 = {x.shape}")
+        #print(f"x2= {x.shape}")
+        m = nn.Conv1d(in_channels=128,out_channels=64,kernel_size=4, stride=4, device='cuda')
+        x=m(x)
+        #print(f"x3= {x.shape}")
+        m = nn.AvgPool1d(16)
+        x = m(x)
+        #print(f"x4 = {x.shape}")
         x = x.flatten(1)
-        #print(f"x3 = {x.shape}") #(128,256)
+       # print(f"x5 = {x.shape}") #(128,64)
 
         """
         #first istance of regression
@@ -222,7 +225,7 @@ class MaskedAutoencoderViT_without_decoder(nn.Module):
         
         #output layer
         x = self.out_neuron(x)
-        #print(f"x5 = {x.shape}") (256,1)
+        #print(f"x6 = {x.shape}") #(64,1)
          
         #loss = self.forward_loss(imgs, pred, norm_pix_loss=self.norm_pix_loss)
         #pred, _, _ = self.forward_decoder(emb_enc, ids_restore)  # [N, L, p*p*3]

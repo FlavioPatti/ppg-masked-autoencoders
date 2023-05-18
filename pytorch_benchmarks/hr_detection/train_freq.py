@@ -23,8 +23,8 @@ import matplotlib.pyplot as plt
 #from pytorch_benchmarks.hr_detection.models_mae import unpatchify
 
 RESCALE = False
-Z_NORM = True
-MIN_MAX_NORM = False
+Z_NORM = False
+MIN_MAX_NORM = True
 PLOT_HEATMAP = False
 
 def unpatchify(x):
@@ -77,7 +77,7 @@ def plot_heatmap_spectogram(x, typeExp, num_sample, epoch = 0):
   ax.set_title(f"Heatmap PPG: sample {num_sample}")  
   plt.xlabel('Time (s)')
   plt.ylabel('Frequency (Hz)')
-  plt.savefig(f'./pytorch_benchmarks/imgs/{typeExp}/specto{num_sample}_epoch{epoch}.png') 
+  plt.savefig(f'./Benchmark_hr_detection/pytorch_benchmarks/imgs/{typeExp}/specto{num_sample}_epoch{epoch}.png') 
 
 
 class LogCosh(nn.Module):
@@ -243,31 +243,31 @@ def train_one_epoch_masked_autoencoder_freq_time(model: torch.nn.Module,
         #print(f"signal shape = {signal_rec.shape}")
 
         if PLOT_HEATMAP:
-          print("entro")
-          for idx in range(50,52):
+          #print("entro")
+          for idx in range(50,51):
             sample = signal_rec[idx,:,:,:].to('cpu')
             ch0 = sample[0].detach().numpy()
             plot_heatmap_spectogram(x= ch0, typeExp = "rec",num_sample = idx, epoch = epoch)
-            print(f"specto {idx} creato")
+            #print(f"specto {idx} creato")
 
 
         if PLOT_HEATMAP:
-          print("entro")
-          for idx in range(50,52):
+          #print("entro")
+          for idx in range(50,51):
             sample = specto_samples[idx,:,:,:].to('cpu')
             ch0 = sample[0].detach().numpy()
             plot_heatmap_spectogram(x= ch0, typeExp = "input",num_sample = idx, epoch = epoch)
-            print(f"specto {idx} creato")
+            #print(f"specto {idx} creato")
 
         if PLOT_HEATMAP:
-          print("entro")
-          for idx in range(50,52):
+          #print("entro")
+          for idx in range(50,51):
             sample = target[idx,:,:].to('cpu')
             ch1 = sample.detach().numpy()
             plot_heatmap_spectogram(x= ch1, typeExp = "input_masked",num_sample = idx, epoch = epoch)
 
         if PLOT_HEATMAP:
-          for idx in range(50,52):
+          for idx in range(50,51):
             preds = pred[idx,:,:].to('cpu')
             #print(f"pred shape = {preds.shape}")
             preds = preds.detach().numpy()

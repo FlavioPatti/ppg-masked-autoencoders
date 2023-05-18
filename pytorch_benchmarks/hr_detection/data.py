@@ -70,7 +70,7 @@ def _preprocess_data(data_dir, dataset):
 
 def _get_data_gen(samples, targets, groups, cross_val):
     n = 4
-    subjects = 1 #number of patients on which PPG data is taken
+    subjects = 5 #number of patients on which PPG data is taken
     indices, _ = _rndgroup_kfold(groups, n)
     kfold_it = 0
     while kfold_it < subjects:
@@ -195,14 +195,14 @@ def build_dataloaders(datasets: Tuple[Dataset, ...],
     train_loader = DataLoader(
         train_set,
         batch_size=batch_size,
-        shuffle=True,
+        shuffle=False,
         pin_memory=True,
         num_workers=num_workers,
     )
     val_loader = DataLoader(
         val_set,
         batch_size=batch_size,
-        shuffle=True,
+        shuffle=False,
         num_workers=num_workers,
     )
     test_loader = DataLoader(

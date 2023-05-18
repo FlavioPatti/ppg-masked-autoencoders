@@ -59,7 +59,7 @@ class MaskedAutoencoderViT(nn.Module):
         
         #Not used in this model, only to be compatible with finetune mode
          # Output layer
-        self.out_neuron = nn.Linear(in_features=256, out_features=1)
+        self.out_neuron = nn.Linear(in_features=64, out_features=1)
     
         # Transfomer
         self.decoder_blocks = nn.ModuleList([

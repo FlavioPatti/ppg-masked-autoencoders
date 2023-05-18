@@ -4,7 +4,7 @@ import os
 import pytorch_benchmarks.hr_detection as hrd
 from pytorch_benchmarks.utils import seed_all, EarlyStopping
 from util.misc import NativeScalerWithGradNormCount as NativeScaler
-N_PRETRAIN_EPOCHS = 50
+N_PRETRAIN_EPOCHS = 100
 N_FINETUNE_EPOCHS = 200
 
 #Type of experiments: 
@@ -47,10 +47,10 @@ for datasets in data_gen:
     
     # Get the Model
     if FREQ_PLUS_TIME:
-      print(f"Freq+Time experiment")
+      print("Freq+Time experiment")
       model = hrd.get_reference_model('vit_freq+time_pretrain') #ViT (encoder + decoder)
     if TIME:
-      print(f"Time experiment")
+      print("Time experiment")
       model = hrd.get_reference_model('vit_time_pretrain') #ViT (encoder + decoder)
     if torch.cuda.is_available():
       model = model.cuda()
@@ -84,7 +84,7 @@ for datasets in data_gen:
             args=None
         )
       
-      print(f"train_stats = {train_stats}")
+      #print(f"train_stats = {train_stats}")
       loss = train_stats['loss']
       if loss < best_loss:
         best_loss = loss
@@ -107,7 +107,9 @@ for datasets in data_gen:
     # Get Training Settings
     criterion = hrd.get_default_criterion("finetune")
     optimizer = hrd.get_default_optimizer(model, "finetune")
-    
+    best_loss = 1000
+    earlystop = EarlyStopping(patience=20, mode='min')
+  
     #loddo i pesi del vecchio modello al nuovo modello
     #model.load_state_dict(torch.load("./pytorch_benchmarks/checkpoint"))
     load_checkpoint_pretrain(torch.load("./checkpoint_model_pretrain"))
@@ -119,7 +121,7 @@ for datasets in data_gen:
       if TIME:
         metrics = hrd.train_one_epoch_hr_detection_time(
             epoch, model, criterion, optimizer, train_dl, val_dl, device)
-
+      print(f"epoch = {epoch}")
       print(f"metrics = {metrics}")
       loss = metrics['loss']
       if loss < best_loss:
@@ -129,10 +131,9 @@ for datasets in data_gen:
         checkpoint1 = {'state_dict': model.state_dict()}
         save_checkpoint_finetune(checkpoint1)
       
-      if earlystop(metrics['val_MAE']):
-          break
+      #if earlystop(metrics['val_MAE']):
+       #   break
     
-"""
     if FREQ_PLUS_TIME:
       test_metrics = hrd.evaluate_freq_time(model, criterion, test_dl, device)
     if TIME:
@@ -142,4 +143,3 @@ for datasets in data_gen:
     mae_dict[test_subj] = test_metrics['MAE']
     print(f'MAE: {mae_dict}')
     print(f'Average MAE: {sum(mae_dict.values()) / len(mae_dict)}')
-"""
