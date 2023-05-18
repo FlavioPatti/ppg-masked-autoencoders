@@ -129,8 +129,8 @@ for datasets in data_gen:
       loss = metrics['loss']
       mae = metrics['MAE']
       print(f"=> Updating plot on wandb")
-      wandb.log({'loss': loss, 'epochs': epoch}, commit=True)
-      wandb.log({'mae': mae, 'epochs': epoch}, commit=True)
+      wandb.log({'loss': loss, 'epochs': epoch + 1}, commit=True)
+      wandb.log({'mae': mae, 'epochs': epoch + 1}, commit=True)
       
       if loss < best_loss:
         best_loss = loss
