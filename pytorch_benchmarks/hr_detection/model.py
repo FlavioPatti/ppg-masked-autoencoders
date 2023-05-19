@@ -25,7 +25,7 @@ def get_reference_model(model_name: str, model_config: Optional[Dict[str, Any]] 
         return MaskedAutoencoderViT(
         img_size = 256, in_chans = 4, mask_2d=False, typeExp = "time",
         patch_size=1, embed_dim=64, depth=12, num_heads=16,
-        decoder_embed_dim=256, decoder_num_heads=16,
+        decoder_embed_dim=64, decoder_num_heads=16,
         mlp_ratio=4, norm_layer=partial(nn.LayerNorm, eps=1e-6) )
     if model_name == 'vit_freq+time_finetune':
         print(f"ViT Freq+Time Finetune")
@@ -39,7 +39,7 @@ def get_reference_model(model_name: str, model_config: Optional[Dict[str, Any]] 
         return MaskedAutoencoderViT_without_decoder(
         img_size = 256, in_chans = 4, mask_2d=False, typeExp = "time",
         patch_size=1, embed_dim=64, depth=12, num_heads=16,
-        decoder_embed_dim=256, decoder_num_heads=16,
+        decoder_embed_dim=64, decoder_num_heads=16,
         mlp_ratio=4, norm_layer=partial(nn.LayerNorm, eps=1e-6) )
             
     else:
