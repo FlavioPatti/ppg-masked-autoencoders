@@ -252,7 +252,7 @@ def train_one_epoch_hr_detection_freq_time(
             specto_samples[i,3,:,:] = torch.tensor(ch3, dtype = float)
           
         step += 1
-        tepoch.update(1)
+        #tepoch.update(1)
         sample, target = specto_samples.to(device), target.to(device)
         output = model(sample)
         loss = criterion(output, target)
