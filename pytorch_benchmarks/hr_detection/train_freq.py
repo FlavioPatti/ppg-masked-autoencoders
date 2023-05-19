@@ -20,7 +20,7 @@ from pytorch_benchmarks.hr_detection.models_mae import unpatchify_freq
 RESCALE = False
 Z_NORM = False
 MIN_MAX_NORM = True
-PLOT_HEATMAP = False
+PLOT_HEATMAP = True
 
 
 """spectogram trasformation and relative parameters"""
@@ -59,7 +59,7 @@ def plot_heatmap_spectogram(x, typeExp, num_sample, epoch = 0):
   ax.set_title(f"Heatmap PPG: sample {num_sample}")  
   plt.xlabel('Time (s)')
   plt.ylabel('Frequency (Hz)')
-  plt.savefig(f'./Benchmark_hr_detection/pytorch_benchmarks/imgs/{typeExp}/specto{num_sample}_epoch{epoch}.png') 
+  plt.savefig(f'./pytorch_benchmarks/imgs/{typeExp}/specto{num_sample}_epoch{epoch}.png') 
 
 
 class LogCosh(nn.Module):
@@ -126,50 +126,16 @@ def train_one_epoch_masked_autoencoder_freq_time(model: torch.nn.Module,
         if data_iter_step == accum_iter2:
           PLOT_HEATMAP = True
 
-        if Z_NORM:
-          mean = samples[:,0,:].mean()
-          std = samples[:,0,:].std()
-          samples[:,0,:] = (samples[:,0,:]-mean) / std
       
         specto_samples = torch.narrow(spectrogram_transform(samples), dim=3, start=0, length=256) 
-        
-        if RESCALE:
-          specto_samples = np.log10(specto_samples, where=specto_samples!=0)
 
-        #Normalize values into range [0,1] to avoid NaN loss
         if MIN_MAX_NORM:
-          channel_0 = specto_samples[:,0,:,:]
-          for i in range(specto_samples.shape[0]):
-            ch0 = channel_0[i].numpy()
-            max_ch0 = np.max(ch0)
-            min_ch0 = np.min(ch0)
-            ch0 = (ch0 - min_ch0) / (max_ch0-min_ch0)
-            specto_samples[i,0,:,:] = torch.tensor(ch0, dtype = float)
-        
-          channel_1 = specto_samples[:,1,:,:]
-          for i in range(specto_samples.shape[0]):
-            ch1 = channel_1[i].numpy()
-            max_ch1 = np.max(ch1)
-            min_ch1 = np.min(ch1)
-            ch1 = (ch1 - min_ch1) / (max_ch1-min_ch1)
-            specto_samples[i,1,:,:] = torch.tensor(ch1, dtype = float)
-
-          channel_2 = specto_samples[:,2,:,:]
-          for i in range(specto_samples.shape[0]):
-            ch2 = channel_2[i].numpy()
-            max_ch2 = np.max(ch2)
-            min_ch2 = np.min(ch2)
-            if (max_ch2 - min_ch2 != 0):
-              ch2 = (ch2 - min_ch2) / (max_ch2-min_ch2)
-            specto_samples[i,2,:,:] = torch.tensor(ch2, dtype = float)
-
-          channel_3 = specto_samples[:,3,:,:]
-          for i in range(specto_samples.shape[0]):
-            ch3 = channel_3[i].numpy()
-            max_ch3 = np.max(ch3)
-            min_ch3 = np.min(ch3)
-            ch3 = (ch3 - min_ch3) / (max_ch3-min_ch3)
-            specto_samples[i,3,:,:] = torch.tensor(ch3, dtype = float)
+          specto_samples = np.log10(specto_samples)
+          #max_v = specto_samples.max()
+          #min_v = specto_samples.min()
+          #specto_samples = (specto_samples - min_v) / ( max_v - min_v)
+          #print(f"max = {specto_samples.max()}")
+          #print(f"min = {specto_samples.min()}")   
     
         specto_samples = specto_samples.to(device, non_blocking=True)
 
@@ -180,15 +146,15 @@ def train_one_epoch_masked_autoencoder_freq_time(model: torch.nn.Module,
 
         if PLOT_HEATMAP:
           for idx in range(50,51):
-            sample = signal_reconstructed[idx,:,:,:].to('cpu')
-            ch0 = sample[0].detach().numpy()
-            plot_heatmap_spectogram(x= ch0, typeExp = "input_reconstructed",num_sample = idx, epoch = epoch)
-
-        if PLOT_HEATMAP:
-          for idx in range(50,51):
             sample = specto_samples[idx,:,:,:].to('cpu')
             ch0 = sample[0].detach().numpy()
             plot_heatmap_spectogram(x= ch0, typeExp = "input",num_sample = idx, epoch = epoch)
+
+        if PLOT_HEATMAP:
+          for idx in range(50,51):
+            sample = signal_reconstructed[idx,:,:,:].to('cpu')
+            ch0 = sample[0].detach().numpy()
+            plot_heatmap_spectogram(x= ch0, typeExp = "input_reconstructed",num_sample = idx, epoch = epoch)
             
         loss_value = loss_a.item()
         loss_total = loss_a

@@ -3,12 +3,12 @@ import wandb
 import pytorch_benchmarks.hr_detection as hrd
 from pytorch_benchmarks.utils import  EarlyStopping
 from util.misc import NativeScalerWithGradNormCount as NativeScaler
-N_PRETRAIN_EPOCHS = 100
+N_PRETRAIN_EPOCHS = 0
 N_FINETUNE_EPOCHS = 200
 
 #Type of experiments: 
-FREQ_PLUS_TIME = 0
-TIME = 1
+FREQ_PLUS_TIME = 1
+TIME = 0
 
 # Check CUDA availability
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
@@ -115,7 +115,7 @@ for datasets in data_gen:
     best_loss = 1000
 
     #Load checkpoint from pretrain if exists
-    load_checkpoint_pretrain(torch.load("./checkpoint_model_pretrain"))
+    #load_checkpoint_pretrain(torch.load("./checkpoint_model_pretrain"))
     
     for epoch in range(N_FINETUNE_EPOCHS):
       if FREQ_PLUS_TIME:
@@ -146,6 +146,9 @@ for datasets in data_gen:
       test_metrics = hrd.evaluate_time(model, criterion, test_dl, device)
     print("Test Set Loss:", test_metrics['loss'])
     print("Test Set MAE:", test_metrics['MAE'])
+    print(f"=> Updating plot on wandb")
+    wandb.log({'test_loss': test_metrics['loss'], 'epochs': epoch + 1}, commit=True)
+    wandb.log({'test_mae': test_metrics['MAE'], 'epochs': epoch + 1}, commit=True)
     mae_dict[test_subj] = test_metrics['MAE']
     print(f'MAE: {mae_dict}')
     print(f'Average MAE: {sum(mae_dict.values()) / len(mae_dict)}')
