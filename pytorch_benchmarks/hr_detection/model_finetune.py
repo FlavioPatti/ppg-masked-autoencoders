@@ -9,11 +9,18 @@
 # DeiT: https://github.com/facebookresearch/deit
 # --------------------------------------------------------
 
+from functools import partial
+from json import encoder
+
 import torch
 import torch.nn as nn
+import numpy as np
+#from timm.models.vision_transformer import PatchEmbed, Block
 from timm.models.vision_transformer import Block
-from util.pos_embed import get_2d_sincos_pos_embed
-from util.patch_embed import PatchEmbed_org
+from util.pos_embed import get_2d_sincos_pos_embed, get_2d_sincos_pos_embed_flexible, get_1d_sincos_pos_embed_from_grid
+from util.misc import concat_all_gather
+from util.patch_embed import PatchEmbed_new, PatchEmbed_org
+from timm.models.swin_transformer import SwinTransformerBlock
 
 
 class MaskedAutoencoderViT_without_decoder(nn.Module):
@@ -91,10 +98,20 @@ class MaskedAutoencoderViT_without_decoder(nn.Module):
         self.epoch = epoch
 
         # Output layer
-        self.out_neuron = nn.Linear(in_features=64, out_features=1)
+        self.out_neuron = nn.Linear(in_features=256, out_features=1)
         
         self.initialize_weights()
         
+        """
+        # Output layer 1
+        self.out_neuron_1 = nn.Linear(in_features=256, out_features=128)
+        nn.init.constant_(self.out_neuron_1.bias, 0)
+        torch.nn.init.xavier_uniform_(self.out_neuron_1.weight)
+        # Output layer 2
+        self.out_neuron_2 = nn.Linear(in_features=128, out_features=1)
+        nn.init.constant_(self.out_neuron_2.bias, 0)
+        torch.nn.init.xavier_uniform_(self.out_neuron_2.weight)
+        """
     def initialize_weights(self):
         # initialization
         # initialize (and freeze) pos_embed by sin-cos embedding
@@ -143,13 +160,27 @@ class MaskedAutoencoderViT_without_decoder(nn.Module):
         contextual_embs=[]
         for n, blk in enumerate(self.blocks):
           x = blk(x)
+          """
+          if typeExp == "freq+time":
+            m = nn.BatchNorm1d(num_features=257, device = 'cuda')
+          if typeExp == "time":
+            m = nn.BatchNorm1d(num_features=65, device = 'cuda')
+          x=m(x)
+          m = nn.ReLU()
+          x=m(x)
+          """
           #if n > self.contextual_depth:
            # contextual_embs.append(self.norm(x))
-        m = nn.BatchNorm1d(num_features=257, device = 'cuda')
+        if typeExp == "freq+time":
+          m = nn.BatchNorm1d(num_features=257, device = 'cuda')
+        if typeExp == "time":
+          m = nn.BatchNorm1d(num_features=257, device = 'cuda')
         x=m(x)
         m = nn.ReLU()
         x=m(x)
         #contextual_emb = torch.stack(contextual_embs,dim=0).mean(dim=0)
+        #print(f"x_max_fin = {x.max()}")
+        #print(f"x_min_fin = {x.min()}")
         return x
 
     def forward(self, imgs, typeExp="freq+time", mask_ratio=0.1):
@@ -159,20 +190,41 @@ class MaskedAutoencoderViT_without_decoder(nn.Module):
         #(128,4,256,1) for time, (128, 4, 64, 256) for freq+time
         x = self.forward_encoder_no_mask(imgs, typeExp)
         #print(f"x1 = {x.shape}") 
-        #(128,257,256) for time, (128,257,256) for freq+time = (N,C,T)
-        m = nn.Conv1d(in_channels=257,out_channels=128,kernel_size=4, stride=4, device='cuda')
+        #(128,257,64) for time, (128,257,256) for freq+time (N,C,T)
+        if typeExp == "freq+time":
+          m = nn.AvgPool2d((16, 16)) 
+        else: 
+          m = nn.AvgPool2d((16,4))
         x = m(x)
-        #print(f"x2= {x.shape}")
-        m = nn.Conv1d(in_channels=128,out_channels=64,kernel_size=4, stride=4, device='cuda')
-        x=m(x)
-        #print(f"x3= {x.shape}")
-        m = nn.AvgPool1d(16)
-        x = m(x)
-        #print(f"x4 = {x.shape}")
+        #print(f"x2 = {x.shape}")
         x = x.flatten(1)
-       # print(f"x5 = {x.shape}") #(128,64)
+        #print(f"x3 = {x.shape}") #(128,256)
+
+        """
+        #first istance of regression
+        m = nn.Linear(in_features=256, out_features=128, device='cuda')
+        x=m(x)
+        m = nn.ReLU()
+        x=m(x)
+        m = nn.BatchNorm1d(num_features=128, device = 'cuda')
+        x=m(x)
+
+        #print(f"x4 = {x.shape}") (128,128)
+
+        #second istance of regression
+        m = nn.Linear(in_features=128, out_features=64, device = 'cuda')
+        x=m(x)
+        m = nn.ReLU()
+        x=m(x)
+        m = nn.BatchNorm1d(num_features=64, device = 'cuda')
+        x=m(x)
+        """
+        
         #output layer
         x = self.out_neuron(x)
-        #print(f"x6 = {x.shape}") #(64,1)
-        
+        #print(f"x5 = {x.shape}") (256,1)
+         
+        #loss = self.forward_loss(imgs, pred, norm_pix_loss=self.norm_pix_loss)
+        #pred, _, _ = self.forward_decoder(emb_enc, ids_restore)  # [N, L, p*p*3]
+        #loss_contrastive = torch.FloatTensor([0.0]).cuda()
         return x
