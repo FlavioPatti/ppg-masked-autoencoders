@@ -59,7 +59,7 @@ def plot_heatmap_spectogram(x, typeExp, num_sample, epoch = 0):
   ax.set_title(f"Heatmap PPG: sample {num_sample}")  
   plt.xlabel('Time (s)')
   plt.ylabel('Frequency (Hz)')
-  plt.savefig(f'./pytorch_benchmarks/imgs/{typeExp}/specto{num_sample}_epoch{epoch}.png') 
+  plt.savefig(f'./Benchmark_hr_detection/pytorch_benchmarks/imgs/{typeExp}/specto{num_sample}_epoch{epoch}.png') 
 
 
 class LogCosh(nn.Module):

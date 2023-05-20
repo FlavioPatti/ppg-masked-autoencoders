@@ -98,7 +98,7 @@ class MaskedAutoencoderViT_without_decoder(nn.Module):
         self.epoch = epoch
 
         # Output layer
-        self.out_neuron = nn.Linear(in_features=256, out_features=1)
+        self.out_neuron = nn.Linear(in_features=64, out_features=1)
         
         self.initialize_weights()
         
@@ -194,7 +194,7 @@ class MaskedAutoencoderViT_without_decoder(nn.Module):
         if typeExp == "freq+time":
           m = nn.AvgPool2d((16, 16)) 
         else: 
-          m = nn.AvgPool2d((16,4))
+          m = nn.AvgPool2d((16,16))
         x = m(x)
         #print(f"x2 = {x.shape}")
         x = x.flatten(1)

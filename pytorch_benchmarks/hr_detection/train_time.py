@@ -180,7 +180,7 @@ def train_one_epoch_hr_detection_time(
         sample = torch.tensor(np.expand_dims(sample, axis= -1))
         
         step += 1
-        tepoch.update(1)
+        #tepoch.update(1)
         sample, target = sample.to(device), target.to(device)
         output = model(sample, typeExp= "time")
         loss = criterion(output,target)
