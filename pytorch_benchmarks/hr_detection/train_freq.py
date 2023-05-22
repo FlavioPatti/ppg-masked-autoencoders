@@ -17,15 +17,13 @@ from sklearn.preprocessing import MinMaxScaler
 import matplotlib.pyplot as plt
 from pytorch_benchmarks.hr_detection.models_mae import unpatchify_freq
 
-RESCALE = False
-Z_NORM = False
-MIN_MAX_NORM = True
-PLOT_HEATMAP = True
+NORMALIZATION = True
+PLOT_HEATMAP = False
 
 
 """spectogram trasformation and relative parameters"""
 sample_rate= 32
-n_fft = 510 #freq = nfft/2 + 1 = 256 => risoluzione/granularità dello spettrogramma
+n_fft = 510 #freq = nfft/2 + 1 = 256 => risoluzione/granularitÃ  dello spettrogramma
 win_length = 32
 hop_length = 1 # window length = time instants
 n_mels = 64 #definisce la dimensione della frequenza di uscita
@@ -129,7 +127,7 @@ def train_one_epoch_masked_autoencoder_freq_time(model: torch.nn.Module,
       
         specto_samples = torch.narrow(spectrogram_transform(samples), dim=3, start=0, length=256) 
 
-        if MIN_MAX_NORM:
+        if NORMALIZATION:
           specto_samples = np.log10(specto_samples)
           #max_v = specto_samples.max()
           #min_v = specto_samples.min()
@@ -206,51 +204,17 @@ def train_one_epoch_hr_detection_freq_time(
       tepoch.set_description(f"Epoch {epoch+1}")
       for sample, target in train:
 
-        if Z_NORM:
-          mean = sample[:,0,:].mean()
-          std = sample[:,0,:].std()
-          sample[:,0,:] = (sample[:,0,:]-mean) / std
-
         specto_samples = torch.narrow(spectrogram_transform(sample), dim=3, start=0, length=256) 
         
-        if RESCALE:
-          specto_samples = np.log10(specto_samples, where=specto_samples!=0)
+        if NORMALIZATION:
+          specto_samples = np.log10(specto_samples)
+          #max_v = specto_samples.max()
+          #min_v = specto_samples.min()
+          #specto_samples = (specto_samples - min_v) / ( max_v - min_v)
+          #print(f"max = {specto_samples.max()}")
+          #print(f"min = {specto_samples.min()}")   
 
-        #Normalize values into range [0,1] to avoid NaN loss
-        if MIN_MAX_NORM:
-          channel_0 = specto_samples[:,0,:,:]
-          for i in range(specto_samples.shape[0]):
-            ch0 = channel_0[i].numpy()
-            max_ch0 = np.max(ch0)
-            min_ch0 = np.min(ch0)
-            ch0 = (ch0 - min_ch0) / (max_ch0-min_ch0)
-            specto_samples[i,0,:,:] = torch.tensor(ch0, dtype = float)
-        
-          channel_1 = specto_samples[:,1,:,:]
-          for i in range(specto_samples.shape[0]):
-            ch1 = channel_1[i].numpy()
-            max_ch1 = np.max(ch1)
-            min_ch1 = np.min(ch1)
-            ch1 = (ch1 - min_ch1) / (max_ch1-min_ch1)
-            specto_samples[i,1,:,:] = torch.tensor(ch1, dtype = float)
-
-          channel_2 = specto_samples[:,2,:,:]
-          for i in range(specto_samples.shape[0]):
-            ch2 = channel_2[i].numpy()
-            max_ch2 = np.max(ch2)
-            min_ch2 = np.min(ch2)
-            if (max_ch2 - min_ch2 != 0):
-              ch2 = (ch2 - min_ch2) / (max_ch2-min_ch2)
-            specto_samples[i,2,:,:] = torch.tensor(ch2, dtype = float)
-
-          channel_3 = specto_samples[:,3,:,:]
-          for i in range(specto_samples.shape[0]):
-            ch3 = channel_3[i].numpy()
-            max_ch3 = np.max(ch3)
-            min_ch3 = np.min(ch3)
-            ch3 = (ch3 - min_ch3) / (max_ch3-min_ch3)
-            specto_samples[i,3,:,:] = torch.tensor(ch3, dtype = float)
-          
+                  
         step += 1
         #tepoch.update(1)
         sample, target = specto_samples.to(device), target.to(device)
@@ -288,52 +252,17 @@ def evaluate_freq_time(
     step = 0
     with torch.no_grad():
         for sample, target in data:
-
-          if Z_NORM:
-            mean = sample[:,0,:].mean()
-            std = sample[:,0,:].std()
-            sample[:,0,:] = (sample[:,0,:]-mean) / std
          
           specto_samples = torch.narrow(spectrogram_transform(sample), dim=3, start=0, length=256) 
           
-          if RESCALE:
-            specto_samples = np.log10(specto_samples, where=specto_samples!=0)
-
-          #Normalize values into range [0,1] to avoid NaN loss
-          if MIN_MAX_NORM:
-            channel_0 = specto_samples[:,0,:,:]
-            for i in range(specto_samples.shape[0]):
-              ch0 = channel_0[i].numpy()
-              max_ch0 = np.max(ch0)
-              min_ch0 = np.min(ch0)
-              ch0 = (ch0 - min_ch0) / (max_ch0-min_ch0)
-              specto_samples[i,0,:,:] = torch.tensor(ch0, dtype = float)
-          
-            channel_1 = specto_samples[:,1,:,:]
-            for i in range(specto_samples.shape[0]):
-              ch1 = channel_1[i].numpy()
-              max_ch1 = np.max(ch1)
-              min_ch1 = np.min(ch1)
-              ch1 = (ch1 - min_ch1) / (max_ch1-min_ch1)
-              specto_samples[i,1,:,:] = torch.tensor(ch1, dtype = float)
-
-            channel_2 = specto_samples[:,2,:,:]
-            for i in range(specto_samples.shape[0]):
-              ch2 = channel_2[i].numpy()
-              max_ch2 = np.max(ch2)
-              min_ch2 = np.min(ch2)
-              if (max_ch2 - min_ch2 != 0):
-                ch2 = (ch2 - min_ch2) / (max_ch2-min_ch2)
-              specto_samples[i,2,:,:] = torch.tensor(ch2, dtype = float)
-
-            channel_3 = specto_samples[:,3,:,:]
-            for i in range(specto_samples.shape[0]):
-              ch3 = channel_3[i].numpy()
-              max_ch3 = np.max(ch3)
-              min_ch3 = np.min(ch3)
-              ch3 = (ch3 - min_ch3) / (max_ch3-min_ch3)
-              specto_samples[i,3,:,:] = torch.tensor(ch3, dtype = float)
-            
+          if NORMALIZATION:
+             specto_samples = np.log10(specto_samples)
+             #max_v = specto_samples.max()
+             #min_v = specto_samples.min()
+             #specto_samples = (specto_samples - min_v) / ( max_v - min_v)
+             #print(f"max = {specto_samples.max()}")
+             #print(f"min = {specto_samples.min()}")   
+                        
           step += 1
           sample, target = specto_samples.to(device), target.to(device)
           output, loss = _run_model(model, sample, target, criterion)

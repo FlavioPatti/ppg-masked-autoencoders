@@ -16,11 +16,8 @@ from sklearn.preprocessing import MinMaxScaler
 import matplotlib.pyplot as plt
 from pytorch_benchmarks.hr_detection.models_mae  import unpatchify_time
 
-Z_NORM = True
 MIN_MAX_NORM = False
-PLOT_HEATMAP = True
-BATCH_NORM = False
-GROUP_NORM = False
+PLOT_HEATMAP = False
 
 """plot heatmap"""
 def plot_audio(x, typeExp, num_sample, epoch):
@@ -95,10 +92,10 @@ def train_one_epoch_masked_autoencoder_time(model: torch.nn.Module,
         if data_iter_step == accum_iter2:
           PLOT_HEATMAP = True
 
-        if Z_NORM:
-          mean = samples[:,0,:].mean()
-          std = samples[:,0,:].std()
-          samples[:,0,:] = (samples[:,0,:]-mean) / std
+        if MIN_MAX_NORM:
+          min_v = samples.min()
+          max_v = samples.max()
+          samples = (samples - min_v) / ( max_v - min_v)
 
         samples = torch.tensor(np.expand_dims(samples, axis= -1))
 
@@ -172,10 +169,10 @@ def train_one_epoch_hr_detection_time(
       tepoch.set_description(f"Epoch {epoch+1}")
       for sample, target in train:
 
-        if Z_NORM:
-          mean = sample[:,0,:].mean()
-          std = sample[:,0,:].std()
-          sample[:,0,:] = (sample[:,0,:]-mean) / std
+        if MIN_MAX_NORM:
+          min_v = sample.min()
+          max_v = sample.max()
+          sample = (sample - min_v) / ( max_v - min_v)
 
         sample = torch.tensor(np.expand_dims(sample, axis= -1))
         
@@ -215,10 +212,11 @@ def evaluate_time(
     with torch.no_grad():
         for sample, target in data:
 
-          if Z_NORM:
-            mean = sample[:,0,:].mean()
-            std = sample[:,0,:].std()
-            sample[:,0,:] = (sample[:,0,:]-mean) / std
+          if MIN_MAX_NORM:
+            min_v = sample.min()
+            max_v = sample.max()
+            samples = (samples - min_v) / ( max_v - min_v)
+
           sample = torch.tensor(np.expand_dims(sample, axis= -1))
           
           step += 1
