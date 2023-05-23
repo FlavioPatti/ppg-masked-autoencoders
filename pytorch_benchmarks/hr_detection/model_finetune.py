@@ -97,8 +97,14 @@ class MaskedAutoencoderViT_without_decoder(nn.Module):
 
         self.epoch = epoch
 
+        self.conv1 = nn.Conv1d(in_channels=257,out_channels=64,kernel_size=4, stride=4, device='cuda')
+      
+        self.conv2 = nn.Conv1d(in_channels=128,out_channels=64,kernel_size=4, stride=4, device='cuda')
+
+        self.pooling = nn.AvgPool1d(16)
+
         # Output layer
-        self.out_neuron = nn.Linear(in_features=256, out_features=1)
+        self.out_neuron = nn.Linear(in_features=64, out_features=1)
         
         self.initialize_weights()
         
@@ -192,35 +198,20 @@ class MaskedAutoencoderViT_without_decoder(nn.Module):
         #print(f"x1 = {x.shape}") 
         #(128,257,256) for time, (128,257,256) for freq+time => (N,C,T) 
         
-        m = nn.AvgPool2d((16,16))
-        x = m(x)
-        #print(f"x2 = {x.shape}")
+        x = self.conv1(x)
+        #print(f"x2 = {x.shape}") 
+
+        x = self.conv2(x)
+        #print(f"x3 = {x.shape}") 
+
+        x = self.pooling(x)
+        #print(f"x4 = {x.shape}") 
+       
         x = x.flatten(1)
-        #print(f"x3 = {x.shape}") #(128,256)
-
-        """
-        #first istance of regression
-        m = nn.Linear(in_features=256, out_features=128, device='cuda')
-        x=m(x)
-        m = nn.ReLU()
-        x=m(x)
-        m = nn.BatchNorm1d(num_features=128, device = 'cuda')
-        x=m(x)
-
-        #print(f"x4 = {x.shape}") (128,128)
-
-        #second istance of regression
-        m = nn.Linear(in_features=128, out_features=64, device = 'cuda')
-        x=m(x)
-        m = nn.ReLU()
-        x=m(x)
-        m = nn.BatchNorm1d(num_features=64, device = 'cuda')
-        x=m(x)
-        """
-        
+    
         #output layer
         x = self.out_neuron(x)
-        #print(f"x5 = {x.shape}") (256,1)
+        #print(f"x5 = {x.shape}") (64,1)
          
         #loss = self.forward_loss(imgs, pred, norm_pix_loss=self.norm_pix_loss)
         #pred, _, _ = self.forward_decoder(emb_enc, ids_restore)  # [N, L, p*p*3]
