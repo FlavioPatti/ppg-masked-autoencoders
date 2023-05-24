@@ -23,6 +23,28 @@ from util.patch_embed import PatchEmbed_new, PatchEmbed_org
 from timm.models.swin_transformer import SwinTransformerBlock
 
 
+class Regressor(nn.Module):
+    """
+    Regressor block composed of:
+    - Linear layer
+    - ReLU layer
+    - BatchNorm1d layer
+    :param ft_in: Number of input channels
+    :param ft_out: Number of output channels
+    """
+    def __init__(self, ft_in, ft_out):
+        super(Regressor, self).__init__()
+        self.fc = nn.Linear(in_features=ft_in, out_features=ft_out)
+        self.relu = nn.ReLU()
+        self.bn = nn.BatchNorm1d(num_features=ft_out)
+
+    def forward(self, x):
+        x = self.fc(x)
+        x = self.relu(x)
+        x = self.bn(x)
+        return x
+
+
 class MaskedAutoencoderViT_without_decoder(nn.Module):
     """ Masked Autoencoder with VisionTransformer backbone
     """
@@ -97,16 +119,30 @@ class MaskedAutoencoderViT_without_decoder(nn.Module):
 
         self.epoch = epoch
 
-        self.conv1 = nn.Conv1d(in_channels=257,out_channels=64,kernel_size=4, stride=4, device='cuda')
+        #self.conv1 = nn.Conv1d(in_channels=257,out_channels=128,kernel_size=4, stride=4, device='cuda')
+        """
+        self.conv1 = nn.Linear(in_features=1024, out_features=512)
+        self.relu1 = nn.ReLU()
+        self.bn1 = nn.BatchNorm1d(num_features=512)
       
-        self.conv2 = nn.Conv1d(in_channels=128,out_channels=64,kernel_size=4, stride=4, device='cuda')
+        self.conv2 = nn.Linear(in_features=512, out_features=256)
+        self.relu2 = nn.ReLU()
+        self.bn2 = nn.BatchNorm1d(num_features=256)
+        """
+        self.regr0 = Regressor(ft_in = 1024, ft_out=512)
 
-        self.pooling = nn.AvgPool1d(16)
+        # 2nd instance of regressor
+        self.regr1 = Regressor(ft_in = 512, ft_out=256)
+
+        self.pooling = nn.AvgPool1d(64)
 
         # Output layer
-        self.out_neuron = nn.Linear(in_features=64, out_features=1)
+        self.out_neuron = nn.Linear(in_features=256, out_features=1)
         
         self.initialize_weights()
+
+        self.norm2 = nn.BatchNorm1d(num_features=257)
+        self.norm1 =  nn.ReLU()
         
         """
         # Output layer 1
@@ -166,17 +202,13 @@ class MaskedAutoencoderViT_without_decoder(nn.Module):
         contextual_embs=[]
         for n, blk in enumerate(self.blocks):
           x = blk(x)
-          """
-          if typeExp == "freq+time":
-            m = nn.BatchNorm1d(num_features=257, device = 'cuda')
-          if typeExp == "time":
-            m = nn.BatchNorm1d(num_features=65, device = 'cuda')
-          x=m(x)
-          m = nn.ReLU()
-          x=m(x)
-          """
-          #if n > self.contextual_depth:
-           # contextual_embs.append(self.norm(x))
+
+        x = self.norm1(x)
+        x = self.norm2(x)
+         # if n > self.contextual_depth:
+          #  contextual_embs.append(self.norm(x))
+
+        """
         if typeExp == "freq+time":
           m = nn.BatchNorm1d(num_features=257, device = 'cuda')
         if typeExp == "time":
@@ -184,9 +216,8 @@ class MaskedAutoencoderViT_without_decoder(nn.Module):
         x=m(x)
         m = nn.ReLU()
         x=m(x)
+        """
         #contextual_emb = torch.stack(contextual_embs,dim=0).mean(dim=0)
-        #print(f"x_max_fin = {x.max()}")
-        #print(f"x_min_fin = {x.min()}")
         return x
 
     def forward(self, imgs, typeExp="freq+time", mask_ratio=0.1):
@@ -195,20 +226,28 @@ class MaskedAutoencoderViT_without_decoder(nn.Module):
         #print(f"imgs = {imgs.shape}") 
         #(128,4,256,1) for time, (128, 4, 64, 256) for freq+time
         x = self.forward_encoder_no_mask(imgs, typeExp)
+        x = torch.narrow(x, dim=1, start=0, length=256) 
         #print(f"x1 = {x.shape}") 
         #(128,257,256) for time, (128,257,256) for freq+time => (N,C,T) 
-        
-        x = self.conv1(x)
+        x = self.pooling(x)
+
+        x = x.flatten(1)
+
+       # x = self.conv1(x)
+        #x = self.relu1(x)
+        #x = self.bn1(x)
+        x = self.regr0(x)
         #print(f"x2 = {x.shape}") 
 
-        x = self.conv2(x)
+        #x = self.conv2(x)
+        #x = self.relu2(x)
+        #x = self.bn2(x)
+        x = self.regr1(x)
         #print(f"x3 = {x.shape}") 
-
-        x = self.pooling(x)
+        
+        #x = self.pooling(x)
         #print(f"x4 = {x.shape}") 
-       
-        x = x.flatten(1)
-    
+      
         #output layer
         x = self.out_neuron(x)
         #print(f"x5 = {x.shape}") (64,1)
