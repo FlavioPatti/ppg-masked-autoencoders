@@ -8,8 +8,8 @@ import os
 os.environ["WANDB_API_KEY"] = "20fed903c269ff76b57d17a58cdb0ba9d0c4d2be"
 os.environ["WANDB_MODE"] = "online"
 
-N_PRETRAIN_EPOCHS = 2
-N_FINETUNE_EPOCHS = 1
+N_PRETRAIN_EPOCHS = 0
+N_FINETUNE_EPOCHS = 200
 
 #Type of experiments: 
 FREQ_PLUS_TIME = 0
@@ -120,7 +120,7 @@ for datasets in data_gen:
     best_loss = 1000
 
     #Load checkpoint from pretrain if exists
-    load_checkpoint_pretrain(torch.load("./checkpoint_model_pretrain"))
+    #load_checkpoint_pretrain(torch.load("./checkpoint_model_pretrain"))
     
     for epoch in range(N_FINETUNE_EPOCHS):
       if FREQ_PLUS_TIME:
@@ -131,30 +131,28 @@ for datasets in data_gen:
             epoch, model, criterion, optimizer, train_dl, val_dl, device)
         
       print(f"metrics = {metrics}")
-      loss = metrics['loss']
-      mae = metrics['MAE']
+      train_loss = metrics['loss']
+      train_mae = metrics['MAE']
+      val_loss = metrics['val_loss']
+      val_mae = metrics['val_MAE']
       print(f"=> Updating plot on wandb")
-      wandb.log({'loss': loss, 'epochs': epoch + 1}, commit=True)
-      wandb.log({'mae': mae, 'epochs': epoch + 1}, commit=True)
+      wandb.log({'train_loss': train_loss, 'epochs': epoch + 1}, commit=True)
+      wandb.log({'train_mae': train_mae, 'epochs': epoch + 1}, commit=True)
+      wandb.log({'val_loss': val_loss, 'epochs': epoch + 1}, commit=True)
+      wandb.log({'val_mae': val_mae, 'epochs': epoch + 1}, commit=True)
+
+      if FREQ_PLUS_TIME:
+        test_metrics = hrd.evaluate_freq_time(model, criterion, test_dl, device)
+      if TIME:
+        test_metrics = hrd.evaluate_time(model, criterion, test_dl, device)
+      print("Test Set Loss:", test_metrics['loss'])
+      print("Test Set MAE:", test_metrics['MAE'])
+      print(f"=> Updating plot on wandb")
+      wandb.log({'test_loss': test_metrics['loss'], 'epochs': epoch + 1}, commit=True)
+      wandb.log({'test_mae': test_metrics['MAE'], 'epochs': epoch + 1}, commit=True)
       
-      if loss < best_loss:
-        best_loss = loss
+      if train_loss < best_loss:
+        best_loss = train_loss
         print(f"new best loss found = {best_loss}")
       
-      #if earlystop(metrics['val_MAE']):
-       #   break
-    
-    #Evaluation on test dataset
-    if FREQ_PLUS_TIME:
-      test_metrics = hrd.evaluate_freq_time(model, criterion, test_dl, device)
-    if TIME:
-      test_metrics = hrd.evaluate_time(model, criterion, test_dl, device)
-    print("Test Set Loss:", test_metrics['loss'])
-    print("Test Set MAE:", test_metrics['MAE'])
-    print(f"=> Updating plot on wandb")
-    wandb.log({'test_loss': test_metrics['loss'], 'epochs': epoch + 1}, commit=True)
-    wandb.log({'test_mae': test_metrics['MAE'], 'epochs': epoch + 1}, commit=True)
-    mae_dict[test_subj] = test_metrics['MAE']
-    print(f'MAE: {mae_dict}')
-    print(f'Average MAE: {sum(mae_dict.values()) / len(mae_dict)}')
     
