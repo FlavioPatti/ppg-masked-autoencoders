@@ -119,41 +119,14 @@ class MaskedAutoencoderViT_without_decoder(nn.Module):
 
         self.epoch = epoch
 
-        #self.conv1 = nn.Conv1d(in_channels=257,out_channels=128,kernel_size=4, stride=4, device='cuda')
-        """
-        self.conv1 = nn.Linear(in_features=1024, out_features=512)
-        self.relu1 = nn.ReLU()
-        self.bn1 = nn.BatchNorm1d(num_features=512)
-      
-        self.conv2 = nn.Linear(in_features=512, out_features=256)
-        self.relu2 = nn.ReLU()
-        self.bn2 = nn.BatchNorm1d(num_features=256)
-        """
-        self.regr0 = Regressor(ft_in = 1024, ft_out=512)
-
-        # 2nd instance of regressor
-        self.regr1 = Regressor(ft_in = 512, ft_out=256)
-
-        self.pooling = nn.AvgPool1d(64)
-
-        # Output layer
-        self.out_neuron = nn.Linear(in_features=256, out_features=1)
+        self.conv1 = nn.Conv1d(in_channels=256,out_channels=128,kernel_size=4, stride=4)
+        self.conv2 = nn.Conv1d(in_channels=128,out_channels=64,kernel_size=4, stride=4)
+        self.pooling = nn.AvgPool1d(16)
+        self.out_neuron = nn.Linear(in_features=64, out_features=1)
         
         self.initialize_weights()
 
-        self.norm2 = nn.BatchNorm1d(num_features=257)
-        self.norm1 =  nn.ReLU()
         
-        """
-        # Output layer 1
-        self.out_neuron_1 = nn.Linear(in_features=256, out_features=128)
-        nn.init.constant_(self.out_neuron_1.bias, 0)
-        torch.nn.init.xavier_uniform_(self.out_neuron_1.weight)
-        # Output layer 2
-        self.out_neuron_2 = nn.Linear(in_features=128, out_features=1)
-        nn.init.constant_(self.out_neuron_2.bias, 0)
-        torch.nn.init.xavier_uniform_(self.out_neuron_2.weight)
-        """
     def initialize_weights(self):
         # initialization
         # initialize (and freeze) pos_embed by sin-cos embedding
@@ -199,12 +172,13 @@ class MaskedAutoencoderViT_without_decoder(nn.Module):
         x = torch.cat((cls_tokens, x), dim=1)
 
         # apply Transformer blocks
-        contextual_embs=[]
+        #contextual_embs=[]
         for n, blk in enumerate(self.blocks):
           x = blk(x)
 
-        x = self.norm1(x)
-        x = self.norm2(x)
+        #x = self.norm1(x)
+        #x = self.norm2(x)
+        x = self.norm(x)
          # if n > self.contextual_depth:
           #  contextual_embs.append(self.norm(x))
 
@@ -225,33 +199,19 @@ class MaskedAutoencoderViT_without_decoder(nn.Module):
         #print("")
         #print(f"imgs = {imgs.shape}") 
         #(128,4,256,1) for time, (128, 4, 64, 256) for freq+time
+        
         x = self.forward_encoder_no_mask(imgs, typeExp)
         x = torch.narrow(x, dim=1, start=0, length=256) 
-        #print(f"x1 = {x.shape}") 
-        #(128,257,256) for time, (128,257,256) for freq+time => (N,C,T) 
-        x = self.pooling(x)
+        #(128,256,256) for time, (128,257,256) for freq+time => (N,C,T) 
 
-        x = x.flatten(1)
-
-       # x = self.conv1(x)
-        #x = self.relu1(x)
-        #x = self.bn1(x)
-        x = self.regr0(x)
-        #print(f"x2 = {x.shape}") 
-
-        #x = self.conv2(x)
-        #x = self.relu2(x)
-        #x = self.bn2(x)
-        x = self.regr1(x)
-        #print(f"x3 = {x.shape}") 
-        
-        #x = self.pooling(x)
-        #print(f"x4 = {x.shape}") 
+        x = self.conv1(x) #(128,128,64)
+        x = self.conv2(x) #(128,64,16)
+        x = self.pooling(x) #(128,64,1)
+        x = x.flatten(1)  #(128,64)                  
       
         #output layer
-        x = self.out_neuron(x)
-        #print(f"x5 = {x.shape}") (64,1)
-         
+        x = self.out_neuron(x) #(128,1)
+                
         #loss = self.forward_loss(imgs, pred, norm_pix_loss=self.norm_pix_loss)
         #pred, _, _ = self.forward_decoder(emb_enc, ids_restore)  # [N, L, p*p*3]
         #loss_contrastive = torch.FloatTensor([0.0]).cuda()
