@@ -31,36 +31,40 @@ def plot_audio(x, typeExp, num_sample, epoch):
   plt.savefig(f'./Benchmark_hr_detection/pytorch_benchmarks/imgs/{typeExp}/audio{num_sample}_epoch{epoch}.png') 
 
 class LogCosh(nn.Module):
-    def __init__(self):
-        super(LogCosh, self).__init__()
+  def __init__(self):
+    super(LogCosh, self).__init__()
 
-    def forward(self, input: torch.Tensor, target: torch.Tensor) -> torch.Tensor:
-        x = input - target
-        return torch.mean(x + nn.Softplus()(-2*x) - torch.log(torch.tensor(2.)))
+  def forward(self, input: torch.Tensor, target: torch.Tensor):
+    x = input - target
+    return torch.mean(x + nn.Softplus()(-2*x) - torch.log(torch.tensor(2.)))
 
 
 def get_default_optimizer(net: nn.Module, task):
-
+    
   if task == "pretrain":
+    print(f"=> Loading pretrain optimizer: AdamW")
     #setting optimizer for masked autoencoders
     param_groups = optim_factory.param_groups_weight_decay(net, 0.01) #weight_decay
     return optim.AdamW(param_groups, lr=0.001, betas=(0.9, 0.95))
   if task == "finetune":
+    print(f"=> Loading finetune optimizer: Adam")
     #setting optimizer for hr estimation
     return optim.Adam(net.parameters(), lr=0.001)
 
 
 def get_default_criterion(task):
     if task == "pretrain":
+      print(f"=> Loading pretrain criterion: MSE Loss")
     #setting criterion for masked autoencoders
-        return nn.MSELoss()
-    else:
+      return nn.MSELoss()
+    if task == "finetune":
+      print(f"=> Loading finetune criterion: LogCosh Loss")
     #setting criterion for hr estimation
-        return LogCosh()
+      return LogCosh()
 
 
-def _run_model(model, sample, target, criterion):
-    output = model(sample)
+def _run_model(model, sample, target, criterion, typeExp):
+    output = model(sample, typeExp = typeExp)
     loss = criterion(output, target)
     return output, loss
 
@@ -179,8 +183,9 @@ def train_one_epoch_hr_detection_time(
         step += 1
         #tepoch.update(1)
         sample, target = sample.to(device), target.to(device)
-        output = model(sample, typeExp= "time")
-        loss = criterion(output,target)
+        
+        output, loss = _run_model(model, sample, target, criterion)
+        
         optimizer.zero_grad()
         loss.backward()
         optimizer.step()
@@ -210,24 +215,23 @@ def evaluate_time(
     avgloss = AverageMeter('2.5f')
     step = 0
     with torch.no_grad():
-        for sample, target in data:
+      for sample, target in data:
+            
+        if MIN_MAX_NORM:
+          min_v = sample.min()
+          max_v = sample.max()
+          samples = (samples - min_v) / ( max_v - min_v)
 
-          if MIN_MAX_NORM:
-            min_v = sample.min()
-            max_v = sample.max()
-            samples = (samples - min_v) / ( max_v - min_v)
-
-          sample = torch.tensor(np.expand_dims(sample, axis= -1))
-          
-          step += 1
-          sample, target = sample.to(device), target.to(device)
-          output = model(sample, typeExp= "time")
-          loss = criterion(output,target)
-          mae_val = F.l1_loss(output, target)
-          avgmae.update(mae_val, sample.size(0))
-          avgloss.update(loss, sample.size(0))
-        final_metrics = {
-          'loss': avgloss.get(),
-          'MAE': avgmae.get(),
-        }
+        sample = torch.tensor(np.expand_dims(sample, axis= -1))
+        
+        step += 1
+        sample, target = sample.to(device), target.to(device)
+        output, loss = _run_model(model, sample, target, criterion)
+        mae_val = F.l1_loss(output, target)
+        avgmae.update(mae_val, sample.size(0))
+        avgloss.update(loss, sample.size(0))
+      final_metrics = {
+        'loss': avgloss.get(),
+        'MAE': avgmae.get(),
+      }
     return final_metrics

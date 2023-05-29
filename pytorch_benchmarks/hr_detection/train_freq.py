@@ -46,14 +46,14 @@ spectrogram_transform = torchaudio.transforms.MelSpectrogram(
 
 """plot heatmap"""
 def plot_heatmap_spectogram(x, typeExp, num_sample, epoch = 0):
-  fig, ax = plt.subplots()
+  _, ax = plt.subplots()
   left = 0
   right= 8
   bottom = 4
   top = 0 
   extent = [left,right, bottom, top]
   im = ax.imshow(x, cmap = 'hot', interpolation = 'hanning', extent = extent)
-  cbar = ax.figure.colorbar(im, ax = ax)
+  ax.figure.colorbar(im, ax = ax)
   ax.set_title(f"Heatmap PPG: sample {num_sample}")  
   plt.xlabel('Time (s)')
   plt.ylabel('Frequency (Hz)')
@@ -62,33 +62,33 @@ def plot_heatmap_spectogram(x, typeExp, num_sample, epoch = 0):
 
 class LogCosh(nn.Module):
     def __init__(self):
-        super(LogCosh, self).__init__()
+      super(LogCosh, self).__init__()
 
-    def forward(self, input: torch.Tensor, target: torch.Tensor) -> torch.Tensor:
-        x = input - target
-        return torch.mean(x + nn.Softplus()(-2*x) - torch.log(torch.tensor(2.)))
+    def forward(self, input: torch.Tensor, target: torch.Tensor):
+      x = input - target
+      return torch.mean(x + nn.Softplus()(-2*x) - torch.log(torch.tensor(2.)))
 
 
 def get_default_optimizer(net: nn.Module, task):
 
   if task == "pretrain":
-    print(f"Load pretrain optimizer")
+    print(f"=> Loading pretrain optimizer: AdamW")
     #setting optimizer for masked autoencoders
     param_groups = optim_factory.param_groups_weight_decay(net, 0.01) #weight_decay
     return optim.AdamW(param_groups, lr=0.001, betas=(0.9, 0.95))
   if task == "finetune":
-    print(f"Load finetune optimizer")
+    print(f"=> Loading finetune optimizer: Adam")
     #setting optimizer for hr estimation
     return optim.Adam(net.parameters(), lr=0.001)
 
 
 def get_default_criterion(task):
     if task == "pretrain":
-      print(f"Load pretrain criterion")
+      print(f"=> Loading pretrain criterion: MSE Loss")
     #setting criterion for masked autoencoders
       return nn.MSELoss()
     if task == "finetune":
-      print(f"Load finetune criterion")
+      print(f"=> Loading finetune criterion: LogCosh Loss")
     #setting criterion for hr estimation
       return LogCosh()
 
@@ -124,16 +124,10 @@ def train_one_epoch_masked_autoencoder_freq_time(model: torch.nn.Module,
         if data_iter_step == accum_iter2:
           PLOT_HEATMAP = True
 
-      
         specto_samples = torch.narrow(spectrogram_transform(samples), dim=3, start=0, length=256) 
 
         if NORMALIZATION:
-          specto_samples = np.log10(specto_samples)
-          #max_v = specto_samples.max()
-          #min_v = specto_samples.min()
-          #specto_samples = (specto_samples - min_v) / ( max_v - min_v)
-          #print(f"max = {specto_samples.max()}")
-          #print(f"min = {specto_samples.min()}")   
+          specto_samples = np.log10(specto_samples)  
     
         specto_samples = specto_samples.to(device, non_blocking=True)
 
@@ -208,18 +202,12 @@ def train_one_epoch_hr_detection_freq_time(
         
         if NORMALIZATION:
           specto_samples = np.log10(specto_samples)
-          #max_v = specto_samples.max()
-          #min_v = specto_samples.min()
-          #specto_samples = (specto_samples - min_v) / ( max_v - min_v)
-          #print(f"max = {specto_samples.max()}")
-          #print(f"min = {specto_samples.min()}")   
-
                   
         step += 1
         #tepoch.update(1)
         sample, target = specto_samples.to(device), target.to(device)
-        output = model(sample)
-        loss = criterion(output, target)
+        
+        output, loss = _run_model(model, sample, target, criterion)
         
         optimizer.zero_grad()
         loss.backward()
@@ -256,12 +244,7 @@ def evaluate_freq_time(
           specto_samples = torch.narrow(spectrogram_transform(sample), dim=3, start=0, length=256) 
           
           if NORMALIZATION:
-             specto_samples = np.log10(specto_samples)
-             #max_v = specto_samples.max()
-             #min_v = specto_samples.min()
-             #specto_samples = (specto_samples - min_v) / ( max_v - min_v)
-             #print(f"max = {specto_samples.max()}")
-             #print(f"min = {specto_samples.min()}")   
+             specto_samples = np.log10(specto_samples) 
                         
           step += 1
           sample, target = specto_samples.to(device), target.to(device)

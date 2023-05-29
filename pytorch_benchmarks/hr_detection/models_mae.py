@@ -83,8 +83,19 @@ class MaskedAutoencoderViT(nn.Module):
         self.decoder_mode = decoder_mode
         
         #Not used in this model, only to be compatible with finetune mode
-         # Output layer
-        self.out_neuron = nn.Linear(in_features=256, out_features=1)
+        #first istance of regression
+        self.conv1 = nn.Conv1d(in_channels=256,out_channels=128,kernel_size=4, stride=4)
+        self.relu1 = nn.ReLU()
+        self.bn1 = nn.BatchNorm1d(num_features=128)
+        
+        #second istance of regression"
+        self.conv2 = nn.Conv1d(in_channels=128,out_channels=64,kernel_size=4, stride=4)
+        self.relu1 = nn.ReLU()
+        self.bn1 = nn.BatchNorm1d(num_features=64)
+        
+        #linear layer for predict HR
+        self.pooling = nn.AvgPool1d(16)
+        self.out_neuron = nn.Linear(in_features=64, out_features=1)
     
         # Transfomer
         self.decoder_blocks = nn.ModuleList([
@@ -341,7 +352,6 @@ class MaskedAutoencoderViT(nn.Module):
             target = (target - mean) / (var + 1.e-6)**.5
         
         """ MSE loss """
-        
         loss = (pred - target) ** 2
         loss = loss.mean(dim=-1)  # [N, L], mean loss per patch
         loss = (loss * mask).sum() / mask.sum()  # mean loss on removed patches

@@ -119,8 +119,17 @@ class MaskedAutoencoderViT_without_decoder(nn.Module):
 
         self.epoch = epoch
 
+        #first istance of regression
         self.conv1 = nn.Conv1d(in_channels=256,out_channels=128,kernel_size=4, stride=4)
+        self.relu1 = nn.ReLU()
+        self.bn1 = nn.BatchNorm1d(num_features=128)
+        
+        #second istance of regression"
         self.conv2 = nn.Conv1d(in_channels=128,out_channels=64,kernel_size=4, stride=4)
+        self.relu1 = nn.ReLU()
+        self.bn1 = nn.BatchNorm1d(num_features=64)
+        
+        #linear layer for predict HR
         self.pooling = nn.AvgPool1d(16)
         self.out_neuron = nn.Linear(in_features=64, out_features=1)
         
