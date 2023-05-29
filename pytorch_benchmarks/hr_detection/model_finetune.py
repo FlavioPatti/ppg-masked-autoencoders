@@ -126,8 +126,8 @@ class MaskedAutoencoderViT_without_decoder(nn.Module):
         
         #second istance of regression"
         self.conv2 = nn.Conv1d(in_channels=128,out_channels=64,kernel_size=4, stride=4)
-        self.relu1 = nn.ReLU()
-        self.bn1 = nn.BatchNorm1d(num_features=64)
+        self.relu2 = nn.ReLU()
+        self.bn2 = nn.BatchNorm1d(num_features=64)
         
         #linear layer for predict HR
         self.pooling = nn.AvgPool1d(16)
@@ -214,8 +214,15 @@ class MaskedAutoencoderViT_without_decoder(nn.Module):
         #(128,256,256) for time, (128,257,256) for freq+time => (N,C,T) 
 
         x = self.conv1(x) #(128,128,64)
+        x = self.relu1(x)
+        x = self.bn1(x)
+
         x = self.conv2(x) #(128,64,16)
+        x = self.relu2(x)
+        x = self.bn2(x)
+
         x = self.pooling(x) #(128,64,1)
+        
         x = x.flatten(1)  #(128,64)                  
       
         #output layer

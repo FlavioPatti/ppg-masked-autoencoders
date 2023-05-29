@@ -9,7 +9,7 @@ import os
 os.environ["WANDB_API_KEY"] = "20fed903c269ff76b57d17a58cdb0ba9d0c4d2be"
 os.environ["WANDB_MODE"] = "online"
 
-N_PRETRAIN_EPOCHS = 100
+N_PRETRAIN_EPOCHS = 0
 N_FINETUNE_EPOCHS = 200
 
 #Type of experiments: 

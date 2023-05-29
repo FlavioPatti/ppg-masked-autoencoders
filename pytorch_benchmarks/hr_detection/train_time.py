@@ -63,8 +63,8 @@ def get_default_criterion(task):
       return LogCosh()
 
 
-def _run_model(model, sample, target, criterion, typeExp):
-    output = model(sample, typeExp = typeExp)
+def _run_model(model, sample, target, criterion):
+    output = model(sample)
     loss = criterion(output, target)
     return output, loss
 
