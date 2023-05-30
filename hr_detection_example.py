@@ -5,12 +5,13 @@ from pytorch_benchmarks.utils import  EarlyStopping
 from util.misc import NativeScalerWithGradNormCount as NativeScaler
 import sys
 import os
+from thop import profile
 
 os.environ["WANDB_API_KEY"] = "20fed903c269ff76b57d17a58cdb0ba9d0c4d2be"
 os.environ["WANDB_MODE"] = "online"
 
 N_PRETRAIN_EPOCHS = 0
-N_FINETUNE_EPOCHS = 200
+N_FINETUNE_EPOCHS = 1000
 
 #Type of experiments: 
 FREQ = 0
@@ -43,7 +44,7 @@ run = wandb.init(
             entity = "aml-2022", 
             # Set the project where this run will be logged
             project="Hr_detection",
-            group='finetuning',
+            group='finetuning1',
             # Track hyperparameters and run metadata
             config=configuration,
             resume="allow")
@@ -114,6 +115,10 @@ for datasets in data_gen:
       model = hrd.get_reference_model('vit_freq+time_finetune') #ViT (only encoder with at the end linear layer)
     if TIME:
       model = hrd.get_reference_model('vit_time_finetune') #ViT (only encoder with at the end linear layer)
+
+    input_tensor = torch.randn(1,4,256,1)
+    flops, params = profile(model, inputs=(input_tensor,))
+    print(f"# params = {params}, #flops = {flops}")
       
     if torch.cuda.is_available():
         model = model.cuda()
@@ -121,6 +126,7 @@ for datasets in data_gen:
     # Get Training Settings
     criterion = hrd.get_default_criterion("finetune")
     optimizer = hrd.get_default_optimizer(model, "finetune")
+    earlystop = EarlyStopping(patience=20, mode='min')
     best_loss = sys.float_info.max
 
     #Load checkpoint from pretrain if exists
@@ -149,6 +155,9 @@ for datasets in data_gen:
       wandb.log({'train_mae': train_mae, 'epochs': epoch + 1}, commit=True)
       wandb.log({'val_loss': val_loss, 'epochs': epoch + 1}, commit=True)
       wandb.log({'val_mae': val_mae, 'epochs': epoch + 1}, commit=True)
+
+      if earlystop(val_loss):
+        break
 
       if FREQ:
         test_metrics = hrd.evaluate_freq_time(model, criterion, test_dl, device)

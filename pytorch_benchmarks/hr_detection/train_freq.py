@@ -109,20 +109,13 @@ def train_one_epoch_masked_autoencoder_freq_time(model: torch.nn.Module,
     metric_logger.add_meter('lr', misc.SmoothedValue(window_size=1, fmt='{value:.6f}'))
     header = 'Epoch: [{}]'.format(epoch)
     print_freq = 50
-    accum_iter = 1
-    accum_iter2 = 366
     optimizer.zero_grad()
     # set model epoch
     model.epoch = epoch
   
     for data_iter_step, (samples, _labels) in enumerate(metric_logger.log_every(data_loader, print_freq, header)):
-        PLOT_HEATMAP = False
-        # we use a per iteration (instead of per epoch) lr scheduler
-        if data_iter_step % accum_iter == 0:
-            lr_sched.adjust_learning_rate(optimizer, data_iter_step / len(data_loader) + epoch, args)
+        lr_sched.adjust_learning_rate(optimizer, data_iter_step / len(data_loader) + epoch, args)
 
-        if data_iter_step == accum_iter2:
-          PLOT_HEATMAP = True
 
         specto_samples = torch.narrow(spectrogram_transform(samples), dim=3, start=0, length=256) 
 
@@ -130,55 +123,21 @@ def train_one_epoch_masked_autoencoder_freq_time(model: torch.nn.Module,
           specto_samples = np.log10(specto_samples)  
     
         specto_samples = specto_samples.to(device, non_blocking=True)
-
-        with torch.cuda.amp.autocast():
-            loss_a, pred, target, x_masked = model(specto_samples, "freq+time", mask_ratio = 0.1)
-
+        loss_a, pred, target, x_masked = model(specto_samples, "freq+time", mask_ratio = 0.1)
         signal_reconstructed = unpatchify_freq(pred)
-
         if PLOT_HEATMAP:
-          for idx in range(50,51):
-            sample = specto_samples[idx,:,:,:].to('cpu')
-            ch0 = sample[0].detach().numpy()
-            plot_heatmap_spectogram(x= ch0, typeExp = "input",num_sample = idx, epoch = epoch)
-
-        if PLOT_HEATMAP:
-          for idx in range(50,51):
-            sample = signal_reconstructed[idx,:,:,:].to('cpu')
-            ch0 = sample[0].detach().numpy()
-            plot_heatmap_spectogram(x= ch0, typeExp = "input_reconstructed",num_sample = idx, epoch = epoch)
-            
-        loss_value = loss_a.item()
-        loss_total = loss_a
-
-        if not math.isfinite(loss_value):
-            print("Loss is {}, stopping training".format(loss_value))
-            sys.exit(1)
-
-        loss_total = loss_total / accum_iter
-        loss_scaler(loss_total, optimizer, parameters=model.parameters(),
-                    update_grad=(data_iter_step + 1) % accum_iter == 0)
-        if (data_iter_step + 1) % accum_iter == 0:
-            optimizer.zero_grad()
-
-        torch.cuda.synchronize()
-
+              plot_heatmap_training(spectro_samples, epoch,)
+        loss_value = loss_a
+        loss_scaler(loss_value, optimizer, parameters=model.parameters(), update_grad=True)
+        optimizer.zero_grad()
         metric_logger.update(loss=loss_value)
-
         lr = optimizer.param_groups[0]["lr"]
         metric_logger.update(lr=lr)
-
-        loss_value_reduce = misc.all_reduce_mean(loss_value) #calculate the average of the loss on all the processes of a group
-
         if log_writer is not None and (data_iter_step + 1) % accum_iter == 0:
-    
             epoch_1000x = int((data_iter_step / len(data_loader) + epoch) * 1000)
             log_writer.add_scalar('loss', loss_value_reduce, epoch_1000x)
             log_writer.add_scalar('lr', lr, epoch_1000x)
-
-
     # gather the stats from all processes
-    metric_logger.synchronize_between_processes()
     return {k: meter.global_avg for k, meter in metric_logger.meters.items()}
 
 

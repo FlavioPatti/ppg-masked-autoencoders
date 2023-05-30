@@ -98,6 +98,7 @@ def _get_data_gen(samples, targets, groups, cross_val):
                 ds_val = Dalia(val_samples, val_targets)
                 test_subj = groups[test_val_index][test_index][0]
                 print(f'Test Subject: {test_subj}')
+                print(f"Test & Val Subjects: {np.unique(groups[test_val_index])}")
                 test_samples = samples_val_test[test_index]
                 test_targets = targets_val_test[test_index]
                 
