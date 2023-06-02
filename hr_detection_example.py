@@ -127,7 +127,7 @@ for datasets in data_gen:
     criterion = hrd.get_default_criterion("finetune")
     optimizer = hrd.get_default_optimizer(model, "finetune")
     earlystop = EarlyStopping(patience=20, mode='min')
-    best_loss = sys.float_info.max
+    best_mae = sys.float_info.max
 
     #Load checkpoint from pretrain if exists
     #load_checkpoint_pretrain(torch.load("./checkpoint_model_pretrain"))
@@ -145,19 +145,12 @@ for datasets in data_gen:
       train_mae = metrics['MAE']
       val_loss = metrics['val_loss']
       val_mae = metrics['val_MAE']
-      
-      if train_loss < best_loss:
-        best_loss = train_loss
-        print(f"new best loss found = {best_loss}")
         
       print(f"=> Updating plot on wandb")
       wandb.log({'train_loss': train_loss, 'epochs': epoch + 1}, commit=True)
       wandb.log({'train_mae': train_mae, 'epochs': epoch + 1}, commit=True)
       wandb.log({'val_loss': val_loss, 'epochs': epoch + 1}, commit=True)
       wandb.log({'val_mae': val_mae, 'epochs': epoch + 1}, commit=True)
-
-      if earlystop(val_loss):
-        break
 
       if FREQ:
         test_metrics = hrd.evaluate_freq_time(model, criterion, test_dl, device)
@@ -167,10 +160,16 @@ for datasets in data_gen:
       print(f"test stats = {test_metrics}")
       test_loss = test_metrics['loss']
       test_mae = test_metrics['MAE']
+
+      if test_mae < best_mae:
+        best_mae = test_mae
+        print(f"new best mae found = {best_mae}")
       
       print(f"=> Updating plot on wandb")
       wandb.log({'test_loss': test_loss, 'epochs': epoch + 1}, commit=True)
       wandb.log({'test_mae': test_mae, 'epochs': epoch + 1}, commit=True)
     
+      if earlystop(test_mae):
+        break
       
     

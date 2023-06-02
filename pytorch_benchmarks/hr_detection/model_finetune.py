@@ -58,6 +58,7 @@ class MaskedAutoencoderViT_without_decoder(nn.Module):
                  epoch=0, no_shift=False,
                  ):
         super().__init__()
+        print(f"Running with: depth = {depth}, heads = {num_heads}, embed = {embed_dim}")
 
         self.audio_exp=audio_exp
         self.embed_dim = embed_dim
