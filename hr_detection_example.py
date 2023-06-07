@@ -6,6 +6,7 @@ from util.misc import NativeScalerWithGradNormCount as NativeScaler
 import sys
 import os
 from thop import profile
+from torch.optim.lr_scheduler import StepLR
 
 os.environ["WANDB_API_KEY"] = "20fed903c269ff76b57d17a58cdb0ba9d0c4d2be"
 os.environ["WANDB_MODE"] = "online"
@@ -14,8 +15,8 @@ N_PRETRAIN_EPOCHS = 0
 N_FINETUNE_EPOCHS = 1000
 
 #Type of experiments: 
-FREQ = 0
-TIME = 1
+FREQ = 1
+TIME = 0
 
 # Check CUDA availability
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
@@ -44,7 +45,7 @@ run = wandb.init(
             entity = "aml-2022", 
             # Set the project where this run will be logged
             project="Hr_detection",
-            group='finetuning1',
+            group='finetuning2',
             # Track hyperparameters and run metadata
             config=configuration,
             resume="allow")
@@ -116,7 +117,7 @@ for datasets in data_gen:
     if TIME:
       model = hrd.get_reference_model('vit_time_finetune') #ViT (only encoder with at the end linear layer)
 
-    input_tensor = torch.randn(1,4,256,1)
+    input_tensor = torch.randn(1,4,64,256)
     flops, params = profile(model, inputs=(input_tensor,))
     print(f"# params = {params}, #flops = {flops}")
       
@@ -125,6 +126,9 @@ for datasets in data_gen:
         
     # Get Training Settings
     criterion = hrd.get_default_criterion("finetune")
+    #optimizer = torch.optim.SGD(model.parameters(),lr=0.01)
+    #print(f"optimizer => {optimizer}")
+    #scheduler = StepLR(optimizer, step_size=20, gamma=1/3)
     optimizer = hrd.get_default_optimizer(model, "finetune")
     earlystop = EarlyStopping(patience=20, mode='min')
     best_mae = sys.float_info.max
@@ -161,15 +165,15 @@ for datasets in data_gen:
       test_loss = test_metrics['loss']
       test_mae = test_metrics['MAE']
 
-      if test_mae < best_mae:
-        best_mae = test_mae
+      if val_mae < best_mae:
+        best_mae = val_mae
         print(f"new best mae found = {best_mae}")
       
       print(f"=> Updating plot on wandb")
       wandb.log({'test_loss': test_loss, 'epochs': epoch + 1}, commit=True)
       wandb.log({'test_mae': test_mae, 'epochs': epoch + 1}, commit=True)
     
-      if earlystop(test_mae):
+      if earlystop(val_mae):
         break
       
     
