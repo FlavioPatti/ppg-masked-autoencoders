@@ -11,7 +11,7 @@ epochs = 50
 min_lr = 0
 blr = 1e-3
 
-def adjust_learning_rate(optimizer, epoch, args):
+def adjust_learning_rate(optimizer, epoch):
     """Decay the learning rate with half-cycle cosine after warmup"""
     #dopo warmup_epochs lr raggiunge il valore di blr
     if epoch < warmup_epochs:

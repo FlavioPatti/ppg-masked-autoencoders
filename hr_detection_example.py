@@ -11,12 +11,12 @@ from torch.optim.lr_scheduler import StepLR
 os.environ["WANDB_API_KEY"] = "20fed903c269ff76b57d17a58cdb0ba9d0c4d2be"
 os.environ["WANDB_MODE"] = "online"
 
-N_PRETRAIN_EPOCHS = 0
-N_FINETUNE_EPOCHS = 1000
+N_PRETRAIN_EPOCHS = 2
+N_FINETUNE_EPOCHS = 0
 
 #Type of experiments: 
-FREQ = 1
-TIME = 0
+FREQ = 0
+TIME = 1
 
 # Check CUDA availability
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
@@ -79,7 +79,6 @@ for datasets in data_gen:
     optimizer = hrd.get_default_optimizer(model, "pretrain")
     best_loss = sys.float_info.max
     
-    
     #Pretraining for recostruct input signals
     for epoch in range(N_PRETRAIN_EPOCHS):
         
@@ -87,8 +86,9 @@ for datasets in data_gen:
         train_stats = hrd.train_one_epoch_masked_autoencoder_freq_time(
             model, train_dl, criterion,
             optimizer, device, epoch, loss_scaler,
-            log_writer=None,
-            args=None
+            normalization = False,
+            plot_heatmap = False, 
+            sample_to_plot = 50
         )
 
       if TIME:

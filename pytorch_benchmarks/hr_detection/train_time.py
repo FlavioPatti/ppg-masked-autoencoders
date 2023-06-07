@@ -16,11 +16,9 @@ from sklearn.preprocessing import MinMaxScaler
 import matplotlib.pyplot as plt
 from pytorch_benchmarks.hr_detection.models_mae  import unpatchify_time
 
-MIN_MAX_NORM = False
-PLOT_HEATMAP = False
 
-"""plot heatmap"""
-def plot_audio(x, typeExp, num_sample, epoch):
+"""plot heatmaps"""
+def plot_audio(x, type, num_sample, epoch):
   plt.figure(figsize=(15, 5))
   time = np.linspace(0, 8, num=256)
   plt.xlim([0,8])
@@ -72,56 +70,39 @@ def _run_model(model, sample, target, criterion):
 def train_one_epoch_masked_autoencoder_time(model: torch.nn.Module,
                     data_loader: DataLoader, criterion: torch.nn.MSELoss, optimizer: torch.optim.Optimizer,
                     device: torch.device, epoch: int, loss_scaler,
-                    log_writer=None,
-                    args=None):
+                    normalization = False, plot_heatmap = False, sample_to_plot = 50):
     model.train(True)
     metric_logger = misc.MetricLogger(delimiter="  ")
     metric_logger.add_meter('lr', misc.SmoothedValue(window_size=1, fmt='{value:.6f}'))
     header = 'Epoch: [{}]'.format(epoch)
     print_freq = 50
-    accum_iter = 1
-    accum_iter2 = 366
-
     optimizer.zero_grad()
-
-    # set model epoch
     model.epoch = epoch
 
     for data_iter_step, (samples, _labels) in enumerate(metric_logger.log_every(data_loader, print_freq, header)):
-        PLOT_HEATMAP = False
         # we use a per iteration (instead of per epoch) lr scheduler
-        if data_iter_step % accum_iter == 0:
-            lr_sched.adjust_learning_rate(optimizer, data_iter_step / len(data_loader) + epoch, args)
+        lr_sched.adjust_learning_rate(optimizer, data_iter_step / len(data_loader) + epoch)
 
-        if data_iter_step == accum_iter2:
-          PLOT_HEATMAP = True
-
-        if MIN_MAX_NORM:
+        if normalization:
           min_v = samples.min()
           max_v = samples.max()
           samples = (samples - min_v) / ( max_v - min_v)
 
+        #img shape (4,256) -> (4,256,1)
         samples = torch.tensor(np.expand_dims(samples, axis= -1))
-
-        if PLOT_HEATMAP:
-          for idx in range(50,51):
-            sample = samples[idx,:,:,:]
-            ch1 = sample[0].detach().numpy() 
-            plot_audio(x= ch1, typeExp = "input",num_sample = idx, epoch=epoch)
     
         samples = samples.to(device, non_blocking=True)
 
-        with torch.cuda.amp.autocast():
-            loss_a, pred, _, x_masked = model(samples, "time",mask_ratio=0.1)
+        loss_a, prediction, target, x_masked = model(samples, "time",mask_ratio=0.1)
 
-        signal_reconstructed = unpatchify_time(pred)
-        signal_reconstructed = np.squeeze(signal_reconstructed.to('cpu').detach())
+        signal_reconstructed = np.squeeze(unpatchify_time(prediction).to('cpu').detach())
             
-        if PLOT_HEATMAP:
-          for idx in range(50,51):
-            masked = signal_reconstructed[idx,0,:].to('cpu')
-            masked = masked.detach().numpy()
-            plot_audio(x= masked, typeExp = "input_reconstructed", num_sample = idx, epoch = epoch)
+        if plot_heatmap:
+          ppg_signal = samples[signal_to_plot,0,:,:].to('cpu').detach().numpy() #ppg signal is channel 0
+          plot_audio(x = ppg_signal, type="input", num_sample = signal_to_plot, epoch = epoch)
+
+          ppg_signal_masked = signal_reconstructed[signal_to_plot,0,:].to('cpu').detach().numpy()
+          plot_audio(x = ppg_signal_masked, type="input_reconstructed", num_sample = signal_to_plot, epoch = epoch)
                     
         loss_value = loss_a.item()
         loss_total = loss_a
