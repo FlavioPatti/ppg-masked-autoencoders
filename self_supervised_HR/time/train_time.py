@@ -4,27 +4,11 @@ import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
 from torch.utils.data import DataLoader
-from self_supervised_HR.utils import AverageMeter, unpatchify
+import self_supervised_HR.utils.utils as utils
 import torch
 import util.misc as misc
 import util.lr_sched as lr_sched
 import numpy as np
-
-
-class LogCosh(nn.Module):
-  def __init__(self):
-    super(LogCosh, self).__init__()
-
-  def forward(self, input: torch.Tensor, target: torch.Tensor):
-    x = input - target
-    return torch.mean(x + nn.Softplus()(-2*x) - torch.log(torch.tensor(2.)))
-
-
-def _run_model(model, sample, target, criterion):
-    output = model(sample)
-    loss = criterion(output, target)
-    return output, loss
-
 
 def train_one_epoch_masked_autoencoder_time(model: torch.nn.Module,
                     data_loader: DataLoader, criterion: torch.nn.MSELoss, optimizer: torch.optim.Optimizer,
@@ -55,14 +39,14 @@ def train_one_epoch_masked_autoencoder_time(model: torch.nn.Module,
         loss, prediction, target, x_masked = model(samples, mask_ratio=0.1)
 
         #forse provare a togliere cpu/detach
-        signal_reconstructed = np.squeeze(unpatchify(prediction, type = "time").to('cpu').detach())
+        signal_reconstructed = np.squeeze(utils.unpatchify(prediction, type = "time").to('cpu').detach())
             
         if plot_heatmap:
           ppg_signal = samples[sample_to_plot,0,:,:].to('cpu').detach().numpy() #ppg signal is channel 0
-          plot_audio(x = ppg_signal, type="input", num_sample = sample_to_plot, epoch = epoch)
+          utils.plot_audio(x = ppg_signal, type="input", num_sample = sample_to_plot, epoch = epoch)
 
           ppg_signal_masked = signal_reconstructed[sample_to_plot,0,:].to('cpu').detach().numpy()
-          plot_audio(x = ppg_signal_masked, type="input_reconstructed", num_sample = sample_to_plot, epoch = epoch)
+          utils.plot_audio(x = ppg_signal_masked, type="input_reconstructed", num_sample = sample_to_plot, epoch = epoch)
           
         loss_scaler(loss, optimizer, parameters=model.parameters(),update_grad=True)
         optimizer.zero_grad()
@@ -78,8 +62,8 @@ def train_one_epoch_hr_detection_time(
         train: DataLoader,val: DataLoader,device: torch.device,
         normalization = False, plot_heatmap = False, sample_to_plot = 50):
     model.train()
-    avgmae = AverageMeter('6.2f')
-    avgloss = AverageMeter('2.5f')
+    avgmae = utils.AverageMeter('6.2f')
+    avgloss = utils.AverageMeter('2.5f')
     step = 0
     with tqdm(total=len(train), unit="batch") as tepoch:
       tepoch.set_description(f"Epoch {epoch+1}")
@@ -96,7 +80,8 @@ def train_one_epoch_hr_detection_time(
         #tepoch.update(1)
         sample, target = sample.to(device), target.to(device)
         
-        output, loss = _run_model(model, sample, target, criterion)
+        output = model(sample)
+        loss = criterion(output, target)
         
         optimizer.zero_grad()
         loss.backward()
@@ -121,8 +106,8 @@ def evaluate_time(
         model: nn.Module,criterion: nn.Module,data: DataLoader,device: torch.device,
         normalization = False,plot_heatmap = False, sample_to_plot = 50):
     model.eval()
-    avgmae = AverageMeter('6.2f')
-    avgloss = AverageMeter('2.5f')
+    avgmae = utils.AverageMeter('6.2f')
+    avgloss = utils.AverageMeter('2.5f')
     step = 0
     with torch.no_grad():
       for sample, target in data:
@@ -136,7 +121,8 @@ def evaluate_time(
         
         step += 1
         sample, target = sample.to(device), target.to(device)
-        output, loss = _run_model(model, sample, target, criterion)
+        output = model(sample)
+        loss = criterion(output, target)
         mae_val = F.l1_loss(output, target)
         avgmae.update(mae_val, sample.size(0))
         avgloss.update(loss, sample.size(0))

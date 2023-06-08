@@ -15,6 +15,15 @@ from self_supervised_HR.time.model_pretrain import MaskedAutoencoderViT
 from self_supervised_HR.time.model_finetune import MaskedAutoencoderViT_without_decoder
 from functools import partial
 
+class LogCosh(nn.Module):
+    def __init__(self):
+      super(LogCosh, self).__init__()
+
+    def forward(self, input: torch.Tensor, target: torch.Tensor):
+      x = input - target
+      return torch.mean(x + nn.Softplus()(-2*x) - torch.log(torch.tensor(2.)))
+
+
 def get_reference_model(model_name: str):
     if model_name == 'temponet':
         return TEMPONet()
