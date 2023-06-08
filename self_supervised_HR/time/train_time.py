@@ -4,29 +4,12 @@ import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
 from torch.utils.data import DataLoader
-from pytorch_benchmarks.utils import AverageMeter
-import math
-import sys
+from self_supervised_HR.utils import AverageMeter, unpatchify
 import torch
 import util.misc as misc
 import util.lr_sched as lr_sched
-import timm.optim.optim_factory as optim_factory
 import numpy as np
-from sklearn.preprocessing import MinMaxScaler
-import matplotlib.pyplot as plt
-from pytorch_benchmarks.hr_detection.model_pretrain  import MaskedAutoencoderViT
 
-
-"""plot audio from samples"""
-def plot_audio(x, type, num_sample, epoch):
-  plt.figure(figsize=(15, 5))
-  time = np.linspace(0, 8, num=256)
-  plt.xlim([0,8])
-  plt.plot(time, x)
-  plt.ylabel('Signal wave')
-  plt.xlabel('Time (s)')
-  plt.title(f"Heatmap PPG: sample {num_sample}")  
-  plt.savefig(f'./Benchmark_hr_detection/pytorch_benchmarks/imgs/{type}/audio{num_sample}_epoch{epoch}.png') 
 
 class LogCosh(nn.Module):
   def __init__(self):
@@ -35,30 +18,6 @@ class LogCosh(nn.Module):
   def forward(self, input: torch.Tensor, target: torch.Tensor):
     x = input - target
     return torch.mean(x + nn.Softplus()(-2*x) - torch.log(torch.tensor(2.)))
-
-
-def get_default_optimizer(net: nn.Module, task):
-    
-  if task == "pretrain":
-    print(f"=> Loading pretrain optimizer: AdamW")
-    #setting optimizer for masked autoencoders
-    param_groups = optim_factory.param_groups_weight_decay(net, 0.01) #weight_decay
-    return optim.AdamW(param_groups, lr=0.001, betas=(0.9, 0.95))
-  if task == "finetune":
-    print(f"=> Loading finetune optimizer: Adam")
-    #setting optimizer for hr estimation
-    return optim.Adam(net.parameters(), lr=0.001)
-
-
-def get_default_criterion(task):
-    if task == "pretrain":
-      print(f"=> Loading pretrain criterion: MSE Loss")
-    #setting criterion for masked autoencoders
-      return nn.MSELoss()
-    if task == "finetune":
-      print(f"=> Loading finetune criterion: LogCosh Loss")
-    #setting criterion for hr estimation
-      return LogCosh()
 
 
 def _run_model(model, sample, target, criterion):
@@ -96,7 +55,7 @@ def train_one_epoch_masked_autoencoder_time(model: torch.nn.Module,
         loss, prediction, target, x_masked = model(samples, mask_ratio=0.1)
 
         #forse provare a togliere cpu/detach
-        signal_reconstructed = np.squeeze(  MaskedAutoencoderViT.unpatchify_time(prediction).to('cpu').detach())
+        signal_reconstructed = np.squeeze(unpatchify(prediction, type = "time").to('cpu').detach())
             
         if plot_heatmap:
           ppg_signal = samples[sample_to_plot,0,:,:].to('cpu').detach().numpy() #ppg signal is channel 0

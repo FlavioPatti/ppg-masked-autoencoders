@@ -20,7 +20,7 @@ to_2tuple = _ntuple(2)
 class PatchEmbed_org(nn.Module):
     """ Image to Patch Embedding
     """
-    def __init__(self, img_size=224, patch_size=16, in_chans=3, embed_dim=768, type = "freq"):
+    def __init__(self, img_size=224, patch_size=16, in_chans=3, embed_dim=768, type = "time"):
         super().__init__()
         if type == "freq":
             img_size = (64,256)

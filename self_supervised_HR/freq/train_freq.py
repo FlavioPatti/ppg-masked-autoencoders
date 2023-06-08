@@ -4,22 +4,12 @@ import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
 from torch.utils.data import DataLoader
-from pytorch_benchmarks.utils import AverageMeter
-import math
-import sys
+from self_supervised_HR.utils import AverageMeter, unpatchify
 import torch
 import util.misc as misc
 import util.lr_sched as lr_sched
-import timm.optim.optim_factory as optim_factory
 import torchaudio
 import numpy as np
-from sklearn.preprocessing import MinMaxScaler
-import matplotlib.pyplot as plt
-from pytorch_benchmarks.hr_detection.model_pretrain import MaskedAutoencoderViT
-
-NORMALIZATION = True
-PLOT_HEATMAP = False
-
 
 """spectogram trasformation and relative parameters"""
 sample_rate= 32
@@ -44,21 +34,6 @@ spectrogram_transform = torchaudio.transforms.MelSpectrogram(
     n_mels = n_mels
 )
 
-"""plot heatmaps from samples"""
-def plot_heatmap(x, type, num_sample, epoch):
-  _, ax = plt.subplots()
-  left = 0
-  right= 8
-  bottom = 4
-  top = 0 
-  extent = [left,right, bottom, top]
-  im = ax.imshow(x, cmap = 'hot', interpolation = 'hanning', extent = extent)
-  ax.figure.colorbar(im, ax = ax)
-  ax.set_title(f"Heatmap PPG: sample {num_sample}")  
-  plt.xlabel('Time (s)')
-  plt.ylabel('Frequency (Hz)')
-  plt.savefig(f'./Benchmark_hr_detection/pytorch_benchmarks/imgs/{type}/specto{num_sample}_epoch{epoch}.png') 
-
 class LogCosh(nn.Module):
     def __init__(self):
       super(LogCosh, self).__init__()
@@ -66,30 +41,6 @@ class LogCosh(nn.Module):
     def forward(self, input: torch.Tensor, target: torch.Tensor):
       x = input - target
       return torch.mean(x + nn.Softplus()(-2*x) - torch.log(torch.tensor(2.)))
-
-
-def get_default_optimizer(net: nn.Module, task):
-
-  if task == "pretrain":
-    print(f"=> Loading pretrain optimizer: AdamW")
-    #setting optimizer for masked autoencoders
-    param_groups = optim_factory.param_groups_weight_decay(net, 0.01) #weight_decay
-    return optim.AdamW(param_groups, lr=0.001, betas=(0.9, 0.95))
-  if task == "finetune":
-    print(f"=> Loading finetune optimizer: Adam")
-    #setting optimizer for hr estimation
-    return optim.Adam(net.parameters(), lr=0.001)
-
-
-def get_default_criterion(task):
-    if task == "pretrain":
-      print(f"=> Loading pretrain criterion: MSE Loss")
-    #setting criterion for masked autoencoders
-      return nn.MSELoss()
-    if task == "finetune":
-      print(f"=> Loading finetune criterion: LogCosh Loss")
-    #setting criterion for hr estimation
-      return LogCosh()
 
 
 def _run_model(model, sample, target, criterion):
@@ -123,7 +74,8 @@ def train_one_epoch_masked_autoencoder_freq(model: torch.nn.Module,
         specto_samples = specto_samples.to(device, non_blocking=True)
         
         loss, prediction, target, x_masked = model(specto_samples, mask_ratio = 0.1)
-        signal_reconstructed = MaskedAutoencoderViT.unpatchify_freq(prediction)
+        
+        signal_reconstructed = unpatchify(prediction, type = "freq")
         
         
         if plot_heatmap:

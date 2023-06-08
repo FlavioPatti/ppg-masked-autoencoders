@@ -5,12 +5,13 @@ import pickle
 import random
 import requests
 import zipfile
-import pytorch_benchmarks.hr_detection as hrd
+import self_supervised_HR.freq as hrd
 import numpy as np
 from sklearn.model_selection import LeaveOneGroupOut
 from skimage.util.shape import view_as_windows
 import torch
 from torch.utils.data import Dataset, DataLoader
+
 
 DALIA_URL = "https://archive.ics.uci.edu/ml/machine-learning-databases/00495/data.zip"
 
@@ -167,7 +168,7 @@ def get_data(data_dir=None,
     if not filename.exists():
         print('Download in progress... Please wait.')
         ds_dalia = requests.get(url)
-        data_dir.mkdir()
+        #data_dir.mkdir()
         with open(filename, 'wb') as f:
             f.write(ds_dalia.content)
     # Unzip if needed

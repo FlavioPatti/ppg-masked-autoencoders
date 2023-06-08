@@ -22,7 +22,7 @@ class MaskedAutoencoderViT_without_decoder(nn.Module):
     """ Masked Autoencoder with VisionTransformer backbone
     """
     def __init__(self, img_size=224, patch_size=16, stride=10, in_chans=3,
-                 embed_dim=1024, depth=24, num_heads=16, type="freq",
+                 embed_dim=1024, depth=24, num_heads=16, type="time",
                  decoder_embed_dim=512, decoder_depth=8, decoder_num_heads=16,
                  mlp_ratio=4., norm_layer=nn.LayerNorm, norm_pix_loss=False, 
                  audio_exp=False, alpha=0.0, temperature=.2, mode=0, contextual_depth=8,
@@ -104,7 +104,7 @@ class MaskedAutoencoderViT_without_decoder(nn.Module):
         self.bn2 = nn.BatchNorm1d(num_features=64)
         
         #linear layer for predict HR
-        self.pooling = nn.AvgPool1d(4)
+        self.pooling = nn.AvgPool1d(16)
         self.out_neuron = nn.Linear(in_features=64, out_features=1)
         
         self.initialize_weights()

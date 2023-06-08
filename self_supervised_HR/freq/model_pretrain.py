@@ -8,7 +8,7 @@ class MaskedAutoencoderViT(nn.Module):
     """ Masked Autoencoder with VisionTransformer backbone
     """
     def __init__(self, img_size=224, patch_size=16, stride=10, in_chans=3,
-                 embed_dim=1024, depth=24, num_heads=16, type="freq",
+                 embed_dim=1024, depth=24, num_heads=16, type="time",
                  decoder_embed_dim=32, decoder_depth=8, decoder_num_heads=16,
                  mlp_ratio=4., norm_layer=nn.LayerNorm, norm_pix_loss=False, 
                  audio_exp=False, alpha=0.0, temperature=.2, mode=0, contextual_depth=8,
@@ -148,19 +148,6 @@ class MaskedAutoencoderViT(nn.Module):
         x = torch.einsum('nchpwq->nhwpqc', x)
         x = x.reshape(shape=(imgs.shape[0], h * w, p**2 *4)) 
         return x
-
-    def unpatchify(self, imgs):
-        """
-        x: (N, L, patch_size**2 *4)
-        specs: (N, 4, H, W)
-        """
-        p = self.patch_embed.patch_size[0]    
-        h = imgs.shape[2] // p
-        w = imgs.shape[3] // p
-        x = imgs.reshape(shape=(imgs.shape[0], h, w, p, p, 4))
-        x = torch.einsum('nhwpqc->nchpwq', x)
-        specs = x.reshape(shape=(x.shape[0], 4, h * p, w * p))
-        return specs
 
     def random_masking(self, x, mask_ratio):
         """
