@@ -8,48 +8,21 @@
 # timm: https://github.com/rwightman/pytorch-image-models/tree/master/timm
 # DeiT: https://github.com/facebookresearch/deit
 # --------------------------------------------------------
-
 from functools import partial
 from json import encoder
-
 import torch
 import torch.nn as nn
 import numpy as np
 #from timm.models.vision_transformer import PatchEmbed, Block
 from timm.models.vision_transformer import Block
-from util.pos_embed import get_2d_sincos_pos_embed, get_2d_sincos_pos_embed_flexible, get_1d_sincos_pos_embed_from_grid
-from util.misc import concat_all_gather
-from util.patch_embed import PatchEmbed_new, PatchEmbed_org
-from timm.models.swin_transformer import SwinTransformerBlock
-
-
-class Regressor(nn.Module):
-    """
-    Regressor block composed of:
-    - Linear layer
-    - ReLU layer
-    - BatchNorm1d layer
-    :param ft_in: Number of input channels
-    :param ft_out: Number of output channels
-    """
-    def __init__(self, ft_in, ft_out):
-        super(Regressor, self).__init__()
-        self.fc = nn.Linear(in_features=ft_in, out_features=ft_out)
-        self.relu = nn.ReLU()
-        self.bn = nn.BatchNorm1d(num_features=ft_out)
-
-    def forward(self, x):
-        x = self.fc(x)
-        x = self.relu(x)
-        x = self.bn(x)
-        return x
-
+from util.pos_embed import get_2d_sincos_pos_embed
+from util.patch_embed import PatchEmbed_org
 
 class MaskedAutoencoderViT_without_decoder(nn.Module):
     """ Masked Autoencoder with VisionTransformer backbone
     """
     def __init__(self, img_size=224, patch_size=16, stride=10, in_chans=3,
-                 embed_dim=1024, depth=24, num_heads=16, typeExp="freq+time",
+                 embed_dim=1024, depth=24, num_heads=16, type="freq",
                  decoder_embed_dim=512, decoder_depth=8, decoder_num_heads=16,
                  mlp_ratio=4., norm_layer=nn.LayerNorm, norm_pix_loss=False, 
                  audio_exp=False, alpha=0.0, temperature=.2, mode=0, contextual_depth=8,
@@ -66,7 +39,7 @@ class MaskedAutoencoderViT_without_decoder(nn.Module):
         # --------------------------------------------------------------------------
         # MAE encoder specifics
         
-        self.patch_embed = PatchEmbed_org(img_size, patch_size, in_chans, embed_dim, typeExp)
+        self.patch_embed = PatchEmbed_org(img_size, patch_size, in_chans, embed_dim, type)
         self.use_custom_patch = use_custom_patch
         num_patches = self.patch_embed.num_patches
 
@@ -166,7 +139,7 @@ class MaskedAutoencoderViT_without_decoder(nn.Module):
             nn.init.constant_(m.bias, 0)
             nn.init.constant_(m.weight, 1.0)
 
-    def forward_encoder_no_mask(self, x, typeExp):
+    def forward_encoder_no_mask(self, x):
         # embed patches
         x = self.patch_embed(x)
 
@@ -192,25 +165,16 @@ class MaskedAutoencoderViT_without_decoder(nn.Module):
          # if n > self.contextual_depth:
           #  contextual_embs.append(self.norm(x))
 
-        """
-        if typeExp == "freq+time":
-          m = nn.BatchNorm1d(num_features=257, device = 'cuda')
-        if typeExp == "time":
-          m = nn.BatchNorm1d(num_features=257, device = 'cuda')
-        x=m(x)
-        m = nn.ReLU()
-        x=m(x)
-        """
         #contextual_emb = torch.stack(contextual_embs,dim=0).mean(dim=0)
         return x
 
-    def forward(self, imgs, typeExp="freq+time", mask_ratio=0.1):
+    def forward(self, imgs):
 
         #print("")
         #print(f"imgs = {imgs.shape}") 
         #(128,4,256,1) for time, (128, 4, 64, 256) for freq+time
         
-        x = self.forward_encoder_no_mask(imgs, typeExp)
+        x = self.forward_encoder_no_mask(imgs)
         x = torch.narrow(x, dim=1, start=0, length=256) 
         #(128,256,256) for time, (128,257,256) for freq+time => (N,C,T) 
 

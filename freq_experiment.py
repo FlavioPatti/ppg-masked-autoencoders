@@ -14,32 +14,20 @@ os.environ["WANDB_MODE"] = "online"
 N_PRETRAIN_EPOCHS = 2
 N_FINETUNE_EPOCHS = 0
 
-#Type of experiments: 
-FREQ = 0
-TIME = 1
-
 # Check CUDA availability
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 print("Training on:", device)
 
 def save_checkpoint_pretrain(state, filename="checkpoint_model_pretrain"):
-  print("=> Saving checkpoint")
-  torch.save(state,filename)
-
-def load_checkpoint_pretrain(checkpoint):
-  print("=> Loading checkpoint")
-  model.load_state_dict(checkpoint['state_dict'])
-
-def save_checkpoint_finetune(state, filename="checkpoint_model_finetune"):
-  print("=> Saving checkpoint")
+  print("=> Saving pretrained checkpoint")
   torch.save(state,filename)
 
 def load_checkpoint_finetune(checkpoint):
-  print("=> Loading checkpoint")
+  print("=> Loading pretrained checkpoint")
   model.load_state_dict(checkpoint['state_dict'])
   
 # Init wandb for plot loss/mae
-configuration = {'experiment': "Time", 'epochs_pretrain': N_PRETRAIN_EPOCHS, 'epochs_finetune': N_FINETUNE_EPOCHS}
+configuration = {'experiment': "Freq", 'epochs_pretrain': N_PRETRAIN_EPOCHS, 'epochs_finetune': N_FINETUNE_EPOCHS}
 run = wandb.init(
             # Set entity to specify your username or team name
             entity = "aml-2022", 
@@ -64,13 +52,9 @@ for datasets in data_gen:
     loss_scaler = NativeScaler()
     
     # Get the Model
-    if FREQ:
-      print("Freq experiment")
-      model = hrd.get_reference_model('vit_freq+time_pretrain') #ViT (encoder + decoder)
-    if TIME:
-      print("Time experiment")
-      model = hrd.get_reference_model('vit_time_pretrain') #ViT (encoder + decoder)
-      
+    print("=> Running Freq experiment")
+    model = hrd.get_reference_model('vit_freq_pretrain') #ViT (encoder + decoder)
+
     if torch.cuda.is_available():
       model = model.cuda()
     
@@ -82,21 +66,12 @@ for datasets in data_gen:
     #Pretraining for recostruct input signals
     for epoch in range(N_PRETRAIN_EPOCHS):
         
-      if FREQ:
-        train_stats = hrd.train_one_epoch_masked_autoencoder_freq_time(
+      train_stats = hrd.train_one_epoch_masked_autoencoder_freq(
             model, train_dl, criterion,
             optimizer, device, epoch, loss_scaler,
             normalization = False,
             plot_heatmap = False, 
             sample_to_plot = 50
-        )
-
-      if TIME:
-        train_stats = hrd.train_one_epoch_masked_autoencoder_time(
-            model, train_dl, criterion,
-            optimizer, device, epoch, loss_scaler,
-            log_writer=None,
-            args=None
         )
       
       print(f"train_stats = {train_stats}")
@@ -112,11 +87,9 @@ for datasets in data_gen:
         break
     
     #Finetune for hr estimation
-    if FREQ:
-      model = hrd.get_reference_model('vit_freq+time_finetune') #ViT (only encoder with at the end linear layer)
-    if TIME:
-      model = hrd.get_reference_model('vit_time_finetune') #ViT (only encoder with at the end linear layer)
-
+    model = hrd.get_reference_model('vit_freq_finetune') #ViT (only encoder with at the end linear layer)
+   
+    #print stats
     input_tensor = torch.randn(1,4,64,256)
     flops, params = profile(model, inputs=(input_tensor,))
     print(f"# params = {params}, #flops = {flops}")
@@ -137,12 +110,10 @@ for datasets in data_gen:
     #load_checkpoint_pretrain(torch.load("./checkpoint_model_pretrain"))
     
     for epoch in range(N_FINETUNE_EPOCHS):
-      if FREQ:
-        metrics = hrd.train_one_epoch_hr_detection_freq_time(
-            epoch, model, criterion, optimizer, train_dl, val_dl, device)
-      if TIME:
-        metrics = hrd.train_one_epoch_hr_detection_time(
-            epoch, model, criterion, optimizer, train_dl, val_dl, device)
+      
+      metrics = hrd.train_one_epoch_hr_detection_freq(
+            epoch, model, criterion, optimizer, train_dl, val_dl, device,  
+            normalization = False,plot_heatmap = False, sample_to_plot = 50)
         
       print(f"train stats = {metrics}")
       train_loss = metrics['loss']
@@ -156,11 +127,9 @@ for datasets in data_gen:
       wandb.log({'val_loss': val_loss, 'epochs': epoch + 1}, commit=True)
       wandb.log({'val_mae': val_mae, 'epochs': epoch + 1}, commit=True)
 
-      if FREQ:
-        test_metrics = hrd.evaluate_freq_time(model, criterion, test_dl, device)
-      if TIME:
-        test_metrics = hrd.evaluate_time(model, criterion, test_dl, device)
-        
+      test_metrics = hrd.evaluate_freq_time(model, criterion, test_dl, device,
+          normalization = False,plot_heatmap = False, sample_to_plot = 50)
+    
       print(f"test stats = {test_metrics}")
       test_loss = test_metrics['loss']
       test_mae = test_metrics['MAE']

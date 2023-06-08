@@ -15,7 +15,7 @@ import torchaudio
 import numpy as np
 from sklearn.preprocessing import MinMaxScaler
 import matplotlib.pyplot as plt
-from pytorch_benchmarks.hr_detection.models_mae import unpatchify_freq
+from pytorch_benchmarks.hr_detection.model_pretrain import MaskedAutoencoderViT
 
 NORMALIZATION = True
 PLOT_HEATMAP = False
@@ -44,8 +44,8 @@ spectrogram_transform = torchaudio.transforms.MelSpectrogram(
     n_mels = n_mels
 )
 
-"""plot heatmap"""
-def plot_heatmap_spectogram(x, typeExp, num_sample, epoch = 0):
+"""plot heatmaps from samples"""
+def plot_heatmap(x, type, num_sample, epoch):
   _, ax = plt.subplots()
   left = 0
   right= 8
@@ -57,8 +57,7 @@ def plot_heatmap_spectogram(x, typeExp, num_sample, epoch = 0):
   ax.set_title(f"Heatmap PPG: sample {num_sample}")  
   plt.xlabel('Time (s)')
   plt.ylabel('Frequency (Hz)')
-  plt.savefig(f'./Benchmark_hr_detection/pytorch_benchmarks/imgs/{typeExp}/specto{num_sample}_epoch{epoch}.png') 
-
+  plt.savefig(f'./Benchmark_hr_detection/pytorch_benchmarks/imgs/{type}/specto{num_sample}_epoch{epoch}.png') 
 
 class LogCosh(nn.Module):
     def __init__(self):
@@ -99,56 +98,54 @@ def _run_model(model, sample, target, criterion):
     return output, loss
 
 
-def train_one_epoch_masked_autoencoder_freq_time(model: torch.nn.Module,
+def train_one_epoch_masked_autoencoder_freq(model: torch.nn.Module,
                     data_loader: DataLoader, criterion: torch.nn.MSELoss, optimizer: torch.optim.Optimizer,
                     device: torch.device, epoch: int, loss_scaler,
-                    log_writer=None,
-                    args=None):
+                    normalization = False, plot_heatmap = False, sample_to_plot = 50):
     model.train(True)
     metric_logger = misc.MetricLogger(delimiter="  ")
     metric_logger.add_meter('lr', misc.SmoothedValue(window_size=1, fmt='{value:.6f}'))
     header = 'Epoch: [{}]'.format(epoch)
     print_freq = 50
     optimizer.zero_grad()
-    # set model epoch
     model.epoch = epoch
   
     for data_iter_step, (samples, _labels) in enumerate(metric_logger.log_every(data_loader, print_freq, header)):
-        lr_sched.adjust_learning_rate(optimizer, data_iter_step / len(data_loader) + epoch, args)
+        # we use a per iteration (instead of per epoch) lr scheduler
+        lr_sched.adjust_learning_rate(optimizer, data_iter_step / len(data_loader) + epoch)
 
-
+        #img shape (4,256) -> (4,64,256) = (CH,FREQ,TIME)
         specto_samples = torch.narrow(spectrogram_transform(samples), dim=3, start=0, length=256) 
 
-        if NORMALIZATION:
+        if normalization:
           specto_samples = np.log10(specto_samples)  
     
         specto_samples = specto_samples.to(device, non_blocking=True)
-        loss_a, pred, target, x_masked = model(specto_samples, "freq+time", mask_ratio = 0.1)
-        signal_reconstructed = unpatchify_freq(pred)
-        if PLOT_HEATMAP:
-              plot_heatmap_training(spectro_samples, epoch,)
-        loss_value = loss_a
-        loss_scaler(loss_value, optimizer, parameters=model.parameters(), update_grad=True)
+        
+        loss, prediction, target, x_masked = model(specto_samples, mask_ratio = 0.1)
+        signal_reconstructed = MaskedAutoencoderViT.unpatchify_freq(prediction)
+        
+        
+        if plot_heatmap:
+          ppg_signal = samples[sample_to_plot,0,:,:].to('cpu').detach().numpy() #ppg signal is channel 0
+          plot_heatmap(x = ppg_signal, type="input", num_sample = sample_to_plot, epoch = epoch)
+          
+          ppg_signal_masked = signal_reconstructed[sample_to_plot,0,:].to('cpu').detach().numpy()
+          plot_heatmap(x = ppg_signal_masked, type="input_reconstructed", num_sample = sample_to_plot, epoch = epoch)
+          
+        loss_scaler(loss, optimizer, parameters=model.parameters(), update_grad=True)
         optimizer.zero_grad()
-        metric_logger.update(loss=loss_value)
+        metric_logger.update(loss=loss)
         lr = optimizer.param_groups[0]["lr"]
         metric_logger.update(lr=lr)
-        if log_writer is not None and (data_iter_step + 1) % accum_iter == 0:
-            epoch_1000x = int((data_iter_step / len(data_loader) + epoch) * 1000)
-            log_writer.add_scalar('loss', loss_value_reduce, epoch_1000x)
-            log_writer.add_scalar('lr', lr, epoch_1000x)
-    # gather the stats from all processes
+        
     return {k: meter.global_avg for k, meter in metric_logger.meters.items()}
 
 
-def train_one_epoch_hr_detection_freq_time(
-        epoch: int,
-        model: nn.Module,
-        criterion: nn.Module,
-        optimizer: optim.Optimizer,
-        train: DataLoader,
-        val: DataLoader,
-        device: torch.device):
+def train_one_epoch_hr_detection_freq(
+        epoch: int,model: nn.Module,criterion: nn.Module,optimizer: optim.Optimizer,
+        train: DataLoader,val: DataLoader,device: torch.device, 
+        normalization = False, plot_heatmap = False, sample_to_plot = 50):
     model.train()
     avgmae = AverageMeter('6.2f')
     avgloss = AverageMeter('2.5f')
@@ -159,7 +156,7 @@ def train_one_epoch_hr_detection_freq_time(
 
         specto_samples = torch.narrow(spectrogram_transform(sample), dim=3, start=0, length=256) 
         
-        if NORMALIZATION:
+        if normalization:
           specto_samples = np.log10(specto_samples)
                   
         step += 1
@@ -176,7 +173,7 @@ def train_one_epoch_hr_detection_freq_time(
         avgloss.update(loss, sample.size(0))
         if step % 100 == 99:
           tepoch.set_postfix({'loss': avgloss, 'MAE': avgmae})
-      val_metrics = evaluate_freq_time(model, criterion, val, device)
+      val_metrics = evaluate_freq(model, criterion, val, device)
       val_metrics = {'val_' + k: v for k, v in val_metrics.items()}
       final_metrics = {
           'loss': avgloss.get(),
@@ -188,11 +185,9 @@ def train_one_epoch_hr_detection_freq_time(
     return final_metrics
 
 
-def evaluate_freq_time(
-        model: nn.Module,
-        criterion: nn.Module,
-        data: DataLoader,
-        device: torch.device):
+def evaluate_freq(
+        model: nn.Module,criterion: nn.Module,data: DataLoader,device: torch.device,
+        normalization = False, plot_heatmap = False, sample_to_plot = 50):
     model.eval()
     avgmae = AverageMeter('6.2f')
     avgloss = AverageMeter('2.5f')
@@ -202,7 +197,7 @@ def evaluate_freq_time(
          
           specto_samples = torch.narrow(spectrogram_transform(sample), dim=3, start=0, length=256) 
           
-          if NORMALIZATION:
+          if normalization:
              specto_samples = np.log10(specto_samples) 
                         
           step += 1

@@ -2,42 +2,13 @@ import torch
 import torch.nn as nn
 from timm.models.vision_transformer import Block
 from util.pos_embed import get_2d_sincos_pos_embed
-from util.misc import concat_all_gather
 from util.patch_embed import PatchEmbed_org
-
-def unpatchify_freq(x):
-  """
-  x: (N, L, patch_size**2 *4)
-  specs: (N, 4, H, W)
-  """
-  #p = self.patch_embed.patch_size[0]    
-  p = 8
-  h = 64//p
-  w = 256//p
-  x = x.reshape(shape=(x.shape[0], h, w, p, p, 4))
-  x = torch.einsum('nhwpqc->nchpwq', x)
-  specs = x.reshape(shape=(x.shape[0], 4, h * p, w * p))
-  return specs
-    
-def unpatchify_time(x):
-  """
-  x: (N, L, patch_size**2 *4)
-  specs: (N, 4, H, W)
-  """
-  # p = self.patch_embed.patch_size[0]    
-  p = 1
-  h = 256//p
-  w = 1//p
-  x = x.reshape(shape=(x.shape[0], h, w, p, p, 4))
-  x = torch.einsum('nhwpqc->nchpwq', x)
-  specs = x.reshape(shape=(x.shape[0], 4, h * p, w * p))
-  return specs
 
 class MaskedAutoencoderViT(nn.Module):
     """ Masked Autoencoder with VisionTransformer backbone
     """
     def __init__(self, img_size=224, patch_size=16, stride=10, in_chans=3,
-                 embed_dim=1024, depth=24, num_heads=16, typeExp="freq+time",
+                 embed_dim=1024, depth=24, num_heads=16, type="freq",
                  decoder_embed_dim=32, decoder_depth=8, decoder_num_heads=16,
                  mlp_ratio=4., norm_layer=nn.LayerNorm, norm_pix_loss=False, 
                  audio_exp=False, alpha=0.0, temperature=.2, mode=0, contextual_depth=8,
@@ -53,7 +24,7 @@ class MaskedAutoencoderViT(nn.Module):
         # --------------------------------------------------------------------------
         # MAE encoder specifics
         
-        self.patch_embed = PatchEmbed_org(img_size, patch_size, in_chans, embed_dim, typeExp)
+        self.patch_embed = PatchEmbed_org(img_size, patch_size, in_chans, embed_dim, type)
         
         self.use_custom_patch = use_custom_patch
         num_patches = self.patch_embed.num_patches
@@ -160,7 +131,7 @@ class MaskedAutoencoderViT(nn.Module):
             nn.init.constant_(m.bias, 0)
             nn.init.constant_(m.weight, 1.0)
 
-    def patchify(self, imgs, typeExp):
+    def patchify(self, imgs):
         """
         imgs: (N, 4, H, W)
         x: (N, L, patch_size**2 *4)
@@ -176,8 +147,20 @@ class MaskedAutoencoderViT(nn.Module):
         x = imgs.reshape(shape=(imgs.shape[0], 4, h, p, w, p))
         x = torch.einsum('nchpwq->nhwpqc', x)
         x = x.reshape(shape=(imgs.shape[0], h * w, p**2 *4)) 
-        
         return x
+
+    def unpatchify(self, imgs):
+        """
+        x: (N, L, patch_size**2 *4)
+        specs: (N, 4, H, W)
+        """
+        p = self.patch_embed.patch_size[0]    
+        h = imgs.shape[2] // p
+        w = imgs.shape[3] // p
+        x = imgs.reshape(shape=(imgs.shape[0], h, w, p, p, 4))
+        x = torch.einsum('nhwpqc->nchpwq', x)
+        specs = x.reshape(shape=(x.shape[0], 4, h * p, w * p))
+        return specs
 
     def random_masking(self, x, mask_ratio):
         """
@@ -290,7 +273,7 @@ class MaskedAutoencoderViT(nn.Module):
         #print(f" x3 = {x.shape}")
         return x, mask, ids_restore, None
 
-    def forward_decoder(self, x, ids_restore, typeExp):
+    def forward_decoder(self, x, ids_restore):
         # embed tokens
         #print(f"x4 = {x.shape}")
         x = self.decoder_embed(x)
@@ -337,13 +320,13 @@ class MaskedAutoencoderViT(nn.Module):
 
         return pred, None, None #emb, emb_pixel
 
-    def forward_loss(self, imgs, pred, mask, typeExp, norm_pix_loss=False):
+    def forward_loss(self, imgs, pred, mask, norm_pix_loss=False):
         """
         imgs: [N, 4, H, W]
         pred: [N, L, p*p*4]
         mask: [N, L], 0 is keep, 1 is remove, 
         """
-        target = self.patchify(imgs, typeExp)
+        target = self.patchify(imgs)
        # print(f"target = {target.shape}")
 
         if norm_pix_loss:
@@ -357,10 +340,10 @@ class MaskedAutoencoderViT(nn.Module):
         loss = (loss * mask).sum() / mask.sum()  # mean loss on removed patches
         return loss, target     
 
-    def forward(self, imgs, typeExp="freq+time", mask_ratio=0.0):
+    def forward(self, imgs, mask_ratio=0.1):
         #print(f"imgs = {imgs.shape}")
         emb_enc, mask, ids_restore, _ = self.forward_encoder(imgs, mask_ratio, mask_2d=self.mask_2d)
         #print(f"emb_enc = {emb_enc.shape}")
-        pred, _, _ = self.forward_decoder(emb_enc, ids_restore, typeExp) 
-        loss_recon, target = self.forward_loss(imgs, pred, mask, typeExp, norm_pix_loss=self.norm_pix_loss)
+        pred, _, _ = self.forward_decoder(emb_enc, ids_restore) 
+        loss_recon, target = self.forward_loss(imgs, pred, mask, norm_pix_loss=self.norm_pix_loss)
         return loss_recon, pred, target, emb_enc

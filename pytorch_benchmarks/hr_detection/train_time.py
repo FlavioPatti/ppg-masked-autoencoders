@@ -14,10 +14,10 @@ import timm.optim.optim_factory as optim_factory
 import numpy as np
 from sklearn.preprocessing import MinMaxScaler
 import matplotlib.pyplot as plt
-from pytorch_benchmarks.hr_detection.models_mae  import unpatchify_time
+from pytorch_benchmarks.hr_detection.model_pretrain  import MaskedAutoencoderViT
 
 
-"""plot heatmaps"""
+"""plot audio from samples"""
 def plot_audio(x, type, num_sample, epoch):
   plt.figure(figsize=(15, 5))
   time = np.linspace(0, 8, num=256)
@@ -26,7 +26,7 @@ def plot_audio(x, type, num_sample, epoch):
   plt.ylabel('Signal wave')
   plt.xlabel('Time (s)')
   plt.title(f"Heatmap PPG: sample {num_sample}")  
-  plt.savefig(f'./Benchmark_hr_detection/pytorch_benchmarks/imgs/{typeExp}/audio{num_sample}_epoch{epoch}.png') 
+  plt.savefig(f'./Benchmark_hr_detection/pytorch_benchmarks/imgs/{type}/audio{num_sample}_epoch{epoch}.png') 
 
 class LogCosh(nn.Module):
   def __init__(self):
@@ -93,59 +93,31 @@ def train_one_epoch_masked_autoencoder_time(model: torch.nn.Module,
     
         samples = samples.to(device, non_blocking=True)
 
-        loss_a, prediction, target, x_masked = model(samples, "time",mask_ratio=0.1)
+        loss, prediction, target, x_masked = model(samples, mask_ratio=0.1)
 
-        signal_reconstructed = np.squeeze(unpatchify_time(prediction).to('cpu').detach())
+        #forse provare a togliere cpu/detach
+        signal_reconstructed = np.squeeze(  MaskedAutoencoderViT.unpatchify_time(prediction).to('cpu').detach())
             
         if plot_heatmap:
-          ppg_signal = samples[signal_to_plot,0,:,:].to('cpu').detach().numpy() #ppg signal is channel 0
-          plot_audio(x = ppg_signal, type="input", num_sample = signal_to_plot, epoch = epoch)
+          ppg_signal = samples[sample_to_plot,0,:,:].to('cpu').detach().numpy() #ppg signal is channel 0
+          plot_audio(x = ppg_signal, type="input", num_sample = sample_to_plot, epoch = epoch)
 
-          ppg_signal_masked = signal_reconstructed[signal_to_plot,0,:].to('cpu').detach().numpy()
-          plot_audio(x = ppg_signal_masked, type="input_reconstructed", num_sample = signal_to_plot, epoch = epoch)
-                    
-        loss_value = loss_a.item()
-        loss_total = loss_a
-
-        if not math.isfinite(loss_value):
-            print("Loss is {}, stopping training".format(loss_value))
-            sys.exit(1)
-
-        loss_total = loss_total / accum_iter
-        loss_scaler(loss_total, optimizer, parameters=model.parameters(),
-                    update_grad=(data_iter_step + 1) % accum_iter == 0)
-        if (data_iter_step + 1) % accum_iter == 0:
-            optimizer.zero_grad()
-
-        torch.cuda.synchronize()
-
-        metric_logger.update(loss=loss_value)
-
+          ppg_signal_masked = signal_reconstructed[sample_to_plot,0,:].to('cpu').detach().numpy()
+          plot_audio(x = ppg_signal_masked, type="input_reconstructed", num_sample = sample_to_plot, epoch = epoch)
+          
+        loss_scaler(loss, optimizer, parameters=model.parameters(),update_grad=True)
+        optimizer.zero_grad()
+        metric_logger.update(loss=loss)
         lr = optimizer.param_groups[0]["lr"]
         metric_logger.update(lr=lr)
-
-        loss_value_reduce = misc.all_reduce_mean(loss_value) #calculate the average of the loss on all the processes of a group
-
-        if log_writer is not None and (data_iter_step + 1) % accum_iter == 0:
-    
-            epoch_1000x = int((data_iter_step / len(data_loader) + epoch) * 1000)
-            log_writer.add_scalar('loss', loss_value_reduce, epoch_1000x)
-            log_writer.add_scalar('lr', lr, epoch_1000x)
-
-
-    # gather the stats from all processes
-    metric_logger.synchronize_between_processes()
+        
     return {k: meter.global_avg for k, meter in metric_logger.meters.items()}
 
 
 def train_one_epoch_hr_detection_time(
-        epoch: int,
-        model: nn.Module,
-        criterion: nn.Module,
-        optimizer: optim.Optimizer,
-        train: DataLoader,
-        val: DataLoader,
-        device: torch.device):
+        epoch: int,model: nn.Module,criterion: nn.Module,optimizer: optim.Optimizer,
+        train: DataLoader,val: DataLoader,device: torch.device,
+        normalization = False, plot_heatmap = False, sample_to_plot = 50):
     model.train()
     avgmae = AverageMeter('6.2f')
     avgloss = AverageMeter('2.5f')
@@ -154,7 +126,7 @@ def train_one_epoch_hr_detection_time(
       tepoch.set_description(f"Epoch {epoch+1}")
       for sample, target in train:
 
-        if MIN_MAX_NORM:
+        if normalization:
           min_v = sample.min()
           max_v = sample.max()
           sample = (sample - min_v) / ( max_v - min_v)
@@ -187,10 +159,8 @@ def train_one_epoch_hr_detection_time(
     return final_metrics
 
 def evaluate_time(
-        model: nn.Module,
-        criterion: nn.Module,
-        data: DataLoader,
-        device: torch.device):
+        model: nn.Module,criterion: nn.Module,data: DataLoader,device: torch.device,
+        normalization = False,plot_heatmap = False, sample_to_plot = 50):
     model.eval()
     avgmae = AverageMeter('6.2f')
     avgloss = AverageMeter('2.5f')
@@ -198,11 +168,11 @@ def evaluate_time(
     with torch.no_grad():
       for sample, target in data:
             
-        if MIN_MAX_NORM:
+        if normalization:
           min_v = sample.min()
           max_v = sample.max()
           samples = (samples - min_v) / ( max_v - min_v)
-
+          
         sample = torch.tensor(np.expand_dims(sample, axis= -1))
         
         step += 1
