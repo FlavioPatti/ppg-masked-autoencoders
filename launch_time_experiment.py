@@ -13,7 +13,7 @@ os.environ["WANDB_API_KEY"] = "20fed903c269ff76b57d17a58cdb0ba9d0c4d2be"
 os.environ["WANDB_MODE"] = "online"
 
 N_PRETRAIN_EPOCHS = 0
-N_FINETUNE_EPOCHS = 1000
+N_FINETUNE_EPOCHS = 200
 
 # Check CUDA availability
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
@@ -23,7 +23,7 @@ def save_checkpoint_pretrain(state, filename="checkpoint_model_pretrain"):
   print("=> Saving pretrained checkpoint")
   torch.save(state,filename)
 
-def load_checkpoint_finetune(checkpoint):
+def load_checkpoint_pretrain(checkpoint):
   print("=> Loading pretrained checkpoint")
   model.load_state_dict(checkpoint['state_dict'])
  
@@ -48,7 +48,7 @@ for datasets in data_gen:
     dataloaders = hrd.build_dataloaders(datasets)
     train_dl, val_dl, test_dl = dataloaders
     # Set earlystop
-    earlystop = EarlyStopping(patience=20, mode='min')
+    earlystop = EarlyStopping(patience=30, mode='min')
     # Training Loop
     loss_scaler = NativeScaler()
     
@@ -90,13 +90,12 @@ for datasets in data_gen:
     #Finetune for hr estimation
     model = utils.get_reference_model('vit_time_finetune') #ViT (only encoder with at the end linear layer)
 
-    """
     #print stats
-    input_tensor = torch.randn(1,4,64,256)
+    """
+    input_tensor = torch.randn(1,4,256,1)
     flops, params = profile(model, inputs=(input_tensor,))
     print(f"# params = {params}, #flops = {flops}")
     """
-    
     if torch.cuda.is_available():
         model = model.cuda()
         
@@ -107,7 +106,8 @@ for datasets in data_gen:
     #scheduler = StepLR(optimizer, step_size=20, gamma=1/3)
     optimizer = utils.get_default_optimizer(model, "finetune")
     earlystop = EarlyStopping(patience=20, mode='min')
-    best_mae = sys.float_info.max
+    best_val_mae = sys.float_info.max
+    best_test_mae = sys.float_info.max
 
     #Load checkpoint from pretrain if exists
     #load_checkpoint_pretrain(torch.load("./checkpoint_model_pretrain"))
@@ -136,13 +136,17 @@ for datasets in data_gen:
       test_loss = test_metrics['loss']
       test_mae = test_metrics['MAE']
 
-      if val_mae < best_mae:
-        best_mae = val_mae
-        print(f"new best mae found = {best_mae}")
+      if val_mae < best_val_mae:
+        best_val_mae = val_mae
+        print(f"new best val mae found = {best_val_mae}")
       
       print(f"=> Updating plot on wandb")
       wandb.log({'test_loss': test_loss, 'epochs': epoch + 1}, commit=True)
       wandb.log({'test_mae': test_mae, 'epochs': epoch + 1}, commit=True)
+      
+      if test_mae < best_test_mae:
+        best_test_mae = test_mae
+        print(f"new best test mae found = {best_val_mae}")
     
       if earlystop(val_mae):
         break
