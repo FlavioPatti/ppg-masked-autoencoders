@@ -9,12 +9,11 @@ import os
 from thop import profile
 from torch.optim.lr_scheduler import StepLR
 
-
 os.environ["WANDB_API_KEY"] = "20fed903c269ff76b57d17a58cdb0ba9d0c4d2be"
 os.environ["WANDB_MODE"] = "online"
 
 N_PRETRAIN_EPOCHS = 0
-N_FINETUNE_EPOCHS = 1
+N_FINETUNE_EPOCHS = 1000
 
 # Check CUDA availability
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
@@ -27,8 +26,7 @@ def save_checkpoint_pretrain(state, filename="checkpoint_model_pretrain"):
 def load_checkpoint_finetune(checkpoint):
   print("=> Loading pretrained checkpoint")
   model.load_state_dict(checkpoint['state_dict'])
-
-"""  
+ 
 # Init wandb for plot loss/mae
 configuration = {'experiment': "Time", 'epochs_pretrain': N_PRETRAIN_EPOCHS, 'epochs_finetune': N_FINETUNE_EPOCHS}
 run = wandb.init(
@@ -40,7 +38,7 @@ run = wandb.init(
             # Track hyperparameters and run metadata
             config=configuration,
             resume="allow")
-"""  
+ 
 # Get the Data and perform cross-validation
 mae_dict = dict()
 data_gen = hrd.get_data()
@@ -126,10 +124,10 @@ for datasets in data_gen:
       val_mae = metrics['val_MAE']
         
       print(f"=> Updating plot on wandb")
-     # wandb.log({'train_loss': train_loss, 'epochs': epoch + 1}, commit=True)
-     # wandb.log({'train_mae': train_mae, 'epochs': epoch + 1}, commit=True)
-     # wandb.log({'val_loss': val_loss, 'epochs': epoch + 1}, commit=True)
-     # wandb.log({'val_mae': val_mae, 'epochs': epoch + 1}, commit=True)
+      wandb.log({'train_loss': train_loss, 'epochs': epoch + 1}, commit=True)
+      wandb.log({'train_mae': train_mae, 'epochs': epoch + 1}, commit=True)
+      wandb.log({'val_loss': val_loss, 'epochs': epoch + 1}, commit=True)
+      wandb.log({'val_mae': val_mae, 'epochs': epoch + 1}, commit=True)
 
       test_metrics = hrd.evaluate_time(model, criterion, test_dl, device,
           normalization = False,plot_heatmap = False, sample_to_plot = 50)
@@ -143,10 +141,9 @@ for datasets in data_gen:
         print(f"new best mae found = {best_mae}")
       
       print(f"=> Updating plot on wandb")
-      #wandb.log({'test_loss': test_loss, 'epochs': epoch + 1}, commit=True)
-      #wandb.log({'test_mae': test_mae, 'epochs': epoch + 1}, commit=True)
+      wandb.log({'test_loss': test_loss, 'epochs': epoch + 1}, commit=True)
+      wandb.log({'test_mae': test_mae, 'epochs': epoch + 1}, commit=True)
     
       if earlystop(val_mae):
         break
       
-    

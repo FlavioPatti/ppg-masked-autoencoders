@@ -198,14 +198,14 @@ def build_dataloaders(datasets: Tuple[Dataset, ...],
     train_loader = DataLoader(
         train_set,
         batch_size=batch_size,
-        shuffle=False,
+        shuffle=True,
         pin_memory=True,
         num_workers=num_workers,
     )
     val_loader = DataLoader(
         val_set,
         batch_size=batch_size,
-        shuffle=False,
+        shuffle=True,
         num_workers=num_workers,
     )
     test_loader = DataLoader(
