@@ -8,3 +8,5 @@ Pillow
 pandas
 scikit-learn
 scikit-image
+wandb
+thop
