@@ -60,8 +60,8 @@ def train_one_epoch_masked_autoencoder_freq(model: torch.nn.Module,
         
         loss, prediction, target, x_masked = model(specto_samples, mask_ratio = 0.1)
         
+        #recostruction of the signal to the original shape
         signal_reconstructed = utils.unpatchify(prediction, type = "freq")
-        
         
         if plot_heatmap:
           ppg_signal = samples[sample_to_plot,0,:,:].to('cpu').detach().numpy() #ppg signal is channel 0
@@ -90,7 +90,8 @@ def train_one_epoch_hr_detection_freq(
     with tqdm(total=len(train), unit="batch") as tepoch:
       tepoch.set_description(f"Epoch {epoch+1}")
       for sample, target in train:
-
+            
+        #img shape (4,256) -> (4,64,256) = (CH,FREQ,TIME)
         specto_samples = torch.narrow(spectrogram_transform(sample), dim=3, start=0, length=256) 
         
         if normalization:
@@ -106,7 +107,7 @@ def train_one_epoch_hr_detection_freq(
         optimizer.zero_grad()
         loss.backward()
         optimizer.step()
-        mae_val = F.l1_loss(output, target) # Mean absolute error 
+        mae_val = F.l1_loss(output, target) # Mean absolute error for hr detection
         avgmae.update(mae_val, sample.size(0))
         avgloss.update(loss, sample.size(0))
         if step % 100 == 99:
@@ -132,7 +133,8 @@ def evaluate_freq(
     step = 0
     with torch.no_grad():
         for sample, target in data:
-         
+              
+          #img shape (4,256) -> (4,64,256) = (CH,FREQ,TIME)
           specto_samples = torch.narrow(spectrogram_transform(sample), dim=3, start=0, length=256) 
           
           if normalization:
@@ -142,7 +144,7 @@ def evaluate_freq(
           sample, target = specto_samples.to(device), target.to(device)
           output = model(sample)
           loss = criterion(output, target)
-          mae_val = F.l1_loss(output, target)
+          mae_val = F.l1_loss(output, target) # Mean absolute error for hr detection
           avgmae.update(mae_val, sample.size(0))
           avgloss.update(loss, sample.size(0))
         final_metrics = {

@@ -79,7 +79,7 @@ for datasets in data_gen:
       loss = train_stats['loss']
       if loss < best_loss:
         best_loss = loss
-        print(f"new best loss found = {best_loss}")
+        print(f"=> new best loss found = {best_loss}")
         #Save checkpoint
         checkpoint = {'state_dict': model.state_dict()}
         save_checkpoint_pretrain(checkpoint)
@@ -90,12 +90,11 @@ for datasets in data_gen:
     #Finetune for hr estimation
     model = utils.get_reference_model('vit_time_finetune') #ViT (only encoder with at the end linear layer)
 
-    #print stats
-    """
-    input_tensor = torch.randn(1,4,256,1)
+    #print #params and #ops for the model
+    input_tensor = torch.randn(1,4,256,1) #(1,4,256,1) for time
     flops, params = profile(model, inputs=(input_tensor,))
     print(f"# params = {params}, #flops = {flops}")
-    """
+  
     if torch.cuda.is_available():
         model = model.cuda()
         
@@ -118,22 +117,17 @@ for datasets in data_gen:
             normalization = False,plot_heatmap = False, sample_to_plot = 50)
         
       print(f"train stats = {metrics}")
-      train_loss = metrics['loss']
       train_mae = metrics['MAE']
-      val_loss = metrics['val_loss']
       val_mae = metrics['val_MAE']
         
       print(f"=> Updating plot on wandb")
-      wandb.log({'train_loss': train_loss, 'epochs': epoch + 1}, commit=True)
       wandb.log({'train_mae': train_mae, 'epochs': epoch + 1}, commit=True)
-      wandb.log({'val_loss': val_loss, 'epochs': epoch + 1}, commit=True)
       wandb.log({'val_mae': val_mae, 'epochs': epoch + 1}, commit=True)
 
       test_metrics = hrd.evaluate_time(model, criterion, test_dl, device,
           normalization = False,plot_heatmap = False, sample_to_plot = 50)
         
       print(f"test stats = {test_metrics}")
-      test_loss = test_metrics['loss']
       test_mae = test_metrics['MAE']
 
       if val_mae < best_val_mae:
@@ -141,13 +135,13 @@ for datasets in data_gen:
         print(f"new best val mae found = {best_val_mae}")
       
       print(f"=> Updating plot on wandb")
-      wandb.log({'test_loss': test_loss, 'epochs': epoch + 1}, commit=True)
       wandb.log({'test_mae': test_mae, 'epochs': epoch + 1}, commit=True)
       
       if test_mae < best_test_mae:
         best_test_mae = test_mae
-        print(f"new best test mae found = {best_val_mae}")
-    
-      if earlystop(val_mae):
-        break
+        print(f"new best test mae found = {best_test_mae}")
+
+      if epoch >= 30: #delayed earlystop
+        if earlystop(val_mae):
+          break
       

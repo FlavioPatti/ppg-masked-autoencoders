@@ -168,7 +168,7 @@ def get_data(data_dir=None,
     if not filename.exists():
         print('Download in progress... Please wait.')
         ds_dalia = requests.get(url)
-        #data_dir.mkdir()
+        data_dir.mkdir()
         with open(filename, 'wb') as f:
             f.write(ds_dalia.content)
     # Unzip if needed

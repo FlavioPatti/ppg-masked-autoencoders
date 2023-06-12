@@ -38,8 +38,8 @@ def train_one_epoch_masked_autoencoder_time(model: torch.nn.Module,
 
         loss, prediction, target, x_masked = model(samples, mask_ratio=0.1)
 
-        #forse provare a togliere cpu/detach
-        signal_reconstructed = np.squeeze(utils.unpatchify(prediction, type = "time").to('cpu').detach())
+        #recostruction of the signal to the original shape
+        signal_reconstructed = np.squeeze(utils.unpatchify(prediction, type = "time"))
             
         if plot_heatmap:
           ppg_signal = samples[sample_to_plot,0,:,:].to('cpu').detach().numpy() #ppg signal is channel 0
@@ -74,6 +74,7 @@ def train_one_epoch_hr_detection_time(
           max_v = sample.max()
           sample = (sample - min_v) / ( max_v - min_v)
 
+        #img shape (4,256) -> (4,256,1)
         sample = torch.tensor(np.expand_dims(sample, axis= -1))
         
         step += 1
@@ -115,15 +116,16 @@ def evaluate_time(
         if normalization:
           min_v = sample.min()
           max_v = sample.max()
-          samples = (samples - min_v) / ( max_v - min_v)
+          sample = (sample - min_v) / ( max_v - min_v)
           
+        #img shape (4,256) -> (4,256,1)
         sample = torch.tensor(np.expand_dims(sample, axis= -1))
         
         step += 1
         sample, target = sample.to(device), target.to(device)
         output = model(sample)
         loss = criterion(output, target)
-        mae_val = F.l1_loss(output, target)
+        mae_val = F.l1_loss(output, target) # Mean absolute error for hr detection
         avgmae.update(mae_val, sample.size(0))
         avgloss.update(loss, sample.size(0))
       final_metrics = {

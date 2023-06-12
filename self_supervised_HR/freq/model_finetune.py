@@ -172,11 +172,11 @@ class MaskedAutoencoderViT_without_decoder(nn.Module):
 
         #print("")
         #print(f"imgs = {imgs.shape}") 
-        #(128,4,256,1) for time, (128, 4, 64, 256) for freq+time
+        #(128, 4, 64, 256)
         
         x = self.forward_encoder_no_mask(imgs)
         x = torch.narrow(x, dim=1, start=0, length=256) 
-        #(128,256,256) for time, (128,257,256) for freq+time => (N,C,T) 
+        #(128,256,256) for freq => (N,C,T) 
 
         x = self.conv1(x) #(128,128,64)
         x = self.relu1(x)
