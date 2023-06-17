@@ -48,7 +48,7 @@ for datasets in data_gen:
     dataloaders = hrd.build_dataloaders(datasets)
     train_dl, val_dl, test_dl = dataloaders
     # Set earlystop
-    earlystop = EarlyStopping(patience=30, mode='min')
+    earlystop = EarlyStopping(patience=20, mode='min')
     # Training Loop
     loss_scaler = NativeScaler()
     

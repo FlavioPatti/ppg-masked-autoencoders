@@ -18,7 +18,7 @@ from timm.models.vision_transformer import Block
 from util.pos_embed import get_2d_sincos_pos_embed
 from util.patch_embed import PatchEmbed_org
 
-class MaskedAutoencoderViT_without_decoder(nn.Module):
+class MaskedAutoencoderViT_without_decoder_freq(nn.Module):
     """ Masked Autoencoder with VisionTransformer backbone
     """
     def __init__(self, img_size=224, patch_size=16, stride=10, in_chans=3,
@@ -104,7 +104,7 @@ class MaskedAutoencoderViT_without_decoder(nn.Module):
         self.bn2 = nn.BatchNorm1d(num_features=64)
         
         #linear layer for predict HR
-        self.pooling = nn.AvgPool1d(16)
+        self.pooling = nn.AvgPool1d(4)
         self.out_neuron = nn.Linear(in_features=64, out_features=1)
         
         self.initialize_weights()

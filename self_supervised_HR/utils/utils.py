@@ -11,8 +11,10 @@ import torch.optim as optim
 import timm.optim.optim_factory as optim_factory
 from math import ceil
 import torch.nn as nn
-from self_supervised_HR.time.model_pretrain import MaskedAutoencoderViT
-from self_supervised_HR.time.model_finetune import MaskedAutoencoderViT_without_decoder
+from self_supervised_HR.time.model_pretrain import MaskedAutoencoderViT_time
+from self_supervised_HR.time.model_finetune import MaskedAutoencoderViT_without_decoder_time
+from self_supervised_HR.freq.model_pretrain import MaskedAutoencoderViT_freq
+from self_supervised_HR.freq.model_finetune import MaskedAutoencoderViT_without_decoder_freq
 from functools import partial
 
 class LogCosh(nn.Module):
@@ -30,7 +32,7 @@ def get_reference_model(model_name: str):
 
     if model_name == 'vit_freq_pretrain':
         print(f"=> ViT Freq Pretrain")
-        return MaskedAutoencoderViT(
+        return MaskedAutoencoderViT_freq(
         img_size = (64,256), in_chans = 4, mask_2d=True, type = "freq",
         patch_size=8, embed_dim=256, depth=12, num_heads=16,
         decoder_embed_dim=256, decoder_num_heads=16,
@@ -42,21 +44,21 @@ def get_reference_model(model_name: str):
         
     if model_name == 'vit_time_pretrain':
         print(f"=> ViT Time Pretrain")
-        return MaskedAutoencoderViT(
+        return MaskedAutoencoderViT_time(
         img_size = 256, in_chans = 4, mask_2d=False, type = "time",
         patch_size=1, embed_dim=256, depth=12, num_heads=16,
         decoder_embed_dim=256, decoder_num_heads=16,
         mlp_ratio=4, norm_layer=partial(nn.LayerNorm, eps=1e-6) )
     if model_name == 'vit_freq_finetune':
         print(f"=>ViT Freq Finetune")
-        return MaskedAutoencoderViT_without_decoder(
+        return MaskedAutoencoderViT_without_decoder_freq(
         img_size = (64,256), in_chans = 4, mask_2d=True, type = "freq",
-        patch_size=8, embed_dim=256, depth=12, num_heads=16,
-        decoder_embed_dim=256, decoder_num_heads=16,
+        patch_size=8, embed_dim=64, depth=4, num_heads=16,
+        decoder_embed_dim=64, decoder_num_heads=16,
         mlp_ratio=4, norm_layer=partial(nn.LayerNorm, eps=1e-6) )
     if model_name == 'vit_time_finetune':
         print(f"=> ViT Time Finetune")
-        return MaskedAutoencoderViT_without_decoder(
+        return MaskedAutoencoderViT_without_decoder_time(
         img_size = 256, in_chans = 4, mask_2d=False, type = "time",
         patch_size=1, embed_dim=256, depth=12, num_heads=16,
         decoder_embed_dim=64, decoder_num_heads=16,

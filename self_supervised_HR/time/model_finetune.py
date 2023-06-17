@@ -18,7 +18,7 @@ from timm.models.vision_transformer import Block
 from util.pos_embed import get_2d_sincos_pos_embed
 from util.patch_embed import PatchEmbed_org
 
-class MaskedAutoencoderViT_without_decoder(nn.Module):
+class MaskedAutoencoderViT_without_decoder_time(nn.Module):
     """ Masked Autoencoder with VisionTransformer backbone
     """
     def __init__(self, img_size=224, patch_size=16, stride=10, in_chans=3,
@@ -175,6 +175,7 @@ class MaskedAutoencoderViT_without_decoder(nn.Module):
         #(128,4,256,1)
         
         x = self.forward_encoder_no_mask(imgs)
+        x = torch.narrow(x, dim=1, start=0, length=256) 
         #(128,256,256)  => (N,C,T) 
 
         x = self.conv1(x) #(128,128,64)

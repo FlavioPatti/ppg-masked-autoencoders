@@ -4,7 +4,7 @@ from timm.models.vision_transformer import Block
 from util.pos_embed import get_2d_sincos_pos_embed
 from util.patch_embed import PatchEmbed_org
 
-class MaskedAutoencoderViT(nn.Module):
+class MaskedAutoencoderViT_time(nn.Module):
     """ Masked Autoencoder with VisionTransformer backbone
     """
     def __init__(self, img_size=224, patch_size=16, stride=10, in_chans=3,

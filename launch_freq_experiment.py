@@ -54,7 +54,7 @@ for datasets in data_gen:
     
     # Get the Model
     print("=> Running Freq experiment")
-    model = hrd.get_reference_model('vit_freq_pretrain') #ViT (encoder + decoder)
+    model = utils.get_reference_model('vit_freq_pretrain') #ViT (encoder + decoder)
 
     if torch.cuda.is_available():
       model = model.cuda()
@@ -128,10 +128,20 @@ for datasets in data_gen:
           normalization = False,plot_heatmap = False, sample_to_plot = 50)
         
       print(f"test stats = {test_metrics}")
-      test_loss = test_metrics['loss']
       test_mae = test_metrics['MAE']
 
       if val_mae < best_val_mae:
         best_val_mae = val_mae
         print(f"new best val mae found = {best_val_mae}")
+      
+      print(f"=> Updating plot on wandb")
+      wandb.log({'test_mae': test_mae, 'epochs': epoch + 1}, commit=True)
+      
+      if test_mae < best_test_mae:
+        best_test_mae = test_mae
+        print(f"new best test mae found = {best_test_mae}")
+
+      if epoch >= 30: #delayed earlystop
+        if earlystop(val_mae):
+          break
       
