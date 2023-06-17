@@ -141,7 +141,7 @@ for datasets in data_gen:
         best_test_mae = test_mae
         print(f"new best test mae found = {best_test_mae}")
 
-      if epoch >= 30: #delayed earlystop
-        if earlystop(val_mae):
-          break
+      #if epoch >= 30: #delayed earlystop
+      if earlystop(val_mae):
+        break
       

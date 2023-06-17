@@ -104,7 +104,7 @@ class MaskedAutoencoderViT_without_decoder_freq(nn.Module):
         self.bn2 = nn.BatchNorm1d(num_features=64)
         
         #linear layer for predict HR
-        self.pooling = nn.AvgPool1d(4)
+        self.pooling = nn.AvgPool1d(int(embed_dim/16))
         self.out_neuron = nn.Linear(in_features=64, out_features=1)
         
         self.initialize_weights()
