@@ -1,0 +1,332 @@
+import os
+import pickle
+import math
+import numpy as np
+import pandas as pd
+from typing import Tuple
+import pandas as pd
+from pathlib import Path
+import pickle
+import numpy as np
+import torch
+from torch.utils.data import Dataset, DataLoader
+import pandas as pd
+import numpy as np
+from sklearn.preprocessing import StandardScaler
+from utils.feature_extraction import *
+import requests
+import zipfile
+
+WESAD_URL = "https://uni-siegen.sciebo.de/s/HGdUkoNlW1Ub0Gx/download"
+
+WINDOW_IN_SECONDS = 120  # 120 / 180 / 300  
+BP, FREQ, TIME, ENSEMBLE = False, False, False, False
+subject_ids = [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 13, 14, 15, 16, 17]
+
+# If you want to apply noise filtering(band-pass filter), noise elimination, and ensemble, include 'bp','time','ens' each in variable NOISE.
+NOISE = ['bp_time_ens']
+main_path='./hrd_data/WESAD/'
+
+# E4 (wrist) Sampling Frequencies
+fs_dict = {'ACC': 32, 'BVP': 64, 'EDA': 4, 'TEMP': 4, 'label': 700, 'Resp': 700}
+label_dict = {'baseline': 0, 'stress': 1, 'amusement': 0}
+int_to_label = {0: 'baseline', 1: 'stress', 0: 'amusement'}
+sec = 12
+N = fs_dict['BVP']*sec  # one block : 10 sec
+overlap = int(np.round(N * 0.02)) # overlapping length
+overlap = overlap if overlap%2 ==0 else overlap+1
+
+class SubjectData:
+
+    def __init__(self, main_path, subject_number):
+        self.name = f'S{subject_number}'
+        self.subject_keys = ['signal', 'label', 'subject']
+        self.signal_keys = ['chest', 'wrist']
+        self.chest_keys = ['ACC', 'ECG', 'EMG', 'EDA', 'Temp', 'Resp']
+        self.wrist_keys = ['ACC', 'BVP', 'EDA', 'TEMP']
+        with open(os.path.join(main_path, self.name) + '/' + self.name + '.pkl', 'rb') as file:
+            self.data = pickle.load(file, encoding='latin1')
+        self.labels = self.data['label']
+
+    def get_wrist_data(self):
+        data = self.data['signal']['wrist']
+        data.update({'Resp': self.data['signal']['chest']['Resp']})
+        return data
+
+
+def extract_ppg_data(e4_data_dict, labels, norm_type=None):
+    # Dataframes for each sensor type
+    df = pd.DataFrame(e4_data_dict['BVP'], columns=['BVP'])
+    label_df = pd.DataFrame(labels, columns=['label'])
+    
+
+    # Adding indices for combination due to differing sampling frequencies
+    df.index = [(1 / fs_dict['BVP']) * i for i in range(len(df))]
+    label_df.index = [(1 / fs_dict['label']) * i for i in range(len(label_df))]
+
+    # Change indices to datetime
+    df.index = pd.to_datetime(df.index, unit='s')
+    label_df.index = pd.to_datetime(label_df.index, unit='s')
+
+    df = df.join(label_df, how='outer')
+    
+    df['label'] = df['label'].fillna(method='bfill')
+    
+    df.reset_index(drop=True, inplace=True)
+    
+    if norm_type == 'std':  
+        # std norm
+        df['BVP'] = (df['BVP'] - df['BVP'].mean()) / df['BVP'].std()
+    elif norm_type == 'minmax':
+        # minmax norm
+        df = (df - df.min()) / (df.max() - df.min())
+
+    # Groupby
+    df = df.dropna(axis=0) # nan인 행 제거
+    
+    return df
+
+
+def seperate_data_by_label(df):
+    
+    grouped = df.groupby('label')
+    baseline = grouped.get_group(1)
+    stress = grouped.get_group(2)
+    amusement = grouped.get_group(3)   
+    
+    return grouped, baseline, stress, amusement
+
+
+
+def get_samples(data, label, ma_usage):
+    global feat_names
+    global WINDOW_IN_SECONDS
+
+    samples = []
+
+    window_len = fs_dict['BVP'] * WINDOW_IN_SECONDS  # 64*60 , sliding window: 0.25 sec (60*0.25 = 15)   
+    sliding_window_len = int(fs_dict['BVP'] * WINDOW_IN_SECONDS * 0.25)
+    
+    winNum = 0
+
+    i = 0
+    while sliding_window_len * i <= len(data) - window_len:
+   
+        w = data[sliding_window_len * i: (sliding_window_len * i) + window_len]  
+        # Calculate stats for window
+        wstats = get_window_stats_27_features(ppg_seg=w['BVP'].tolist(), window_length = window_len, label=label, ensemble = ENSEMBLE, ma_usage=ma_usage)
+        winNum += 1
+        
+        if wstats == []:
+            i += 1
+            continue;
+        # Seperating sample and label
+        x = pd.DataFrame(wstats, index = [i])
+    
+        samples.append(x)
+        i += 1
+
+    return pd.concat(samples)
+
+
+def combine_files(subjects, subject_feature_path, merged_path):
+    df_list = []
+    for s in subjects:
+        df = pd.read_csv(f'{savePath}{subject_feature_path}/S{s}_feats_4.csv', index_col=0)
+        df['subject'] = s
+        df_list.append(df)
+
+    df = pd.concat(df_list)
+
+    df['label'] = (df['0'].astype(str) + df['1'].astype(str)).apply(lambda x: x.index('1'))  # 1인 부분의 인덱스 반환
+    df.drop(['0', '1'], axis=1, inplace=True)
+
+    df.reset_index(drop=True, inplace=True)
+
+    df.to_csv(savePath + merged_path)
+
+    counts = df['label'].value_counts()
+    print('Number of samples per class:')
+    for label, number in zip(counts.index, counts.values):
+        print(f'{int_to_label[label]}: {number}')
+
+
+def make_patient_data(subject_id, ma_usage, subject_feature_path):
+    global savePath
+    global WINDOW_IN_SECONDS
+    
+    temp_ths = [1.0,2.0,1.8,1.5] 
+    clean_df = pd.read_csv('clean_signal_by_rate.csv',index_col=0)
+    cycle = 15
+    
+    # Make subject data object for Sx
+    subject = SubjectData(main_path=main_path, subject_number=subject_id)
+    
+    # Empatica E4 data
+    e4_data_dict = subject.get_wrist_data()
+
+    # norm type
+    norm_type = 'std'
+
+    df = extract_ppg_data(e4_data_dict, subject.labels, norm_type)
+    df_BVP = df.BVP
+    df_BVP = df_BVP.tolist()
+
+
+    #여기서 signal preprocessing 
+    bp_bvp = butter_bandpassfilter(df_BVP, 0.5, 10, fs_dict['BVP'], order=2) 
+    
+    if BP:   
+        df['BVP'] = bp_bvp
+        
+    if TIME:
+        fwd = moving_average(bp_bvp, size=3)
+        bwd = moving_average(bp_bvp[::-1], size=3)
+        bp_bvp = np.mean(np.vstack((fwd,bwd[::-1])), axis=0)
+        df['BVP'] = bp_bvp
+        
+        signal_01_percent = int(len(df_BVP) * 0.001)
+        #print(signal_01_percent, int(clean_df.loc[subject_id]['index']))
+        clean_signal = df_BVP[int(clean_df.loc[subject_id]['index']):int(clean_df.loc[subject_id]['index'])+signal_01_percent]
+        ths = statistic_threshold(clean_signal, fs_dict['BVP'], temp_ths)
+        len_before, len_after, time_signal_index = eliminate_noise_in_time(df['BVP'].to_numpy(), fs_dict['BVP'], ths, cycle)
+    
+        df = df.iloc[time_signal_index,:]
+        df = df.reset_index(drop=True)
+        
+        #plt.figure(figsize=(40,20))
+        #plt.plot(df['BVP'][:2000], color = 'b', linewidth=2.5)
+    
+    
+    grouped, baseline, stress, amusement = seperate_data_by_label(df)   
+    
+    
+    baseline_samples = get_samples(baseline, 0, ma_usage)
+    stress_samples = get_samples(stress, 1, ma_usage)
+    amusement_samples = get_samples(amusement, 0, ma_usage)
+    
+    print("stress: ",len(stress_samples))
+    print("non-stress: ",len(amusement_samples)+len(baseline_samples))
+    window_len = len(baseline_samples)+len(stress_samples)+len(amusement_samples)
+
+    all_samples = pd.concat([baseline_samples, stress_samples, amusement_samples])
+    all_samples = pd.concat([all_samples.drop('label', axis=1), pd.get_dummies(all_samples['label'])], axis=1) # get dummies로 원핫벡터로 라벨값 나타냄
+    
+    
+    all_samples.to_csv(f'{savePath}{subject_feature_path}/S{subject_id}_feats_4.csv')
+
+    # Does this save any space?
+    subject = None
+    
+    return window_len        
+
+def read_csv(path, feats, testset_num):
+    #print("testset num: ",testset_num)
+    df = pd.read_csv(path, index_col = 0)
+    
+    df = df[feats]
+
+    train_df = df.loc[df['subject'] != testset_num]
+    test_df =  df.loc[df['subject'] == testset_num]
+
+    del train_df['subject']
+    del test_df['subject']
+    del df['subject']
+
+    X_train = train_df.drop('label', axis=1).values
+    y_train = train_df['HR_mean'].values   
+    X_test = test_df.drop('label', axis=1).values
+    y_test = test_df['HR_mean'].values    
+    
+    return df, X_train, y_train, X_test, y_test
+
+        
+def get_data(dataset = "WESAD",
+             data_dir=None,
+             url=WESAD_URL,
+             ds_name='ppg_wesad.zip',
+             cross_val=True):
+   
+    folder = "PPG_FieldStudy"
+    print(f"dataset = {dataset}")
+    if data_dir is None:
+        data_dir = Path('.').absolute() / 'hrd_data'
+    filename = data_dir / ds_name
+    # Download if does not exist
+    if not filename.exists():
+        print('Download in progress... Please wait.')
+        ds_dalia = requests.get(url)
+        data_dir.mkdir()
+        with open(filename, 'wb') as f:
+            f.write(ds_dalia.content)
+    # Unzip if needed
+    if not (data_dir / folder).exists():
+        print('Unzip files... Please wait.')
+        with zipfile.ZipFile(filename) as zf:
+            zf.extractall(data_dir)
+            
+    noise = NOISE[0].split('_')[:-1]
+    name = ''
+    for i, n in enumerate(noise):
+        name += n
+        if i != len(noise)-1:
+            name += '_'
+    print(name)
+
+    total_window_len = 0
+    
+    savePath = '27_features_ppg_test/bi/ens/3'
+
+    if not os.path.exists(savePath):
+        os.makedirs(savePath)
+
+    for n in NOISE:
+        if 'bp' in n.split('_'):
+            BP = True
+        if 'time' in n.split('_'):
+            TIME = True
+        if 'ens' in n.split('_'):
+            ENSEMBLE = True
+
+
+        subject_feature_path = '/subject_feature_' + n + str(WINDOW_IN_SECONDS)
+        merged_path = '/data_merged_' + n +'.csv'
+        
+        if not os.path.exists(savePath + subject_feature_path):
+            os.makedirs(savePath + subject_feature_path)
+        
+        for patient in subject_ids:
+            print(f'Processing data for S{patient}...')
+            window_len = make_patient_data(patient, BP, subject_feature_path)
+            total_window_len += window_len
+
+        combine_files(subject_ids, subject_feature_path, merged_path)
+        print('total_Window_len: ',total_window_len)
+        print('Processing complete.', n)
+        total_window_len = 0
+            
+                    
+
+    feats = ['HR_mean','HR_std','meanNN','SDNN','medianNN','meanSD','SDSD','RMSSD','pNN20','pNN50','TINN','LF','HF','ULF','VLF','LFHF',
+            'total_power','lfp','hfp','SD1','SD2','pA','pQ','ApEn','shanEn','D2','subject','label']
+    NOISE = ['bp_time_ens']
+    subjects = [2,3,4,5,6,7,8,9,10,11,13,14,15,16,17]
+    
+    for n in NOISE:
+        path = '27_features_ppg_test/bi/ens/3/data_merged_' + n + '.csv'
+
+        for sub in subjects:
+        
+            df, X_train, y_train, X_test, y_test = read_csv(path, feats, sub)
+            print(f"x train = {X_train.shape}")
+            print(f"y train = {y_train.shape}")
+            print(f"x test = {X_test.shape}")
+            print(f"y test = {y_test.shape}")
+            df.fillna(0)
+            # Normalization
+            sc = StandardScaler()  
+            X_train = sc.fit_transform(X_train)  
+            X_test = sc.transform(X_test)  
+                
+        print("DONE: ",n)
+

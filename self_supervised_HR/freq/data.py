@@ -14,19 +14,33 @@ from torch.utils.data import Dataset, DataLoader
 
 
 DALIA_URL = "https://archive.ics.uci.edu/ml/machine-learning-databases/00495/data.zip"
+WESAD_URL = "https://uni-siegen.sciebo.de/s/HGdUkoNlW1Ub0Gx/download"
 
-def _collect_data(data_dir):
+def _collect_data(data_dir, data):
     random.seed(42)
+    folder = ""
+    if data == "WESAD":
+      folder = "WESAD"
+      num = [2,3,4,5,6,7,8,9,10,11,13,14,15,16,17]
+    elif data == "DALIA":
+      folder = "PPG_FieldStudy"
+      num = [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15]
+    else:
+      print('Try again, dataset must be only DALIA or WESAD')
 
     dataset = dict()
-    num = list(range(1, 15+1))
     session_list = random.sample(num, len(num))
     for subj in session_list:
-        with open(data_dir / 'PPG_FieldStudy' / f'S{str(subj)}' / f'S{str(subj)}.pkl', 'rb') as f:
+        print(f"{data_dir}")
+        with open(data_dir / folder / f'S{str(subj)}' / f'S{str(subj)}.pkl', 'rb') as f:
             subject = pickle.load(f, encoding='latin1')
+        print(f"subject = {subject}")
         ppg = subject['signal']['wrist']['BVP'][::2].astype('float32')
         acc = subject['signal']['wrist']['ACC'].astype('float32')
-        target = subject['label'].astype('float32')
+        if data == "DALIA":
+            target = subject['label'].astype('float32')
+        elif data == "WESAD":
+            target = subject['HR_mean'].astype('float32')
         dataset[subj] = { 
         #each sample is build by: ppg value, accelerometer value, hr estimation
                 'ppg': ppg,
@@ -157,13 +171,27 @@ class Dalia(Dataset):
         return len(self.samples)
 
 
-def get_data(data_dir=None,
-             url=DALIA_URL,
+def get_data(dataset = "WESAD",
+             data_dir=None,
+             url=WESAD_URL,
              ds_name='ppg_dalia.zip',
              cross_val=True):
+    folder = ""
+    if dataset == "WESAD":
+      folder = "WESAD"
+      url = WESAD_URL
+    elif dataset == "DALIA":
+      folder = "PPG_FieldStudy"
+      url = DALIA_URL
+    else:
+      print('Try again, dataset must be only DALIA or WESAD')
+
+    print(f"dataset = {dataset}")
     if data_dir is None:
-        data_dir = Path('.').absolute() / 'hrd_data'
+        data_dir = Path('.').absolute() / dataset
+        print(f"data dir = {data_dir}")
     filename = data_dir / ds_name
+    print(f" filename = {filename}")
     # Download if does not exist
     if not filename.exists():
         print('Download in progress... Please wait.')
@@ -172,14 +200,14 @@ def get_data(data_dir=None,
         with open(filename, 'wb') as f:
             f.write(ds_dalia.content)
     # Unzip if needed
-    if not (data_dir / 'PPG_FieldStudy').exists():
+    if not (data_dir / folder).exists():
         print('Unzip files... Please wait.')
         with zipfile.ZipFile(filename) as zf:
             zf.extractall(data_dir)
 
     # This step slims the dataset. This will help to speedup following usage of data
     if not (data_dir / 'slimmed_dalia.pkl').exists():
-        dataset = _collect_data(data_dir)
+        dataset = _collect_data(data_dir, dataset)
         samples, target, groups = _preprocess_data(data_dir, dataset)
     else:
         with open(data_dir / 'slimmed_dalia.pkl', 'rb') as f:

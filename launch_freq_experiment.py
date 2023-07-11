@@ -1,6 +1,7 @@
 import torch
 import wandb
 import self_supervised_HR.freq as hrd
+import self_supervised_HR.freq.load_data_wesad as load_data
 import self_supervised_HR.utils.utils as utils
 from self_supervised_HR.utils import  EarlyStopping
 from util.misc import NativeScalerWithGradNormCount as NativeScaler
@@ -27,21 +28,10 @@ def load_checkpoint_finetune(checkpoint):
   print("=> Loading pretrained checkpoint")
   model.load_state_dict(checkpoint['state_dict'])
   
-# Init wandb for plot loss/mae
-configuration = {'experiment': "Freq", 'epochs_pretrain': N_PRETRAIN_EPOCHS, 'epochs_finetune': N_FINETUNE_EPOCHS}
-run = wandb.init(
-            # Set entity to specify your username or team name
-            entity = "aml-2022", 
-            # Set the project where this run will be logged
-            project="Hr_detection",
-            group='finetuning2',
-            # Track hyperparameters and run metadata
-            config=configuration,
-            resume="allow")
 
 # Get the Data and perform cross-validation
 mae_dict = dict()
-data_gen = hrd.get_data()
+data_gen = load_data.get_data(dataset = "WESAD")
 for datasets in data_gen:
     train_ds, val_ds, test_ds = datasets
     test_subj = test_ds.test_subj
@@ -119,11 +109,7 @@ for datasets in data_gen:
       print(f"train stats = {metrics}")
       train_mae = metrics['MAE']
       val_mae = metrics['val_MAE']
-        
-      print(f"=> Updating plot on wandb")
-      wandb.log({'train_mae': train_mae, 'epochs': epoch + 1}, commit=True)
-      wandb.log({'val_mae': val_mae, 'epochs': epoch + 1}, commit=True)
-
+     
       test_metrics = hrd.evaluate_freq(model, criterion, test_dl, device,
           normalization = False,plot_heatmap = False, sample_to_plot = 50)
         
@@ -134,9 +120,7 @@ for datasets in data_gen:
         best_val_mae = val_mae
         print(f"new best val mae found = {best_val_mae}")
       
-      print(f"=> Updating plot on wandb")
-      wandb.log({'test_mae': test_mae, 'epochs': epoch + 1}, commit=True)
-      
+   
       if test_mae < best_test_mae:
         best_test_mae = test_mae
         print(f"new best test mae found = {best_test_mae}")
