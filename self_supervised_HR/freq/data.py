@@ -6,6 +6,7 @@ import random
 import requests
 import zipfile
 import self_supervised_HR.freq as hrd
+import self_supervised_HR.freq.load_data_wesad as wes
 import numpy as np
 from sklearn.model_selection import LeaveOneGroupOut
 from skimage.util.shape import view_as_windows
@@ -31,16 +32,18 @@ def _collect_data(data_dir, data):
     dataset = dict()
     session_list = random.sample(num, len(num))
     for subj in session_list:
-        print(f"{data_dir}")
+        print(f"sub = {subj}")
         with open(data_dir / folder / f'S{str(subj)}' / f'S{str(subj)}.pkl', 'rb') as f:
             subject = pickle.load(f, encoding='latin1')
         print(f"subject = {subject}")
         ppg = subject['signal']['wrist']['BVP'][::2].astype('float32')
+        print(f"ppg shape = {ppg.shape}")
         acc = subject['signal']['wrist']['ACC'].astype('float32')
+        print(f"acc shape = {acc.shape}")
         if data == "DALIA":
             target = subject['label'].astype('float32')
         elif data == "WESAD":
-            target = subject['HR_mean'].astype('float32')
+            target = wes.get_data()
         dataset[subj] = { 
         #each sample is build by: ppg value, accelerometer value, hr estimation
                 'ppg': ppg,

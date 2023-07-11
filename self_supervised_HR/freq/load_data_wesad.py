@@ -25,7 +25,7 @@ subject_ids = [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 13, 14, 15, 16, 17]
 
 # If you want to apply noise filtering(band-pass filter), noise elimination, and ensemble, include 'bp','time','ens' each in variable NOISE.
 NOISE = ['bp_time_ens']
-main_path='./hrd_data/WESAD/'
+main_path='./WESAD/WESAD/'
 
 # E4 (wrist) Sampling Frequencies
 fs_dict = {'ACC': 32, 'BVP': 64, 'EDA': 4, 'TEMP': 4, 'label': 700, 'Resp': 700}
@@ -240,33 +240,9 @@ def read_csv(path, feats, testset_num):
     return df, X_train, y_train, X_test, y_test
 
         
-def get_data(dataset = "WESAD",
-             data_dir=None,
-             url=WESAD_URL,
-             ds_name='ppg_wesad.zip',
-             cross_val=True):
-    
-    print(f"dataset = {dataset}")
-    if data_dir is None:
-        data_dir = Path('.').absolute() / dataset
-        print(f"data dir = {data_dir}")
-    filename = data_dir / ds_name
-    print(f" filename = {filename}")
-    # Download if does not exist
-    if not filename.exists():
-        print('Download in progress... Please wait.')
-        ds_dalia = requests.get(url)
-        data_dir.mkdir()
-        with open(filename, 'wb') as f:
-            f.write(ds_dalia.content)
-    # Unzip if needed
-    if not (data_dir / folder).exists():
-        print('Unzip files... Please wait.')
-        with zipfile.ZipFile(filename) as zf:
-            zf.extractall(data_dir)
+def get_data(sub):
 
-    global NOISE
-                
+    global NOISE           
     noise = NOISE[0].split('_')[:-1]
     name = ''
     for i, n in enumerate(noise):
@@ -314,18 +290,16 @@ def get_data(dataset = "WESAD",
     
     for n in NOISE:
         path = '27_features_ppg_test/bi/ens/3/data_merged_' + n + '.csv'
-
-        for sub in subjects:
-        
-            df, X_train, y_train, X_test, y_test = read_csv(path, feats, sub)
-            print(f"x train = {X_train.shape}")
-            print(f"y train = {y_train.shape}")
-            print(f"x test = {X_test.shape}")
-            print(f"y test = {y_test.shape}")
-            df.fillna(0)
-            # Normalization
-            sc = StandardScaler()  
-            X_train = sc.fit_transform(X_train)  
-            X_test = sc.transform(X_test)  
+          
+        df, X_train, y_train, X_test, y_test = read_csv(path, feats, sub)
+        print(f"x train = {X_train.shape}")
+        print(f"y train = {y_train.shape}")
+        print(f"x test = {X_test.shape}")
+        print(f"y test = {y_test.shape}")
+        df.fillna(0)
+        # Normalization
+        sc = StandardScaler()  
+        X_train = sc.fit_transform(X_train)  
+        X_test = sc.transform(X_test)  
                 
-        print("DONE: ",n)
+        return y_train

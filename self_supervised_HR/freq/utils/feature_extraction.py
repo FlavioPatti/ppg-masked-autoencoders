@@ -5,8 +5,8 @@
 import sys
 sys.path.append("/home/sheo1/stress_classification_with_PPG/preprocessing_tool/") 
 
-from noise_reduction import *
-from peak_detection import *
+from self_supervised_HR.freq.utils.noise_reduction import *
+from self_supervised_HR.freq.utils.peak_detection import *
 
 import math
 import numpy as np

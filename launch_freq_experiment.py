@@ -31,7 +31,7 @@ def load_checkpoint_finetune(checkpoint):
 
 # Get the Data and perform cross-validation
 mae_dict = dict()
-data_gen = load_data.get_data(dataset = "WESAD")
+data_gen = hrd.get_data(dataset = "WESAD")
 for datasets in data_gen:
     train_ds, val_ds, test_ds = datasets
     test_subj = test_ds.test_subj
