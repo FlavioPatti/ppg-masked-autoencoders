@@ -13,12 +13,12 @@ from torch.utils.data import Dataset, DataLoader
 import pandas as pd
 import numpy as np
 from sklearn.preprocessing import StandardScaler
-from utils.feature_extraction import *
+from self_supervised_HR.freq.utils.feature_extraction import *
 import requests
 import zipfile
 
 WESAD_URL = "https://uni-siegen.sciebo.de/s/HGdUkoNlW1Ub0Gx/download"
-
+savePath = '27_features_ppg_test/bi/ens/3'
 WINDOW_IN_SECONDS = 120  # 120 / 180 / 300  
 BP, FREQ, TIME, ENSEMBLE = False, False, False, False
 subject_ids = [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 13, 14, 15, 16, 17]
@@ -212,7 +212,6 @@ def make_patient_data(subject_id, ma_usage, subject_feature_path):
     all_samples = pd.concat([baseline_samples, stress_samples, amusement_samples])
     all_samples = pd.concat([all_samples.drop('label', axis=1), pd.get_dummies(all_samples['label'])], axis=1) # get dummies로 원핫벡터로 라벨값 나타냄
     
-    
     all_samples.to_csv(f'{savePath}{subject_feature_path}/S{subject_id}_feats_4.csv')
 
     # Does this save any space?
@@ -246,12 +245,13 @@ def get_data(dataset = "WESAD",
              url=WESAD_URL,
              ds_name='ppg_wesad.zip',
              cross_val=True):
-   
-    folder = "PPG_FieldStudy"
+    
     print(f"dataset = {dataset}")
     if data_dir is None:
-        data_dir = Path('.').absolute() / 'hrd_data'
+        data_dir = Path('.').absolute() / dataset
+        print(f"data dir = {data_dir}")
     filename = data_dir / ds_name
+    print(f" filename = {filename}")
     # Download if does not exist
     if not filename.exists():
         print('Download in progress... Please wait.')
@@ -264,7 +264,9 @@ def get_data(dataset = "WESAD",
         print('Unzip files... Please wait.')
         with zipfile.ZipFile(filename) as zf:
             zf.extractall(data_dir)
-            
+
+    global NOISE
+                
     noise = NOISE[0].split('_')[:-1]
     name = ''
     for i, n in enumerate(noise):
@@ -274,8 +276,6 @@ def get_data(dataset = "WESAD",
     print(name)
 
     total_window_len = 0
-    
-    savePath = '27_features_ppg_test/bi/ens/3'
 
     if not os.path.exists(savePath):
         os.makedirs(savePath)
@@ -329,4 +329,3 @@ def get_data(dataset = "WESAD",
             X_test = sc.transform(X_test)  
                 
         print("DONE: ",n)
-
