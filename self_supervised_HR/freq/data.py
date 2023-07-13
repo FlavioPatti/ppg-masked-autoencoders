@@ -91,7 +91,7 @@ def _preprocess_data(data_dir, dataset):
 
 def _get_data_gen(samples, targets, groups, cross_val):
     n = 4
-    subjects = 1 #number of patients on which PPG data is taken
+    subjects = 15 #number of patients on which PPG data is taken
     indices, _ = _rndgroup_kfold(groups, n)
     kfold_it = 0
     while kfold_it < subjects:
@@ -227,7 +227,7 @@ def get_data(dataset = "WESAD",
 def build_dataloaders(datasets: Tuple[Dataset, ...],
                       batch_size=128,
                       num_workers=4
-                      ) -> Tuple[DataLoader, DataLoader, DataLoader]:
+                      ):
     train_set, val_set, test_set = datasets
     train_loader = DataLoader(
         train_set,
