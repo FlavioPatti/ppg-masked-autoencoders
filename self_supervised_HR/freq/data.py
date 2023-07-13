@@ -35,7 +35,7 @@ def _collect_data(data_dir, data):
         print(f"sub = {subj}")
         with open(data_dir / folder / f'S{str(subj)}' / f'S{str(subj)}.pkl', 'rb') as f:
             subject = pickle.load(f, encoding='latin1')
-        print(f"subject = {subject}")
+        #print(f"subject = {subject}")
         ppg = subject['signal']['wrist']['BVP'][::2].astype('float32')
         print(f"ppg shape = {ppg.shape}")
         acc = subject['signal']['wrist']['ACC'].astype('float32')
@@ -43,7 +43,7 @@ def _collect_data(data_dir, data):
         if data == "DALIA":
             target = subject['label'].astype('float32')
         elif data == "WESAD":
-            target = wes.get_data()
+            target = wes.get_data(subj).astype('float32')
         dataset[subj] = { 
         #each sample is build by: ppg value, accelerometer value, hr estimation
                 'ppg': ppg,

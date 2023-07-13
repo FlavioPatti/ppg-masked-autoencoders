@@ -129,28 +129,6 @@ def get_samples(data, label, ma_usage):
     return pd.concat(samples)
 
 
-def combine_files(subjects, subject_feature_path, merged_path):
-    df_list = []
-    for s in subjects:
-        df = pd.read_csv(f'{savePath}{subject_feature_path}/S{s}_feats_4.csv', index_col=0)
-        df['subject'] = s
-        df_list.append(df)
-
-    df = pd.concat(df_list)
-
-    df['label'] = (df['0'].astype(str) + df['1'].astype(str)).apply(lambda x: x.index('1'))  # 1인 부분의 인덱스 반환
-    df.drop(['0', '1'], axis=1, inplace=True)
-
-    df.reset_index(drop=True, inplace=True)
-
-    df.to_csv(savePath + merged_path)
-
-    counts = df['label'].value_counts()
-    print('Number of samples per class:')
-    for label, number in zip(counts.index, counts.values):
-        print(f'{int_to_label[label]}: {number}')
-
-
 def make_patient_data(subject_id, ma_usage, subject_feature_path):
     global savePath
     global WINDOW_IN_SECONDS
@@ -270,36 +248,23 @@ def get_data(sub):
         
         if not os.path.exists(savePath + subject_feature_path):
             os.makedirs(savePath + subject_feature_path)
+            for patient in subject_ids:
+                print(f'Processing data for S{patient}...')
+                window_len = make_patient_data(patient, BP, subject_feature_path)
+                total_window_len += window_len
         
-        for patient in subject_ids:
-            print(f'Processing data for S{patient}...')
-            window_len = make_patient_data(patient, BP, subject_feature_path)
-            total_window_len += window_len
+        df_list = []
+        df = pd.read_csv(f'{savePath}{subject_feature_path}/S{sub}_feats_4.csv', index_col=0)
+        df_list.append(np.array(df['HR_mean']))
+        df_list = np.array(df_list)
+        print(f"df = {df_list}")
 
-        combine_files(subject_ids, subject_feature_path, merged_path)
-        print('total_Window_len: ',total_window_len)
-        print('Processing complete.', n)
-        total_window_len = 0
-            
-                    
+        df['label'] = (df['0'].astype(str) + df['1'].astype(str)).apply(lambda x: x.index('1'))  # 1인 부분의 인덱스 반환
+        df.drop(['0', '1'], axis=1, inplace=True)
 
-    feats = ['HR_mean','HR_std','meanNN','SDNN','medianNN','meanSD','SDSD','RMSSD','pNN20','pNN50','TINN','LF','HF','ULF','VLF','LFHF',
-            'total_power','lfp','hfp','SD1','SD2','pA','pQ','ApEn','shanEn','D2','subject','label']
-    NOISE = ['bp_time_ens']
-    subjects = [2,3,4,5,6,7,8,9,10,11,13,14,15,16,17]
-    
-    for n in NOISE:
-        path = '27_features_ppg_test/bi/ens/3/data_merged_' + n + '.csv'
+        df.reset_index(drop=True, inplace=True)
+
+        df.to_csv(savePath + merged_path)
           
-        df, X_train, y_train, X_test, y_test = read_csv(path, feats, sub)
-        print(f"x train = {X_train.shape}")
-        print(f"y train = {y_train.shape}")
-        print(f"x test = {X_test.shape}")
-        print(f"y test = {y_test.shape}")
-        df.fillna(0)
-        # Normalization
-        sc = StandardScaler()  
-        X_train = sc.fit_transform(X_train)  
-        X_test = sc.transform(X_test)  
-                
-        return y_train
+        return df_list
+        
