@@ -1,7 +1,6 @@
 import torch
 import wandb
 import self_supervised_HR.freq as hrd
-import self_supervised_HR.freq.load_data_wesad as load_data
 import self_supervised_HR.utils.utils as utils
 from self_supervised_HR.utils import  EarlyStopping
 from util.misc import NativeScalerWithGradNormCount as NativeScaler

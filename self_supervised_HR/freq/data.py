@@ -6,7 +6,6 @@ import random
 import requests
 import zipfile
 import self_supervised_HR.freq as hrd
-import self_supervised_HR.freq.load_data_wesad as wes
 import numpy as np
 from sklearn.model_selection import LeaveOneGroupOut
 from skimage.util.shape import view_as_windows
@@ -32,18 +31,22 @@ def _collect_data(data_dir, data):
     dataset = dict()
     session_list = random.sample(num, len(num))
     for subj in session_list:
-        print(f"sub = {subj}")
+        print(f"{data_dir}")
         with open(data_dir / folder / f'S{str(subj)}' / f'S{str(subj)}.pkl', 'rb') as f:
             subject = pickle.load(f, encoding='latin1')
-        #print(f"subject = {subject}")
+        print(f"subject = {subject}")
         ppg = subject['signal']['wrist']['BVP'][::2].astype('float32')
-        print(f"ppg shape = {ppg.shape}")
         acc = subject['signal']['wrist']['ACC'].astype('float32')
-        print(f"acc shape = {acc.shape}")
         if data == "DALIA":
             target = subject['label'].astype('float32')
         elif data == "WESAD":
-            target = wes.get_data(subj).astype('float32')
+            sub = 'S'+str(subj)
+            filename = '/content/ppg-masked-autoencoders/WESAD/WESAD'
+            with zipfile.ZipFile(f'{filename}/{sub}/{sub}_E4_Data.zip') as zf:
+                zf.extractall(f'{filename}/{sub}')
+            target = pd.read_csv(f'{filename}/{sub}/HR.csv').iloc[1:, 0].values.astype('float32')
+            print(f"hr = {target}")
+    
         dataset[subj] = { 
         #each sample is build by: ppg value, accelerometer value, hr estimation
                 'ppg': ppg,
