@@ -89,9 +89,9 @@ def _preprocess_data(data_dir, dataset):
 
     return X, y, groups
 
-def _get_data_gen(samples, targets, groups, cross_val):
+def _get_data_gen(samples, targets, groups):
     n = 4
-    subjects = 15 #number of patients on which PPG data is taken
+    subjects = 1 #number of patients on which PPG data is taken
     indices, _ = _rndgroup_kfold(groups, n)
     kfold_it = 0
     while kfold_it < subjects:
@@ -181,7 +181,7 @@ def get_data(dataset = "WESAD",
              data_dir=None,
              url=WESAD_URL,
              ds_name='ppg_dalia.zip',
-             cross_val=True):
+             kfold=True):
     folder = ""
     if dataset == "WESAD":
       folder = "WESAD"
@@ -219,15 +219,15 @@ def get_data(dataset = "WESAD",
         with open(data_dir / 'slimmed_dalia.pkl', 'rb') as f:
             dataset = pickle.load(f, encoding='latin1')
         samples, target, groups = dataset.values()
-
-    generator = _get_data_gen(samples, target, groups, cross_val)
-    return generator
+      
+    generator = _get_data_gen(samples, target, groups)
+    return generator 
 
 
 def build_dataloaders(datasets: Tuple[Dataset, ...],
                       batch_size=128,
                       num_workers=4
-                      ):
+                      ) -> Tuple[DataLoader, DataLoader, DataLoader]:
     train_set, val_set, test_set = datasets
     train_loader = DataLoader(
         train_set,
