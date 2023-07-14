@@ -11,6 +11,8 @@ from sklearn.model_selection import LeaveOneGroupOut
 from skimage.util.shape import view_as_windows
 import torch
 from torch.utils.data import Dataset, DataLoader
+import neurokit2
+import wfdb
 
 
 DALIA_URL = "https://archive.ics.uci.edu/ml/machine-learning-databases/00495/data.zip"
@@ -42,10 +44,29 @@ def _collect_data(data_dir, data):
         elif data == "WESAD":
             sub = 'S'+str(subj)
             filename = '/content/ppg-masked-autoencoders/WESAD/WESAD'
-            with zipfile.ZipFile(f'{filename}/{sub}/{sub}_E4_Data.zip') as zf:
-                zf.extractall(f'{filename}/{sub}')
-            target = pd.read_csv(f'{filename}/{sub}/HR.csv').iloc[1:, 0].values.astype('float32')
-            print(f"hr = {target}")
+            fs = 700
+            
+            #retrive ecg_signal from SX_respiban.txt
+            ecg_signal = pd.read_csv(f'{filename}/{sub}/{sub}_respiban.txt', skiprows= 3, sep ='\t').iloc[:, 2].values
+            print(f"ecg_signal = {ecg_signal}")
+            
+            #ECG R-peak detection
+            _, results = neurokit2.ecg_peaks(ecg_signal, sampling_rate=fs)
+            rpeaks = results["ECG_R_Peaks"]
+            print(f"rpeaks = {rpeaks}")
+            
+            #Correct peaks
+            rpeaks_corrected = wfdb.processing.correct_peaks(
+            ecg_signal, rpeaks, search_radius=36, smooth_window_size=50, peak_dir="up")
+            print(f"rpeaks = {rpeaks_corrected}")
+            
+            # Compute time intervals between consecutive peaks
+            intervalli_tempo = [rpeaks_corrected[i+1] - rpeaks_corrected[i] for i in range(len(rpeaks)-1)]
+            # Compute HR in BPM
+            heart_rates = [60 / (intervallo_tempo / fs) for intervallo_tempo in intervalli_tempo]
+            
+            print(f"hr = {heart_rates}")
+            target = np.array(heart_rates).astype('float32')
     
         dataset[subj] = { 
         #each sample is build by: ppg value, accelerometer value, hr estimation
@@ -91,7 +112,7 @@ def _preprocess_data(data_dir, dataset):
 
 def _get_data_gen(samples, targets, groups):
     n = 4
-    subjects = 1 #number of patients on which PPG data is taken
+    subjects = 15 #number of patients on which PPG data is taken
     indices, _ = _rndgroup_kfold(groups, n)
     kfold_it = 0
     while kfold_it < subjects:
@@ -191,13 +212,11 @@ def get_data(dataset = "WESAD",
       url = DALIA_URL
     else:
       print('Try again, dataset must be only DALIA or WESAD')
-
-    print(f"dataset = {dataset}")
+      
     if data_dir is None:
         data_dir = Path('.').absolute() / dataset
         print(f"data dir = {data_dir}")
     filename = data_dir / ds_name
-    print(f" filename = {filename}")
     # Download if does not exist
     if not filename.exists():
         print('Download in progress... Please wait.')

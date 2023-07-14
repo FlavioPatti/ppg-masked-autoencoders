@@ -18,7 +18,7 @@ os.environ["WANDB_MODE"] = "online"
 
 N_PRETRAIN_EPOCHS = 1
 N_FINETUNE_EPOCHS = 1
-K_FOLD = False
+TRANSFER_LEARNING = False
 DATASET = "DALIA"
 
 # Check CUDA availability
@@ -49,13 +49,11 @@ if torch.cuda.is_available():
 criterion = utils.get_default_criterion("pretrain")
 optimizer = utils.get_default_optimizer(model, "pretrain")
 
-if K_FOLD: #for time/freq experiments
+if not TRANSFER_LEARNING: #for time/freq experiments
 
   # Get the Data and perform cross-validation
   data_gen = hrd.get_data(dataset = DATASET)
   for datasets in data_gen:
-
-    print(f"Using K-Fold")
     train_ds, val_ds, test_ds = datasets
     test_subj = test_ds.test_subj
     dataloaders = hrd.build_dataloaders(datasets)
@@ -78,19 +76,10 @@ if K_FOLD: #for time/freq experiments
           normalization = True,
           plot_heatmap = False, 
           sample_to_plot = 50)
-
-      test_stats = hrd.train_one_epoch_masked_autoencoder_freq(
-          model, test_dl, criterion,
-          optimizer, device, epoch, loss_scaler,
-          normalization = True,
-          plot_heatmap = False, 
-          sample_to_plot = 50)
-
-      print(f"train_stats = {train_stats}")
-      print(f"val_stats = {val_stats}")
-      print(f"test_stats = {test_stats}")
       
-      val_loss = test_stats['loss']
+      print(f"train stats = {train_stats}")
+      print(f"val stats = {val_stats}")
+      val_loss = val_stats['loss']
       if val_loss < best_val_loss:
         best_val_loss = val_loss
         print(f"=> new best val loss found = {best_val_loss}")
@@ -100,7 +89,7 @@ if K_FOLD: #for time/freq experiments
       
       if earlystop(val_loss):
         break
-
+      
     #Finetune for hr estimation
     model = utils.get_reference_model('vit_freq_finetune') #ViT (only encoder with at the end linear layer)
       
@@ -122,48 +111,40 @@ if K_FOLD: #for time/freq experiments
     #Load checkpoint from pretrain if exists
     load_checkpoint_pretrain(torch.load("./checkpoint_model_pretrain"))
     best_val_mae = sys.float_info.max
-    best_test_mae = sys.float_info.max
 
     for epoch in range(N_FINETUNE_EPOCHS):
       metrics = hrd.train_one_epoch_hr_detection_freq(
             epoch, model, criterion, optimizer, train_dl, val_dl, device,
             normalization = False,plot_heatmap = False, sample_to_plot = 50)
         
-      print(f"train and val stats = {metrics}")
+      print(f"train stats = {metrics}")
       val_mae = metrics['val_MAE']
-      
-      test_metrics = hrd.evaluate_freq(model, criterion, test_dl, device,
-          normalization = False,plot_heatmap = False, sample_to_plot = 50)
-        
-      print(f"test stats = {test_metrics}")
-      test_mae = test_metrics['MAE']
-
       if val_mae < best_val_mae:
         best_val_mae = val_mae
         print(f"new best val mae found = {best_val_mae}")
-      
-      if test_mae < best_test_mae:
-        best_test_mae = test_mae
-        print(f"new best test mae found = {best_test_mae}")
 
       #if epoch >= 30: #delayed earlystop
       if earlystop(val_mae):
         break
+      
+    test_metrics = hrd.evaluate_freq(model, criterion, test_dl, device,
+          normalization = False,plot_heatmap = False, sample_to_plot = 50)
+    print(f"test stats = {test_metrics}")
 
 else: #for transfer learning
-  print(f"Using Single Fold")
+  
+  # Retrive the entire dataset
   data_dir = Path('.').absolute() / DATASET
   with open(data_dir / 'slimmed_dalia.pkl', 'rb') as f:
       ds = pickle.load(f, encoding='latin1')
   samples, target, groups = ds.values()
-  data = Dalia(samples, target)
+  full_dataset = Dalia(samples, target)
   train_dl = DataLoader(
-      data,
+      full_dataset,
       batch_size=128,
       shuffle=True,
       pin_memory=True,
       num_workers=4)
-
   best_loss = sys.float_info.max
   
   #Pretraining for recostruct input signals
@@ -177,7 +158,6 @@ else: #for transfer learning
           sample_to_plot = 50)
     
     print(f"train_stats = {train_stats}")
-    
     loss = train_stats['loss']
     if loss < best_loss:
       best_loss = loss
@@ -213,40 +193,28 @@ else: #for transfer learning
   # Get the Data and perform cross-validation
   data_gen = hrd.get_data(dataset = DATASET)
   for datasets in data_gen:
-
     train_ds, val_ds, test_ds = datasets
     test_subj = test_ds.test_subj
     dataloaders = hrd.build_dataloaders(datasets)
     train_dl, val_dl, test_dl = dataloaders
-
     best_val_mae = sys.float_info.max
-    best_test_mae = sys.float_info.max
 
     for epoch in range(N_FINETUNE_EPOCHS):
       metrics = hrd.train_one_epoch_hr_detection_freq(
           epoch, model, criterion, optimizer, train_dl, val_dl, device,
           normalization = False,plot_heatmap = False, sample_to_plot = 50)
       
-    print(f"train and val stats = {metrics}")
-    val_mae = metrics['val_MAE']
+      print(f"train and val stats = {metrics}")
+      val_mae = metrics['val_MAE']
+      if val_mae < best_val_mae:
+        best_val_mae = val_mae
+        print(f"new best val mae found = {best_val_mae}")
+      
+      #if epoch >= 30: #delayed earlystop
+      if earlystop(val_mae):
+        break
 
     test_metrics = hrd.evaluate_freq(model, criterion, test_dl, device,
-        normalization = False,plot_heatmap = False, sample_to_plot = 50)
-      
+        normalization = False,plot_heatmap = False, sample_to_plot = 50)  
     print(f"test stats = {test_metrics}")
-    test_mae = test_metrics['MAE']
-
-    if val_mae < best_val_mae:
-      best_val_mae = val_mae
-      print(f"new best val mae found = {best_val_mae}")
-
-    if test_mae < best_test_mae:
-      best_test_mae = test_mae
-      print(f"new best test mae found = {best_test_mae}")
-
-    #if epoch >= 30: #delayed earlystop
-    if earlystop(val_mae):
-      break
-
-
       
