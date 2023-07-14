@@ -19,7 +19,8 @@ os.environ["WANDB_MODE"] = "online"
 N_PRETRAIN_EPOCHS = 1
 N_FINETUNE_EPOCHS = 1
 TRANSFER_LEARNING = False
-DATASET = "DALIA"
+DATASET_PRETRAIN = "DALIA"
+DATASET_FINETUNING = "DALIA"
 
 # Check CUDA availability
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
@@ -52,7 +53,7 @@ optimizer = utils.get_default_optimizer(model, "pretrain")
 if not TRANSFER_LEARNING: #for time/freq experiments
 
   # Get the Data and perform cross-validation
-  data_gen = hrd.get_data(dataset = DATASET)
+  data_gen = hrd.get_data(dataset = DATASET_PRETRAIN)
   for datasets in data_gen:
     train_ds, val_ds, test_ds = datasets
     test_subj = test_ds.test_subj
@@ -132,9 +133,9 @@ if not TRANSFER_LEARNING: #for time/freq experiments
     print(f"test stats = {test_metrics}")
 
 else: #for transfer learning
-  
+
   # Retrive the entire dataset
-  data_dir = Path('.').absolute() / DATASET
+  data_dir = Path('.').absolute() / DATASET_PRETRAIN
   with open(data_dir / 'slimmed_dalia.pkl', 'rb') as f:
       ds = pickle.load(f, encoding='latin1')
   samples, target, groups = ds.values()
@@ -191,7 +192,7 @@ else: #for transfer learning
   load_checkpoint_pretrain(torch.load("./checkpoint_model_pretrain"))
 
   # Get the Data and perform cross-validation
-  data_gen = hrd.get_data(dataset = DATASET)
+  data_gen = hrd.get_data(dataset = DATASET_FINETUNING)
   for datasets in data_gen:
     train_ds, val_ds, test_ds = datasets
     test_subj = test_ds.test_subj
