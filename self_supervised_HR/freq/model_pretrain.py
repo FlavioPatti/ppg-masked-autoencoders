@@ -14,13 +14,14 @@ class MaskedAutoencoderViT_freq(nn.Module):
                  audio_exp=False, alpha=0.0, temperature=.2, mode=0, contextual_depth=8,
                  use_custom_patch=False, split_pos=False, pos_trainable=False, use_nce=False, beta=4.0, decoder_mode=0,
                  mask_t_prob=0.6, mask_f_prob=0.5, mask_2d=False,
-                 epoch=0, no_shift=False,
+                 epoch=0, no_shift=False, dataset = "DALIA"
                  ):
         super().__init__()
 
         self.audio_exp=audio_exp
         self.embed_dim = embed_dim
         self.decoder_embed_dim = decoder_embed_dim
+        self.dataset = dataset
         # --------------------------------------------------------------------------
         # MAE encoder specifics
         
@@ -144,9 +145,15 @@ class MaskedAutoencoderViT_freq(nn.Module):
         w = imgs.shape[3] // p
     
         #print(f"h = {h}, w = {w}, p = {p}")
-        x = imgs.reshape(shape=(imgs.shape[0], 4, h, p, w, p))
-        x = torch.einsum('nchpwq->nhwpqc', x)
-        x = x.reshape(shape=(imgs.shape[0], h * w, p**2 *4)) 
+        if self.dataset == "DALIA" or self.dataset == "WESAD":
+          x = imgs.reshape(shape=(imgs.shape[0], 4, h, p, w, p))
+          x = torch.einsum('nchpwq->nhwpqc', x)
+          x = x.reshape(shape=(imgs.shape[0], h * w, p**2 *4)) 
+        else: #ieeeppg
+          x = imgs.reshape(shape=(imgs.shape[0], 5, h, p, w, p))
+          x = torch.einsum('nchpwq->nhwpqc', x)
+          x = x.reshape(shape=(imgs.shape[0], h * w, p**2 *5)) 
+
         return x
 
     def random_masking(self, x, mask_ratio):

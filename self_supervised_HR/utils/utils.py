@@ -26,21 +26,27 @@ class LogCosh(nn.Module):
       return torch.mean(x + nn.Softplus()(-2*x) - torch.log(torch.tensor(2.)))
 
 
-def get_reference_model(model_name: str):
+def get_reference_model(model_name: str, dataset: str):
     if model_name == 'temponet':
         return TEMPONet()
 
     if model_name == 'vit_freq_pretrain':
         print(f"=> ViT Freq Pretrain")
-        return MaskedAutoencoderViT_freq(
-        img_size = (64,256), in_chans = 4, mask_2d=True, type = "freq",
-        patch_size=8, embed_dim=64, depth=4, num_heads=16,
-        decoder_embed_dim=64, decoder_num_heads=16,
-        mlp_ratio=4, norm_layer=partial(nn.LayerNorm, eps=1e-6) )
-        
-        #depth = 4,8,12
-        #heads = 4,8,16
-        #embed = 64,128,256
+        if dataset == "DALIA" or dataset == "WESAD":
+          return MaskedAutoencoderViT_freq(
+          img_size = (64,256), in_chans = 4, mask_2d=True, type = "freq",
+          patch_size=8, embed_dim=64, depth=4, num_heads=16,
+          decoder_embed_dim=64, decoder_num_heads=16, dataset = dataset,
+          mlp_ratio=4, norm_layer=partial(nn.LayerNorm, eps=1e-6) )
+          #depth = 4,8,12
+          #heads = 4,8,16
+          #embed = 64,128,256
+        else: #ieeeppg
+          return MaskedAutoencoderViT_freq(
+            img_size = (64,256), in_chans = 5, mask_2d=True, type = "freq",
+            patch_size=8, embed_dim=64, depth=4, num_heads=16,
+            decoder_embed_dim=64, decoder_num_heads=16, dataset = dataset,
+            mlp_ratio=4, norm_layer=partial(nn.LayerNorm, eps=1e-6) )
         
     if model_name == 'vit_time_pretrain':
         print(f"=> ViT Time Pretrain")
@@ -49,13 +55,22 @@ def get_reference_model(model_name: str):
         patch_size=1, embed_dim=256, depth=12, num_heads=16,
         decoder_embed_dim=256, decoder_num_heads=16,
         mlp_ratio=4, norm_layer=partial(nn.LayerNorm, eps=1e-6) )
+
     if model_name == 'vit_freq_finetune':
         print(f"=>ViT Freq Finetune")
-        return MaskedAutoencoderViT_without_decoder_freq(
-        img_size = (64,256), in_chans = 4, mask_2d=True, type = "freq",
-        patch_size=8, embed_dim=64, depth=4, num_heads=16,
-        decoder_embed_dim=64, decoder_num_heads=16,
-        mlp_ratio=4, norm_layer=partial(nn.LayerNorm, eps=1e-6) )
+        if dataset == "DALIA" or dataset == "WESAD":
+          return MaskedAutoencoderViT_without_decoder_freq(
+          img_size = (64,256), in_chans = 4, mask_2d=True, type = "freq",
+          patch_size=8, embed_dim=64, depth=4, num_heads=16,
+          decoder_embed_dim=64, decoder_num_heads=16, 
+          mlp_ratio=4, norm_layer=partial(nn.LayerNorm, eps=1e-6) )
+        else: #ieeeppg
+          return MaskedAutoencoderViT_without_decoder_freq(
+          img_size = (64,256), in_chans = 5, mask_2d=True, type = "freq",
+          patch_size=8, embed_dim=64, depth=4, num_heads=16,
+          decoder_embed_dim=64, decoder_num_heads=16, 
+          mlp_ratio=4, norm_layer=partial(nn.LayerNorm, eps=1e-6) )
+
     if model_name == 'vit_time_finetune':
         print(f"=> ViT Time Finetune")
         return MaskedAutoencoderViT_without_decoder_time(
@@ -287,7 +302,7 @@ def plot_heatmap(x, type, num_sample, epoch):
   plt.ylabel('Frequency (Hz)')
   plt.savefig(f'./Benchmark_hr_detection/pytorch_benchmarks/imgs/{type}/specto{num_sample}_epoch{epoch}.png') 
 
-def unpatchify(imgs, type):
+def unpatchify(imgs, type, dataset):
         """
         x: (N, L, patch_size**2 *4)
         specs: (N, 4, H, W)
@@ -300,9 +315,15 @@ def unpatchify(imgs, type):
           p = 1
           h = 256//p
           w = 1//p
-        x = imgs.reshape(shape=(imgs.shape[0], h, w, p, p, 4))
-        x = torch.einsum('nhwpqc->nchpwq', x)
-        specs = x.reshape(shape=(x.shape[0], 4, h * p, w * p))
+        if dataset == "DALIA" or dataset == "WESAD":
+          x = imgs.reshape(shape=(imgs.shape[0], h, w, p, p, 4))
+          x = torch.einsum('nhwpqc->nchpwq', x)
+          specs = x.reshape(shape=(x.shape[0], 4, h * p, w * p))
+        else: #ieeeppg
+          x = imgs.reshape(shape=(imgs.shape[0], h, w, p, p, 5))
+          x = torch.einsum('nhwpqc->nchpwq', x)
+          specs = x.reshape(shape=(x.shape[0], 5, h * p, w * p))
+
         return specs
 
 

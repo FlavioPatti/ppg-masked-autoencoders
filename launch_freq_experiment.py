@@ -22,9 +22,9 @@ os.environ["WANDB_API_KEY"] = "20fed903c269ff76b57d17a58cdb0ba9d0c4d2be"
 os.environ["WANDB_MODE"] = "online"
 
 N_PRETRAIN_EPOCHS = 1
-N_FINETUNE_EPOCHS = 1
-TRANSFER_LEARNING = False
-DATASET_PRETRAIN = "DALIA"
+N_FINETUNE_EPOCHS = 10
+TRANSFER_LEARNING = True
+DATASET_PRETRAIN = "IEEEPPG"
 DATASET_FINETUNING = "DALIA"
 
 # Check CUDA availability
@@ -45,7 +45,7 @@ earlystop = EarlyStopping(patience=20, mode='min')
 loss_scaler = NativeScaler()
 
 # Get the Model
-model = utils.get_reference_model('vit_freq_pretrain') #ViT (encoder + decoder)
+model = utils.get_reference_model('vit_freq_pretrain', DATASET_PRETRAIN) #ViT (encoder + decoder)
 
 if torch.cuda.is_available():
   model = model.cuda()
@@ -73,14 +73,16 @@ if not TRANSFER_LEARNING: #for time/freq experiments
           optimizer, device, epoch, loss_scaler,
           normalization = True,
           plot_heatmap = False, 
-          sample_to_plot = 50)
+          sample_to_plot = 50,
+          dataset_name = DATASET_PRETRAIN)
 
       val_stats = hrd.train_one_epoch_masked_autoencoder_freq(
           model, val_dl, criterion,
           optimizer, device, epoch, loss_scaler,
           normalization = True,
           plot_heatmap = False, 
-          sample_to_plot = 50)
+          sample_to_plot = 50,
+          dataset_name = DATASET_PRETRAIN)
       
       print(f"train stats = {train_stats}")
       print(f"val stats = {val_stats}")
@@ -176,22 +178,13 @@ else: #for transfer learning
 
     # process the data into numpy array
     x_train = load_ieee.process_data(X_train, normalise=norm, min_len=min_len)
-    x_train = np.transpose(x_train, (0, 2, 1))
+    x_train = np.transpose(x_train, (0, 2, 1)).astype(np.double)
     x_test = load_ieee.process_data(X_test, normalise=norm, min_len=min_len)
-    x_test = np.transpose(x_test, (0, 2, 1))
-    print(f"x train = {x_train.shape}")
+    x_test = np.transpose(x_test, (0, 2, 1)).astype(np.double)
     
     #retrive training and validation from training data
     x_train, x_val, y_train, y_val = train_test_split(x_train, y_train, test_size=0.2, random_state=42)
-    print(f"x train = {x_train.shape}")
-    print(f"x val = {x_val.shape}")
-    print(f"y train = {y_train.shape}")
-    print(f"y val = {y_val.shape}")
-
-    # Ridimensionamento del set di dati di convalida
-    x_val = x_val[:100]
-    y_val = y_val[:100]
-        
+    #retrive dataloaders        
     train_dl, val_dl, test_dl = load_ieee.get_dataloaders(x_train, x_val, x_test, y_train, y_val, y_test)
     
   best_loss = sys.float_info.max
@@ -203,7 +196,8 @@ else: #for transfer learning
           optimizer, device, epoch, loss_scaler,
           normalization = True,
           plot_heatmap = False, 
-          sample_to_plot = 50)
+          sample_to_plot = 50, 
+          dataset_name = DATASET_PRETRAIN)
     
     print(f"train_stats = {train_stats}")
     loss = train_stats['loss']
@@ -218,7 +212,7 @@ else: #for transfer learning
       break
 
   #Finetune for hr estimation
-  model = utils.get_reference_model('vit_freq_finetune') #ViT (only encoder with at the end linear layer)
+  model = utils.get_reference_model('vit_freq_finetune', DATASET_PRETRAIN) #ViT (only encoder with at the end linear layer)
     
   #print #params and #ops for the model
   #input_tensor = torch.randn(1,4,64,256)

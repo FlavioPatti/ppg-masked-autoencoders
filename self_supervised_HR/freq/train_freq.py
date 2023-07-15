@@ -37,7 +37,7 @@ spectrogram_transform = torchaudio.transforms.MelSpectrogram(
 def train_one_epoch_masked_autoencoder_freq(model: torch.nn.Module,
                     data_loader: DataLoader, criterion: torch.nn.MSELoss, optimizer: torch.optim.Optimizer,
                     device: torch.device, epoch: int, loss_scaler,
-                    normalization = False, plot_heatmap = False, sample_to_plot = 50):
+                    normalization = False, plot_heatmap = False, sample_to_plot = 50, dataset_name = "DALIA"):
     model.train(True)
     metric_logger = misc.MetricLogger(delimiter="  ")
     metric_logger.add_meter('lr', misc.SmoothedValue(window_size=1, fmt='{value:.6f}'))
@@ -50,6 +50,7 @@ def train_one_epoch_masked_autoencoder_freq(model: torch.nn.Module,
         # we use a per iteration (instead of per epoch) lr scheduler
         lr_sched.adjust_learning_rate(optimizer, data_iter_step / len(data_loader) + epoch)
 
+        samples = samples.float()
         #img shape (4,256) -> (4,64,256) = (CH,FREQ,TIME)
         specto_samples = torch.narrow(spectrogram_transform(samples), dim=3, start=0, length=256) 
 
@@ -61,7 +62,7 @@ def train_one_epoch_masked_autoencoder_freq(model: torch.nn.Module,
         loss, prediction, target, x_masked = model(specto_samples, mask_ratio = 0.1)
         
         #recostruction of the signal to the original shape
-        signal_reconstructed = utils.unpatchify(prediction, type = "freq")
+        signal_reconstructed = utils.unpatchify(prediction, type = "freq", dataset = dataset_name)
         
         if plot_heatmap:
           ppg_signal = samples[sample_to_plot,0,:,:].to('cpu').detach().numpy() #ppg signal is channel 0
@@ -90,7 +91,8 @@ def train_one_epoch_hr_detection_freq(
     with tqdm(total=len(train), unit="batch") as tepoch:
       tepoch.set_description(f"Epoch {epoch+1}")
       for sample, target in train:
-            
+
+        sample = sample.float()    
         #img shape (4,256) -> (4,64,256) = (CH,FREQ,TIME)
         specto_samples = torch.narrow(spectrogram_transform(sample), dim=3, start=0, length=256) 
         
@@ -133,7 +135,8 @@ def evaluate_freq(
     step = 0
     with torch.no_grad():
         for sample, target in data:
-              
+          
+          sample = sample.float()
           #img shape (4,256) -> (4,64,256) = (CH,FREQ,TIME)
           specto_samples = torch.narrow(spectrogram_transform(sample), dim=3, start=0, length=256) 
           

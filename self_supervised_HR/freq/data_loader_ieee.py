@@ -600,7 +600,7 @@ def process_data(X, min_len, normalise=None):
     X = np.array(tmp)
     return X
 
-def get_dataloader(x_train, x_val, x_test, y_train, y_val, y_test):
+def get_dataloaders(x_train, x_val, x_test, y_train, y_val, y_test):
         
     train_dataset = Dalia(x_train, y_train)
     val_dataset = Dalia(x_val,y_val)
