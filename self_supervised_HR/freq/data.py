@@ -12,7 +12,7 @@ from skimage.util.shape import view_as_windows
 import torch
 from torch.utils.data import Dataset, DataLoader
 import neurokit2
-import wfdb
+import wfdb.processing
 
 
 DALIA_URL = "https://archive.ics.uci.edu/ml/machine-learning-databases/00495/data.zip"

@@ -40,7 +40,6 @@ earlystop = EarlyStopping(patience=20, mode='min')
 loss_scaler = NativeScaler()
 
 # Get the Model
-print("=> Running Freq experiment")
 model = utils.get_reference_model('vit_freq_pretrain') #ViT (encoder + decoder)
 
 if torch.cuda.is_available():
@@ -51,7 +50,7 @@ criterion = utils.get_default_criterion("pretrain")
 optimizer = utils.get_default_optimizer(model, "pretrain")
 
 if not TRANSFER_LEARNING: #for time/freq experiments
-
+  print(f"=> Running frequency experiment with dataset = {DATASET_PRETRAIN}")
   # Get the Data and perform cross-validation
   data_gen = hrd.get_data(dataset = DATASET_PRETRAIN)
   for datasets in data_gen:
@@ -133,7 +132,7 @@ if not TRANSFER_LEARNING: #for time/freq experiments
     print(f"test stats = {test_metrics}")
 
 else: #for transfer learning
-
+  print(f"=> Running transfer learning experiment with pretrain dataset = {DATASET_PRETRAIN} and finetuning dataset = {DATASET_FINETUNING}")
   # Retrive the entire dataset
   data_dir = Path('.').absolute() / DATASET_PRETRAIN
   with open(data_dir / 'slimmed_dalia.pkl', 'rb') as f:
