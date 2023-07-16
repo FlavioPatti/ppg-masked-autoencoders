@@ -17,6 +17,15 @@ from self_supervised_HR.freq.model_pretrain import MaskedAutoencoderViT_freq
 from self_supervised_HR.freq.model_finetune import MaskedAutoencoderViT_without_decoder_freq
 from functools import partial
 
+def save_checkpoint_pretrain(state, filename="checkpoint_model_pretrain"):
+    print("=> Saving pretrained checkpoint")
+    torch.save(state,filename)
+
+def load_checkpoint_pretrain(model, checkpoint):
+    print("=> Loading pretrained checkpoint")
+    model.load_state_dict(checkpoint['state_dict'])
+  
+
 class LogCosh(nn.Module):
     def __init__(self):
       super(LogCosh, self).__init__()
@@ -25,6 +34,10 @@ class LogCosh(nn.Module):
       x = input - target
       return torch.mean(x + nn.Softplus()(-2*x) - torch.log(torch.tensor(2.)))
 
+#Testing different architectures with:
+#depth = 4,8,12
+#heads = 4,8,16
+# #embed = 64,128,256
 
 def get_reference_model(model_name: str, dataset: str):
     if model_name == 'temponet':
@@ -38,9 +51,6 @@ def get_reference_model(model_name: str, dataset: str):
           patch_size=8, embed_dim=64, depth=4, num_heads=16,
           decoder_embed_dim=64, decoder_num_heads=16, dataset = dataset,
           mlp_ratio=4, norm_layer=partial(nn.LayerNorm, eps=1e-6) )
-          #depth = 4,8,12
-          #heads = 4,8,16
-          #embed = 64,128,256
         else: #ieeeppg
           return MaskedAutoencoderViT_freq(
             img_size = (64,256), in_chans = 5, mask_2d=True, type = "freq",

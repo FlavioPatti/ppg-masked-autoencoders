@@ -22,6 +22,7 @@ class MaskedAutoencoderViT_freq(nn.Module):
         self.embed_dim = embed_dim
         self.decoder_embed_dim = decoder_embed_dim
         self.dataset = dataset
+        self.in_chans = in_chans
         # --------------------------------------------------------------------------
         # MAE encoder specifics
         
@@ -145,14 +146,9 @@ class MaskedAutoencoderViT_freq(nn.Module):
         w = imgs.shape[3] // p
     
         #print(f"h = {h}, w = {w}, p = {p}")
-        if self.dataset == "DALIA" or self.dataset == "WESAD":
-          x = imgs.reshape(shape=(imgs.shape[0], 4, h, p, w, p))
-          x = torch.einsum('nchpwq->nhwpqc', x)
-          x = x.reshape(shape=(imgs.shape[0], h * w, p**2 *4)) 
-        else: #ieeeppg
-          x = imgs.reshape(shape=(imgs.shape[0], 5, h, p, w, p))
-          x = torch.einsum('nchpwq->nhwpqc', x)
-          x = x.reshape(shape=(imgs.shape[0], h * w, p**2 *5)) 
+        x = imgs.reshape(shape=(imgs.shape[0], self.in_chans, h, p, w, p))
+        x = torch.einsum('nchpwq->nhwpqc', x)
+        x = x.reshape(shape=(imgs.shape[0], h * w, p**2 * self.in_chans)) 
 
         return x
 
