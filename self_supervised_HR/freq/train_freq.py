@@ -11,6 +11,29 @@ import util.lr_sched as lr_sched
 import torchaudio
 import numpy as np
 
+"""spectogram trasformation and relative parameters"""
+sample_rate= 32
+n_fft = 510 #freq = nfft/2 + 1 = 256 => risoluzione/granularitÃ  dello spettrogramma
+win_length = 32
+hop_length = 1 # window length = time instants
+n_mels = 64 #definisce la dimensione della frequenza di uscita
+f_min = 0
+f_max = 4
+
+spectrogram_transform = torchaudio.transforms.MelSpectrogram(
+    sample_rate = sample_rate,
+    n_fft=n_fft,
+    win_length=win_length,
+    hop_length=hop_length,
+    center=True,
+    pad_mode="reflect",
+    power=2.0,
+    normalized=True,
+    f_min = f_min,
+    f_max = f_max,
+    n_mels = n_mels
+)
+
 def train_one_epoch_masked_autoencoder_freq(model: torch.nn.Module,
                     data_loader: DataLoader, criterion: torch.nn.MSELoss, optimizer: torch.optim.Optimizer,
                     device: torch.device, epoch: int, loss_scaler,
@@ -26,13 +49,16 @@ def train_one_epoch_masked_autoencoder_freq(model: torch.nn.Module,
     for data_iter_step, (samples, _labels) in enumerate(metric_logger.log_every(data_loader, print_freq, header)):
         # we use a per iteration (instead of per epoch) lr scheduler
         lr_sched.adjust_learning_rate(optimizer, data_iter_step / len(data_loader) + epoch)
-        
+
+        #img shape (4,256) -> (4,64,256) = (CH,FREQ,TIME)
+        specto_samples = torch.narrow(spectrogram_transform(samples), dim=3, start=0, length=256) 
+
         if normalization:
-          samples = np.log10(samples)
+          specto_samples = np.log10(specto_samples)  
     
-        samples = samples.to(device, non_blocking=True)
+        specto_samples = specto_samples.to(device, non_blocking=True)
         
-        loss, prediction, target, x_masked = model(samples, mask_ratio = 0.1)
+        loss, prediction, target, x_masked = model(specto_samples, mask_ratio = 0.1)
         
         #recostruction of the signal to the original shape
         signal_reconstructed = utils.unpatchify(prediction, type = "freq")
@@ -63,17 +89,23 @@ def train_one_epoch_hr_detection_freq(
     step = 0
     with tqdm(total=len(train), unit="batch") as tepoch:
       tepoch.set_description(f"Epoch {epoch+1}")
-      for sample, target in train: 
+      for sample, target in train:
+
+        #img shape (4,256) -> (4,64,256) = (CH,FREQ,TIME)
+        specto_samples = torch.narrow(spectrogram_transform(sample), dim=3, start=0, length=256) 
         
         if normalization:
-          sample = np.log10(sample)
-                
+          specto_samples = np.log10(specto_samples)
+                  
         step += 1
         #tepoch.update(1)
-        sample, target = sample.to(device), target.to(device)
+        sample, target = specto_samples.to(device), target.to(device)
         
         output = model(sample)
         loss = criterion(output, target)
+        
+        if plot_heatmap:
+          utils.plot_heart_rates(pred = output, target = target, type="input", epoch = epoch)
         
         optimizer.zero_grad()
         loss.backward()
@@ -104,10 +136,15 @@ def evaluate_freq(
     step = 0
     with torch.no_grad():
         for sample, target in data:
+          
+          #img shape (4,256) -> (4,64,256) = (CH,FREQ,TIME)
+          specto_samples = torch.narrow(spectrogram_transform(sample), dim=3, start=0, length=256) 
+          
           if normalization:
-            sample = np.log10(sample)
+             specto_samples = np.log10(specto_samples) 
+                        
           step += 1
-          sample, target = sample.to(device), target.to(device)
+          sample, target = specto_samples.to(device), target.to(device)
           output = model(sample)
           loss = criterion(output, target)
           mae_val = F.l1_loss(output, target) # Mean absolute error for hr detection

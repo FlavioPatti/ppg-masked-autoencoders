@@ -284,6 +284,17 @@ def plot_audio(x, type, num_sample, epoch):
   plt.title(f"Heatmap PPG: sample {num_sample}")  
   plt.savefig(f'./Benchmark_hr_detection/pytorch_benchmarks/imgs/{type}/audio{num_sample}_epoch{epoch}.png') 
   
+"""plot heart rates"""
+def plot_heart_rates(pred, target, type, epoch):
+  plt.figure(figsize=(15, 5))
+  plt.plot(pred, label='Predizioni')
+  plt.plot(target, label='Target veri')
+  plt.xlabel('Paziente')
+  plt.ylabel('Battito cardiaco (BPM)')
+  plt.title('Predizioni vs Target')
+  plt.legend()
+  plt.savefig(f'./Benchmark_hr_detection/pytorch_benchmarks/imgs/{type}/HR_epoch{epoch}.png') 
+  
 """plot heatmaps from samples"""
 def plot_heatmap(x, type, num_sample, epoch):
   _, ax = plt.subplots()

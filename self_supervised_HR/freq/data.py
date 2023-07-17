@@ -16,32 +16,6 @@ import wfdb.processing
 from tqdm import tqdm
 from sklearn.preprocessing import StandardScaler, MinMaxScaler
 import scipy.io
-import torchaudio
-
-TYPE_EXPERIMENT = "FREQ"
-
-"""spectogram trasformation and relative parameters"""
-sample_rate= 32
-n_fft = 510 #freq = nfft/2 + 1 = 256 => risoluzione/granularitÃ  dello spettrogramma
-win_length = 32
-hop_length = 1 # window length = time instants
-n_mels = 64 #definisce la dimensione della frequenza di uscita
-f_min = 0
-f_max = 4
-
-spectrogram_transform = torchaudio.transforms.MelSpectrogram(
-    sample_rate = sample_rate,
-    n_fft=n_fft,
-    win_length=win_length,
-    hop_length=hop_length,
-    center=True,
-    pad_mode="reflect",
-    power=2.0,
-    normalized=True,
-    f_min = f_min,
-    f_max = f_max,
-    n_mels = n_mels
-)
 
 DALIA_URL = "https://archive.ics.uci.edu/ml/machine-learning-databases/00495/data.zip"
 WESAD_URL = "https://uni-siegen.sciebo.de/s/HGdUkoNlW1Ub0Gx/download"
@@ -943,33 +917,6 @@ def process_data(X, min_len, normalise=None):
         tmp.append(_y)
     X = np.array(tmp)
     return X
-
-def get_dataloaders(x_train, x_val, x_test, y_train, y_val, y_test):
-        
-    train_dataset = Dalia(x_train, y_train)
-    val_dataset = Dalia(x_val,y_val)
-    test_dataset = Dalia(x_test, y_test)
-    
-    train_dl = DataLoader(
-        train_dataset,
-        batch_size=128,
-        shuffle=True,
-        pin_memory=True,
-        num_workers=4)
-    val_dl = DataLoader(
-        val_dataset,
-        batch_size=128,
-        shuffle=True,
-        pin_memory=True,
-        num_workers=4)
-    test_dl = DataLoader(
-        test_dataset,
-        batch_size=128,
-        shuffle=True,
-        pin_memory=True,
-        num_workers=4)
-    
-    return train_dl, val_dl, test_dl
 
 def build_dataloaders(datasets: Tuple[Dataset, ...],
                       batch_size=128,
