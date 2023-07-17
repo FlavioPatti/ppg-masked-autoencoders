@@ -48,7 +48,7 @@ if not TRANSFER_LEARNING: #for time/freq experiments
     # Get Training Settings
     criterion = utils.get_default_criterion("pretrain")
     optimizer = utils.get_default_optimizer(model, "pretrain")
-    best_val_loss = sys.float_info.max
+    best_loss = sys.float_info.max
 
     print(f"=> Starting pretrain for {N_PRETRAIN_EPOCHS} epochs...")
     #Pretraining for recostruct input signals
@@ -62,36 +62,21 @@ if not TRANSFER_LEARNING: #for time/freq experiments
           sample_to_plot = 50,
           dataset_name = DATASET_PRETRAIN)
 
-      val_stats = hrd.train_one_epoch_masked_autoencoder_freq(
-          model, val_dl, criterion,
-          optimizer, device, epoch, loss_scaler,
-          normalization = True,
-          plot_heatmap = False, 
-          sample_to_plot = 50,
-          dataset_name = DATASET_PRETRAIN)
-      
       print(f"train stats = {train_stats}")
-      print(f"val stats = {val_stats}")
-      val_loss = val_stats['loss']
-      if val_loss < best_val_loss:
-        best_val_loss = val_loss
-        print(f"=> new best val loss found = {best_val_loss}")
+      loss = train_stats['loss']
+      if loss < best_loss:
+        best_loss = loss
+        print(f"=> new best val loss found = {best_loss}")
         #Save checkpoint
         checkpoint = {'state_dict': model.state_dict()}
         utils.save_checkpoint_pretrain(checkpoint)
       
-      if earlystop(val_loss):
+      if earlystop(loss):
         break
-      
-    test_stats = hrd.train_one_epoch_masked_autoencoder_freq(
-        model, test_dl, criterion,
-        optimizer, device, epoch, loss_scaler,
-        normalization = True,
-        plot_heatmap = False, 
-        sample_to_plot = 50,
-        dataset_name = DATASET_PRETRAIN)
-    print(f"test stats = {train_stats}")
     print(f" => Done pretrain")
+    
+    # Set earlystop
+    earlystop = EarlyStopping(patience=20, mode='min')
       
     #Finetune for hr estimation
     model = utils.get_reference_model('vit_freq_finetune') #ViT (only encoder with at the end linear layer)
@@ -110,32 +95,36 @@ if not TRANSFER_LEARNING: #for time/freq experiments
     #scheduler = StepLR(optimizer, step_size=20, gamma=1/3)
     optimizer = utils.get_default_optimizer(model, "finetune")
     
-    # Set earlystop
-    earlystop = EarlyStopping(patience=20, mode='min')
     best_val_mae = sys.float_info.max
+    best_test_mae = sys.float_info.max
     
     #Load checkpoint from pretrain if exists
     utils.load_checkpoint_pretrain(model, torch.load("./checkpoint_model_pretrain"))
 
     print(f"=> Starting finetuning for {N_FINETUNE_EPOCHS} epochs...")
     for epoch in range(N_FINETUNE_EPOCHS):
-      metrics = hrd.train_one_epoch_hr_detection_freq(
+      train_metrics = hrd.train_one_epoch_hr_detection_freq(
             epoch, model, criterion, optimizer, train_dl, val_dl, device,
             normalization = False,plot_heatmap = False, sample_to_plot = 50)
+      
+      test_metrics = hrd.evaluate_freq(model, criterion, test_dl, device,
+          normalization = False,plot_heatmap = False, sample_to_plot = 50)
         
-      print(f"train stats = {metrics}")
-      val_mae = metrics['val_MAE']
+      print(f"train stats = {train_metrics}")
+      print(f"test stats = {test_metrics}")
+      val_mae = train_metrics['val_MAE']
       if val_mae < best_val_mae:
         best_val_mae = val_mae
         print(f"new best val mae found = {best_val_mae}")
+      test_mae = train_metrics['MAE']
+      if test_mae < best_test_mae:
+        best_test_mae = test_mae
+        print(f"new best test mae found = {best_test_mae}")
 
       #if epoch >= 30: #delayed earlystop
       if earlystop(val_mae):
         break
       
-    test_metrics = hrd.evaluate_freq(model, criterion, test_dl, device,
-          normalization = False,plot_heatmap = False, sample_to_plot = 50)
-    print(f"test stats = {test_metrics}")
     print(f" => Done finetuning")
 
 else: #for transfer learning
@@ -184,23 +173,6 @@ else: #for transfer learning
       break
   print(f"=> Done pretrain")
       
-  #Finetune for hr estimation
-  model = utils.get_reference_model('vit_freq_finetune', DATASET_PRETRAIN) #ViT (only encoder with at the end linear layer)
-  if torch.cuda.is_available():
-      model = model.cuda()
-    
-  #print #params and #ops for the model
-  #input_tensor = torch.randn(1,4,64,256)
-  #flops, params = profile(model, inputs=(input_tensor,))
-  #print(f"# params = {params}, #flops = {flops}")
-        
-  # Get Training Settings
-  criterion = utils.get_default_criterion("finetune")
-  #optimizer = torch.optim.SGD(model.parameters(),lr=0.01)
-  #print(f"optimizer => {optimizer}")
-  #scheduler = StepLR(optimizer, step_size=20, gamma=1/3)
-  optimizer = utils.get_default_optimizer(model, "finetune")
-  
   #Load checkpoint from pretrain if exists
   utils.load_checkpoint_pretrain(model, torch.load("./checkpoint_model_pretrain"))
 
@@ -211,29 +183,52 @@ else: #for transfer learning
     test_subj = test_ds.test_subj
     dataloaders = hrd.build_dataloaders(datasets)
     train_dl, val_dl, test_dl = dataloaders
-    best_val_mae = sys.float_info.max
+  
     # Set earlystop
     earlystop = EarlyStopping(patience=20, mode='min')
 
+    #Finetune for hr estimation
+    model = utils.get_reference_model('vit_freq_finetune', DATASET_PRETRAIN) #ViT (only encoder with at the end linear layer)
+    if torch.cuda.is_available():
+        model = model.cuda()
+    
+    #print #params and #ops for the model
+    #input_tensor = torch.randn(1,4,64,256)
+    #flops, params = profile(model, inputs=(input_tensor,))
+    #print(f"# params = {params}, #flops = {flops}")
+        
+    # Get Training Settings
+    criterion = utils.get_default_criterion("finetune")
+    #optimizer = torch.optim.SGD(model.parameters(),lr=0.01)
+    #scheduler = StepLR(optimizer, step_size=20, gamma=1/3)
+    optimizer = utils.get_default_optimizer(model, "finetune")
+    best_val_mae = sys.float_info.max
+    best_test_mae = sys.float_info.max
+
     print(f"=> Starting finetuning for {N_FINETUNE_EPOCHS} epochs...")
     for epoch in range(N_FINETUNE_EPOCHS):
-      metrics = hrd.train_one_epoch_hr_detection_freq(
+      train_metrics = hrd.train_one_epoch_hr_detection_freq(
           epoch, model, criterion, optimizer, train_dl, val_dl, device,
           normalization = False,plot_heatmap = False, sample_to_plot = 50)
       
-      print(f"train and val stats = {metrics}")
-      val_mae = metrics['val_MAE']
+      test_metrics = hrd.evaluate_freq(model, criterion, test_dl, device,
+        normalization = False,plot_heatmap = False, sample_to_plot = 50)  
+      
+      print(f"train and val stats = {train_metrics}")
+      print(f"test stats = {test_metrics}")
+      val_mae = train_metrics['val_MAE']
+      test_mae = test_metrics['MAE']
       if val_mae < best_val_mae:
         best_val_mae = val_mae
         print(f"new best val mae found = {best_val_mae}")
+      if test_mae < best_test_mae:
+        best_test_mae = test_mae
+        print(f"new best test mae found = {best_test_mae}")
       
       #if epoch >= 30: #delayed earlystop
       if earlystop(val_mae):
         break
-
-    test_metrics = hrd.evaluate_freq(model, criterion, test_dl, device,
-        normalization = False,plot_heatmap = False, sample_to_plot = 50)  
-    print(f"test stats = {test_metrics}")
+      
     print(f"=> Done finetuning")
   
       
