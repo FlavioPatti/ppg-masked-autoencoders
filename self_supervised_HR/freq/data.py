@@ -16,6 +16,32 @@ import wfdb.processing
 from tqdm import tqdm
 from sklearn.preprocessing import StandardScaler, MinMaxScaler
 import scipy.io
+import torchaudio
+
+TYPE_EXPERIMENT = "FREQ"
+
+"""spectogram trasformation and relative parameters"""
+sample_rate= 32
+n_fft = 510 #freq = nfft/2 + 1 = 256 => risoluzione/granularitÃ  dello spettrogramma
+win_length = 32
+hop_length = 1 # window length = time instants
+n_mels = 64 #definisce la dimensione della frequenza di uscita
+f_min = 0
+f_max = 4
+
+spectrogram_transform = torchaudio.transforms.MelSpectrogram(
+    sample_rate = sample_rate,
+    n_fft=n_fft,
+    win_length=win_length,
+    hop_length=hop_length,
+    center=True,
+    pad_mode="reflect",
+    power=2.0,
+    normalized=True,
+    f_min = f_min,
+    f_max = f_max,
+    n_mels = n_mels
+)
 
 DALIA_URL = "https://archive.ics.uci.edu/ml/machine-learning-databases/00495/data.zip"
 WESAD_URL = "https://uni-siegen.sciebo.de/s/HGdUkoNlW1Ub0Gx/download"
@@ -221,6 +247,10 @@ class Dalia(Dataset):
             idx = idx.tolist()
         sample = self.samples[idx]
         sample = sample - np.mean(sample)
+        
+        if TYPE_EXPERIMENT == "FREQ":
+            #img shape (4,256) -> (4,64,256) = (CH,FREQ,TIME)
+            sample = torch.narrow(spectrogram_transform(sample), dim=3, start=0, length=256) 
 
         target = self.targets[idx]
         
