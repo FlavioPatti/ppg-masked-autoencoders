@@ -64,34 +64,40 @@ def _collect_data(data_dir, data):
     
     if data == "DALIA" or data == "WESAD":
       for subj in session_list:
-          with open(data_dir / folder / f'S{str(subj)}' / f'S{str(subj)}.pkl', 'rb') as f:
-              subject = pickle.load(f, encoding='latin1')
-          ppg = subject['signal']['wrist']['BVP'][::2].astype('float32')
-          acc = subject['signal']['wrist']['ACC'].astype('float32')
-          if data == "DALIA":
-              target = subject['label'].astype('float32')
-          elif data == "WESAD":
-              sub = 'S'+str(subj)
-              filename = '/content/ppg-masked-autoencoders/WESAD/WESAD'
-              fs = 700
-              
-              #retrive ecg_signal from SX_respiban.txt
-              ecg_signal = pd.read_csv(f'{filename}/{sub}/{sub}_respiban.txt', skiprows= 3, sep ='\t').iloc[:, 2].values
-              
-              #ECG R-peak detection
-              _, results = neurokit2.ecg_peaks(ecg_signal, sampling_rate=fs)
-              rpeaks = results["ECG_R_Peaks"]
-              
-              #Correct peaks
-              rpeaks_corrected = wfdb.processing.correct_peaks(
-              ecg_signal, rpeaks, search_radius=36, smooth_window_size=50, peak_dir="up")
-              
-              # Compute time intervals between consecutive peaks
-              intervalli_tempo = [rpeaks_corrected[i+1] - rpeaks_corrected[i] for i in range(len(rpeaks)-1)]
-              # Compute HR in BPM
-              heart_rates = [60 / (intervallo_tempo / fs) for intervallo_tempo in intervalli_tempo]
-              
-              target = np.array(heart_rates).astype('float32')
+        with open(data_dir / folder / f'S{str(subj)}' / f'S{str(subj)}.pkl', 'rb') as f:
+            subject = pickle.load(f, encoding='latin1')
+            ppg = subject['signal']['wrist']['BVP'][::2].astype('float32')
+            acc = subject['signal']['wrist']['ACC'].astype('float32')
+        if data == "DALIA":
+            target = subject['label'].astype('float32')
+        elif data == "WESAD":
+            sub = 'S'+str(subj)
+            filename = '/content/ppg-masked-autoencoders/WESAD/WESAD'
+            fs = 700
+            
+            #retrive ecg_signal from SX_respiban.txt
+            ecg_signal = pd.read_csv(f'{filename}/{sub}/{sub}_respiban.txt', skiprows= 3, sep ='\t').iloc[:, 2].values
+            
+            #ECG R-peak detection
+            _, results = neurokit2.ecg_peaks(ecg_signal, sampling_rate=fs)
+            rpeaks = results["ECG_R_Peaks"]
+            
+            #Correct peaks
+            rpeaks_corrected = wfdb.processing.correct_peaks(
+            ecg_signal, rpeaks, search_radius=36, smooth_window_size=50, peak_dir="up")
+            
+            # Compute time intervals between consecutive peaks
+            intervalli_tempo = [rpeaks_corrected[i+1] - rpeaks_corrected[i] for i in range(len(rpeaks)-1)]
+            # Compute HR in BPM
+            heart_rates = [60 / (intervallo_tempo / fs) for intervallo_tempo in intervalli_tempo]
+            
+            target = np.array(heart_rates).astype('float32')
+        dataset[subj] = { 
+        #each sample is build by: ppg value, accelerometer value, hr estimation
+          'ppg': ppg,
+          'acc': acc,
+          'target': target
+              }
     elif data == "IEEEPPG":
       for idx, subj in enumerate (num):
         i = 0
@@ -126,12 +132,12 @@ def _collect_data(data_dir, data):
         
         target = np.array(heart_rates).astype('float32')
     
-    dataset[subj] = { 
-    #each sample is build by: ppg value, accelerometer value, hr estimation
-      'ppg': ppg,
-      'acc': acc,
-      'target': target
-          }
+        dataset[subj] = { 
+        #each sample is build by: ppg value, accelerometer value, hr estimation
+        'ppg': ppg,
+        'acc': acc,
+        'target': target
+            }
     return dataset
 
 
