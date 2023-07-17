@@ -941,3 +941,29 @@ def get_dataloaders(x_train, x_val, x_test, y_train, y_val, y_test):
         num_workers=4)
     
     return train_dl, val_dl, test_dl
+
+def build_dataloaders(datasets: Tuple[Dataset, ...],
+                      batch_size=128,
+                      num_workers=4
+                      ):
+    train_set, val_set, test_set = datasets
+    train_loader = DataLoader(
+        train_set,
+        batch_size=batch_size,
+        shuffle=True,
+        pin_memory=True,
+        num_workers=num_workers,
+    )
+    val_loader = DataLoader(
+        val_set,
+        batch_size=batch_size,
+        shuffle=True,
+        num_workers=num_workers,
+    )
+    test_loader = DataLoader(
+        test_set,
+        batch_size=batch_size,
+        shuffle=False,
+        num_workers=num_workers,
+    )
+    return train_loader, val_loader, test_loader
