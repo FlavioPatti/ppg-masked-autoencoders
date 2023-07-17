@@ -247,10 +247,6 @@ class Dalia(Dataset):
             idx = idx.tolist()
         sample = self.samples[idx]
         sample = sample - np.mean(sample)
-        
-        if TYPE_EXPERIMENT == "FREQ":
-            #img shape (4,256) -> (4,64,256) = (CH,FREQ,TIME)
-            sample = torch.narrow(spectrogram_transform(sample), dim=3, start=0, length=256) 
 
         target = self.targets[idx]
         
