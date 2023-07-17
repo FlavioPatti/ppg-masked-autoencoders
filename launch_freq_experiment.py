@@ -23,20 +23,6 @@ DATASET_FINETUNING = "DALIA"
 # Check CUDA availability
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 print("Training on:", device)
-  
-# Set earlystop
-earlystop = EarlyStopping(patience=20, mode='min')
-# Set loss scaler for pretrain 
-loss_scaler = NativeScaler()
-
-# Get the Model
-model = utils.get_reference_model('vit_freq_pretrain', DATASET_PRETRAIN) #ViT (encoder + decoder)
-if torch.cuda.is_available():
-  model = model.cuda()
-
-# Get Training Settings
-criterion = utils.get_default_criterion("pretrain")
-optimizer = utils.get_default_optimizer(model, "pretrain")
 
 if not TRANSFER_LEARNING: #for time/freq experiments
   print(f"=> Running frequency experiment with dataset = {DATASET_PRETRAIN}")
@@ -48,6 +34,20 @@ if not TRANSFER_LEARNING: #for time/freq experiments
     test_subj = test_ds.test_subj
     dataloaders = hrd.build_dataloaders(datasets)
     train_dl, val_dl, test_dl = dataloaders
+    
+    # Set earlystop
+    earlystop = EarlyStopping(patience=20, mode='min')
+    # Set loss scaler for pretrain 
+    loss_scaler = NativeScaler()
+
+    # Get the Model
+    model = utils.get_reference_model('vit_freq_pretrain', DATASET_PRETRAIN) #ViT (encoder + decoder)
+    if torch.cuda.is_available():
+      model = model.cuda()
+
+    # Get Training Settings
+    criterion = utils.get_default_criterion("pretrain")
+    optimizer = utils.get_default_optimizer(model, "pretrain")
     best_val_loss = sys.float_info.max
 
     print(f"=> Starting pretrain for {N_PRETRAIN_EPOCHS} epochs...")
@@ -143,6 +143,20 @@ else: #for transfer learning
   
   # Retrive the entire dataset
   train_dl = hrd.get_full_dataset(DATASET_PRETRAIN)
+  
+  # Set earlystop
+  earlystop = EarlyStopping(patience=20, mode='min')
+  # Set loss scaler for pretrain 
+  loss_scaler = NativeScaler()
+
+  # Get the Model
+  model = utils.get_reference_model('vit_freq_pretrain', DATASET_PRETRAIN) #ViT (encoder + decoder)
+  if torch.cuda.is_available():
+    model = model.cuda()
+
+  # Get Training Settings
+  criterion = utils.get_default_criterion("pretrain")
+  optimizer = utils.get_default_optimizer(model, "pretrain")
   best_loss = sys.float_info.max
   
   print(f"=> Starting pretrain for {N_PRETRAIN_EPOCHS} epochs...")
@@ -187,9 +201,6 @@ else: #for transfer learning
   #scheduler = StepLR(optimizer, step_size=20, gamma=1/3)
   optimizer = utils.get_default_optimizer(model, "finetune")
   
-  # Set earlystop
-  earlystop = EarlyStopping(patience=20, mode='min')
-  
   #Load checkpoint from pretrain if exists
   utils.load_checkpoint_pretrain(model, torch.load("./checkpoint_model_pretrain"))
 
@@ -201,6 +212,8 @@ else: #for transfer learning
     dataloaders = hrd.build_dataloaders(datasets)
     train_dl, val_dl, test_dl = dataloaders
     best_val_mae = sys.float_info.max
+    # Set earlystop
+    earlystop = EarlyStopping(patience=20, mode='min')
 
     print(f"=> Starting finetuning for {N_FINETUNE_EPOCHS} epochs...")
     for epoch in range(N_FINETUNE_EPOCHS):
