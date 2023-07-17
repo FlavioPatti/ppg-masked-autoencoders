@@ -14,14 +14,13 @@ class MaskedAutoencoderViT_freq(nn.Module):
                  audio_exp=False, alpha=0.0, temperature=.2, mode=0, contextual_depth=8,
                  use_custom_patch=False, split_pos=False, pos_trainable=False, use_nce=False, beta=4.0, decoder_mode=0,
                  mask_t_prob=0.6, mask_f_prob=0.5, mask_2d=False,
-                 epoch=0, no_shift=False, dataset = "DALIA"
+                 epoch=0, no_shift=False
                  ):
         super().__init__()
 
         self.audio_exp=audio_exp
         self.embed_dim = embed_dim
         self.decoder_embed_dim = decoder_embed_dim
-        self.dataset = dataset
         self.in_chans = in_chans
         # --------------------------------------------------------------------------
         # MAE encoder specifics

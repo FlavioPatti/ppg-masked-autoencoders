@@ -14,10 +14,10 @@ os.environ["WANDB_API_KEY"] = "20fed903c269ff76b57d17a58cdb0ba9d0c4d2be"
 os.environ["WANDB_MODE"] = "online"
 
 # Set flags for experiments
-N_PRETRAIN_EPOCHS = 1
-N_FINETUNE_EPOCHS = 1
-TRANSFER_LEARNING = True
-DATASET_PRETRAIN = "IEEEPPG"
+N_PRETRAIN_EPOCHS = 0
+N_FINETUNE_EPOCHS = 5
+TRANSFER_LEARNING = False
+DATASET_PRETRAIN = "DALIA"
 DATASET_FINETUNING = "DALIA"
 
 # Check CUDA availability
@@ -41,7 +41,7 @@ if not TRANSFER_LEARNING: #for time/freq experiments
     loss_scaler = NativeScaler()
 
     # Get the Model
-    model = utils.get_reference_model('vit_freq_pretrain', DATASET_PRETRAIN) #ViT (encoder + decoder)
+    model = utils.get_reference_model('vit_freq_pretrain') #ViT (encoder + decoder)
     if torch.cuda.is_available():
       model = model.cuda()
 
@@ -58,7 +58,7 @@ if not TRANSFER_LEARNING: #for time/freq experiments
           model, train_dl, criterion,
           optimizer, device, epoch, loss_scaler,
           normalization = True,
-          plot_heatmap = False, 
+          plot_heatmap = True, 
           sample_to_plot = 50,
           dataset_name = DATASET_PRETRAIN)
 
@@ -99,13 +99,13 @@ if not TRANSFER_LEARNING: #for time/freq experiments
     best_test_mae = sys.float_info.max
     
     #Load checkpoint from pretrain if exists
-    utils.load_checkpoint_pretrain(model, torch.load("./checkpoint_model_pretrain"))
+    #utils.load_checkpoint_pretrain(model, torch.load("./checkpoint_model_pretrain"))
 
     print(f"=> Starting finetuning for {N_FINETUNE_EPOCHS} epochs...")
     for epoch in range(N_FINETUNE_EPOCHS):
       train_metrics = hrd.train_one_epoch_hr_detection_freq(
             epoch, model, criterion, optimizer, train_dl, val_dl, device,
-            normalization = False,plot_heatmap = False, sample_to_plot = 50)
+            normalization = False,plot_heatmap = True, sample_to_plot = 50)
       
       test_metrics = hrd.evaluate_freq(model, criterion, test_dl, device,
           normalization = False,plot_heatmap = False, sample_to_plot = 50)
@@ -139,7 +139,7 @@ else: #for transfer learning
   loss_scaler = NativeScaler()
 
   # Get the Model
-  model = utils.get_reference_model('vit_freq_pretrain', DATASET_PRETRAIN) #ViT (encoder + decoder)
+  model = utils.get_reference_model('vit_freq_pretrain') #ViT (encoder + decoder)
   if torch.cuda.is_available():
     model = model.cuda()
 
@@ -188,7 +188,7 @@ else: #for transfer learning
     earlystop = EarlyStopping(patience=20, mode='min')
 
     #Finetune for hr estimation
-    model = utils.get_reference_model('vit_freq_finetune', DATASET_PRETRAIN) #ViT (only encoder with at the end linear layer)
+    model = utils.get_reference_model('vit_freq_finetune') #ViT (only encoder with at the end linear layer)
     if torch.cuda.is_available():
         model = model.cuda()
     
@@ -231,4 +231,3 @@ else: #for transfer learning
       
     print(f"=> Done finetuning")
   
-      

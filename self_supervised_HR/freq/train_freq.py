@@ -90,7 +90,7 @@ def train_one_epoch_hr_detection_freq(
     with tqdm(total=len(train), unit="batch") as tepoch:
       tepoch.set_description(f"Epoch {epoch+1}")
       for sample, target in train:
-
+        
         #img shape (4,256) -> (4,64,256) = (CH,FREQ,TIME)
         specto_samples = torch.narrow(spectrogram_transform(sample), dim=3, start=0, length=256) 
         
@@ -98,14 +98,17 @@ def train_one_epoch_hr_detection_freq(
           specto_samples = np.log10(specto_samples)
                   
         step += 1
-        #tepoch.update(1)
+        tepoch.update(1)
         sample, target = specto_samples.to(device), target.to(device)
         
         output = model(sample)
         loss = criterion(output, target)
         
-        if plot_heatmap:
-          utils.plot_heart_rates(pred = output, target = target, type="input", epoch = epoch)
+        if plot_heatmap and step == 365:
+          print(f"plot heart rates")
+          pred = output.to('cpu').detach().numpy()
+          true_target = target.to('cpu').detach().numpy()
+          utils.plot_heart_rates(pred = pred, target = true_target, type="input", epoch = epoch)
         
         optimizer.zero_grad()
         loss.backward()

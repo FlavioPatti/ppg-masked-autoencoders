@@ -39,7 +39,7 @@ class LogCosh(nn.Module):
 #heads = 4,8,16
 # #embed = 64,128,256
 
-def get_reference_model(model_name: str, dataset: str):
+def get_reference_model(model_name: str):
     if model_name == 'temponet':
         return TEMPONet()
 
@@ -48,7 +48,7 @@ def get_reference_model(model_name: str, dataset: str):
         return MaskedAutoencoderViT_freq(
         img_size = (64,256), in_chans = 4, mask_2d=True, type = "freq",
         patch_size=8, embed_dim=64, depth=4, num_heads=16,
-        decoder_embed_dim=64, decoder_num_heads=16, dataset = dataset,
+        decoder_embed_dim=64, decoder_num_heads=16, 
         mlp_ratio=4, norm_layer=partial(nn.LayerNorm, eps=1e-6) )
 
         
@@ -282,7 +282,7 @@ def plot_audio(x, type, num_sample, epoch):
   plt.ylabel('Signal wave')
   plt.xlabel('Time (s)')
   plt.title(f"Heatmap PPG: sample {num_sample}")  
-  plt.savefig(f'./Benchmark_hr_detection/pytorch_benchmarks/imgs/{type}/audio{num_sample}_epoch{epoch}.png') 
+  plt.savefig(f'./self_supervised_HR/imgs/{type}/audio{num_sample}_epoch{epoch}.png') 
   
 """plot heart rates"""
 def plot_heart_rates(pred, target, type, epoch):
@@ -293,7 +293,7 @@ def plot_heart_rates(pred, target, type, epoch):
   plt.ylabel('Battito cardiaco (BPM)')
   plt.title('Predizioni vs Target')
   plt.legend()
-  plt.savefig(f'./Benchmark_hr_detection/pytorch_benchmarks/imgs/{type}/HR_epoch{epoch}.png') 
+  plt.savefig(f'./self_supervised_HR/imgs/{type}/HR_epoch{epoch}.png') 
   
 """plot heatmaps from samples"""
 def plot_heatmap(x, type, num_sample, epoch):
@@ -308,7 +308,7 @@ def plot_heatmap(x, type, num_sample, epoch):
   ax.set_title(f"Heatmap PPG: sample {num_sample}")  
   plt.xlabel('Time (s)')
   plt.ylabel('Frequency (Hz)')
-  plt.savefig(f'./Benchmark_hr_detection/pytorch_benchmarks/imgs/{type}/specto{num_sample}_epoch{epoch}.png') 
+  plt.savefig(f'./self_supervised_HR/imgs/{type}/specto{num_sample}_epoch{epoch}.png') 
 
 def unpatchify(imgs, type):
         """
