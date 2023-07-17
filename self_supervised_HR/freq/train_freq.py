@@ -62,7 +62,7 @@ def train_one_epoch_masked_autoencoder_freq(model: torch.nn.Module,
         loss, prediction, target, x_masked = model(specto_samples, mask_ratio = 0.1)
         
         #recostruction of the signal to the original shape
-        signal_reconstructed = utils.unpatchify(prediction, type = "freq", dataset = dataset_name)
+        signal_reconstructed = utils.unpatchify(prediction, type = "freq")
         
         if plot_heatmap:
           ppg_signal = samples[sample_to_plot,0,:,:].to('cpu').detach().numpy() #ppg signal is channel 0

@@ -14,10 +14,10 @@ os.environ["WANDB_API_KEY"] = "20fed903c269ff76b57d17a58cdb0ba9d0c4d2be"
 os.environ["WANDB_MODE"] = "online"
 
 # Set flags for experiments
-N_PRETRAIN_EPOCHS = 100
-N_FINETUNE_EPOCHS = 200
-TRANSFER_LEARNING = False
-DATASET_PRETRAIN = "DALIA"
+N_PRETRAIN_EPOCHS = 1
+N_FINETUNE_EPOCHS = 1
+TRANSFER_LEARNING = True
+DATASET_PRETRAIN = "IEEEPPG"
 DATASET_FINETUNING = "DALIA"
 
 # Check CUDA availability
@@ -161,7 +161,7 @@ else: #for transfer learning
           dataset_name = DATASET_PRETRAIN)
     
     print(f"train_stats = {train_stats}")
-    loss = ['loss']
+    loss = train_stats['loss']
     if loss < best_loss:
       best_loss = loss
       print(f"=> new best loss found = {best_loss}")

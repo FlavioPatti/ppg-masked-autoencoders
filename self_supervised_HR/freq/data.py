@@ -15,7 +15,7 @@ import neurokit2
 import wfdb.processing
 from tqdm import tqdm
 from sklearn.preprocessing import StandardScaler, MinMaxScaler
-
+import scipy.io
 
 DALIA_URL = "https://archive.ics.uci.edu/ml/machine-learning-databases/00495/data.zip"
 WESAD_URL = "https://uni-siegen.sciebo.de/s/HGdUkoNlW1Ub0Gx/download"
@@ -29,51 +29,83 @@ def _collect_data(data_dir, data):
     elif data == "DALIA":
       folder = "PPG_FieldStudy"
       num = [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15]
+    elif data == "IEEEPPG":
+      num = [1,2,3,4,5,6,7,8,9,10,11,12]
+      ty = [1,2,2,2,2,2,2,2,2,2,2,2]
 
     dataset = dict()
     session_list = random.sample(num, len(num))
-    for subj in session_list:
-        print(f"{data_dir}")
-        with open(data_dir / folder / f'S{str(subj)}' / f'S{str(subj)}.pkl', 'rb') as f:
-            subject = pickle.load(f, encoding='latin1')
-        print(f"subject = {subject}")
-        ppg = subject['signal']['wrist']['BVP'][::2].astype('float32')
-        acc = subject['signal']['wrist']['ACC'].astype('float32')
-        if data == "DALIA":
-            target = subject['label'].astype('float32')
-        elif data == "WESAD":
-            sub = 'S'+str(subj)
-            filename = '/content/ppg-masked-autoencoders/WESAD/WESAD'
-            fs = 700
-            
-            #retrive ecg_signal from SX_respiban.txt
-            ecg_signal = pd.read_csv(f'{filename}/{sub}/{sub}_respiban.txt', skiprows= 3, sep ='\t').iloc[:, 2].values
-            print(f"ecg_signal = {ecg_signal}")
-            
-            #ECG R-peak detection
-            _, results = neurokit2.ecg_peaks(ecg_signal, sampling_rate=fs)
-            rpeaks = results["ECG_R_Peaks"]
-            print(f"rpeaks = {rpeaks}")
-            
-            #Correct peaks
-            rpeaks_corrected = wfdb.processing.correct_peaks(
-            ecg_signal, rpeaks, search_radius=36, smooth_window_size=50, peak_dir="up")
-            print(f"rpeaks = {rpeaks_corrected}")
-            
-            # Compute time intervals between consecutive peaks
-            intervalli_tempo = [rpeaks_corrected[i+1] - rpeaks_corrected[i] for i in range(len(rpeaks)-1)]
-            # Compute HR in BPM
-            heart_rates = [60 / (intervallo_tempo / fs) for intervallo_tempo in intervalli_tempo]
-            
-            print(f"hr = {heart_rates}")
-            target = np.array(heart_rates).astype('float32')
     
-        dataset[subj] = { 
-        #each sample is build by: ppg value, accelerometer value, hr estimation
-                'ppg': ppg,
-                'acc': acc,
-                'target': target
-                }
+    if data == "DALIA" or data == "WESAD":
+      for subj in session_list:
+          with open(data_dir / folder / f'S{str(subj)}' / f'S{str(subj)}.pkl', 'rb') as f:
+              subject = pickle.load(f, encoding='latin1')
+          ppg = subject['signal']['wrist']['BVP'][::2].astype('float32')
+          acc = subject['signal']['wrist']['ACC'].astype('float32')
+          if data == "DALIA":
+              target = subject['label'].astype('float32')
+          elif data == "WESAD":
+              sub = 'S'+str(subj)
+              filename = '/content/ppg-masked-autoencoders/WESAD/WESAD'
+              fs = 700
+              
+              #retrive ecg_signal from SX_respiban.txt
+              ecg_signal = pd.read_csv(f'{filename}/{sub}/{sub}_respiban.txt', skiprows= 3, sep ='\t').iloc[:, 2].values
+              
+              #ECG R-peak detection
+              _, results = neurokit2.ecg_peaks(ecg_signal, sampling_rate=fs)
+              rpeaks = results["ECG_R_Peaks"]
+              
+              #Correct peaks
+              rpeaks_corrected = wfdb.processing.correct_peaks(
+              ecg_signal, rpeaks, search_radius=36, smooth_window_size=50, peak_dir="up")
+              
+              # Compute time intervals between consecutive peaks
+              intervalli_tempo = [rpeaks_corrected[i+1] - rpeaks_corrected[i] for i in range(len(rpeaks)-1)]
+              # Compute HR in BPM
+              heart_rates = [60 / (intervallo_tempo / fs) for intervallo_tempo in intervalli_tempo]
+              
+              target = np.array(heart_rates).astype('float32')
+    elif data == "IEEEPPG":
+      for idx, subj in enumerate (num):
+        i = 0
+        if subj <= 9:
+          sub = '0'+str(subj)
+          t = '0'+str(ty[idx])
+        fs = 125
+        data = scipy.io.loadmat(f'{data_dir}/DATA_{sub}_TYPE{t}.mat')['sig']
+        #la prima riga = ECG signals
+        ecg_signal = data[0:1, :]
+        ecg_signal = np.squeeze(ecg_signal)
+        #seconda e terza riga = PPG signals
+        ppg = data[1:3, :]
+        ppg = np.transpose(ppg, (1, 0))
+        # ultime tre righe = acc signals
+        acc = data[3:6, :]
+        acc = np.transpose(acc, (1, 0))
+
+        fs = 125
+        #ECG R-peak detection
+        _, results = neurokit2.ecg_peaks(ecg_signal, sampling_rate=fs)
+        rpeaks = results["ECG_R_Peaks"]
+        
+        #Correct peaks
+        rpeaks_corrected = wfdb.processing.correct_peaks(
+        ecg_signal, rpeaks, search_radius=36, smooth_window_size=50, peak_dir="up")
+        
+        # Compute time intervals between consecutive peaks
+        intervalli_tempo = [rpeaks_corrected[i+1] - rpeaks_corrected[i] for i in range(len(rpeaks)-1)]
+        # Compute HR in BPM
+        heart_rates = [60 / (intervallo_tempo / fs) for intervallo_tempo in intervalli_tempo]
+        
+        target = np.array(heart_rates).astype('float32')
+    
+    dataset[subj] = { 
+    #each sample is build by: ppg value, accelerometer value, hr estimation
+      'ppg': ppg,
+      'acc': acc,
+      'target': target
+          }
     return dataset
 
 
@@ -210,8 +242,6 @@ def get_data(dataset = "WESAD",
     elif dataset == "DALIA":
       folder = "PPG_FieldStudy"
       url = DALIA_URL
-    else:
-      print('Try again, dataset must be only DALIA or WESAD')
       
     if data_dir is None:
         data_dir = Path('.').absolute() / dataset
@@ -250,8 +280,6 @@ def get_full_dataset(dataset,  data_dir=None, url=WESAD_URL, ds_name='ppg_dalia.
     elif dataset == "DALIA":
       folder = "PPG_FieldStudy"
       url = DALIA_URL
-    else:
-      print('Try again, dataset must be only DALIA or WESAD')
       
     if dataset == "DALIA" or dataset == "WESAD":  
         if data_dir is None:
@@ -270,55 +298,24 @@ def get_full_dataset(dataset,  data_dir=None, url=WESAD_URL, ds_name='ppg_dalia.
             print('Unzip files... Please wait.')
             with zipfile.ZipFile(filename) as zf:
                 zf.extractall(data_dir)
+    if dataset == "IEEEPPG":
+        data_dir = Path('.').absolute() / dataset / 'Training_data'
+        # set data folder, train & test
+        data_folder = "./IEEEPPG/"
+        train_file = data_folder + "competition_data.zip"
+        test_file = data_folder + "TestData.zip"
+        with zipfile.ZipFile(train_file) as zf:
+          zf.extractall(data_folder)
+        with zipfile.ZipFile(test_file) as zf:
+          zf.extractall(data_folder)
                 
-        # This step slims the dataset. This will help to speedup following usage of data
-        if not (data_dir / 'slimmed_dalia.pkl').exists():
-            dataset = _collect_data(data_dir, dataset)
-            samples, target, groups = _preprocess_data(data_dir, dataset)
-        else:
-            with open(data_dir / 'slimmed_dalia.pkl', 'rb') as f:
-                dataset = pickle.load(f, encoding='latin1')
-            samples, target, groups = dataset.values()
-            
+        dataset = _collect_data(data_dir, dataset)
+        samples, target, groups = _preprocess_data(data_dir, dataset)
+       
         full_dataset = Dalia(samples, target)
         train_dl = DataLoader(full_dataset,batch_size=128, shuffle=True, pin_memory=True, num_workers=4)
         return train_dl
-    
-    else: #IEEEPPG 
-        # set data folder, train & test
-        data_folder = "./IEEEPPG/"
-        train_file = data_folder + "IEEEPPG_TRAIN.ts"
-        test_file = data_folder + "IEEEPPG_TEST.ts"
-        norm = "none"
-        
-        # loading the data. X_train and X_test are dataframe of N x n_dim
-        X_train, y_train = load_from_tsfile_to_dataframe(train_file)
-        X_test, y_test = load_from_tsfile_to_dataframe(test_file)
-
-        # in case there are different lengths in the dataset, we need to consider that all the dimensions are the same length
-        min_len = np.inf
-        for i in range(len(X_train)):
-            x = X_train.iloc[i, :]
-            all_len = [len(y) for y in x]
-            min_len = min(min(all_len), min_len)
-        for i in range(len(X_test)):
-            x = X_test.iloc[i, :]
-            all_len = [len(y) for y in x]
-            min_len = min(min(all_len), min_len)
-
-        # process the data into numpy array
-        x_train = process_data(X_train, normalise=norm, min_len=min_len)
-        x_train = np.transpose(x_train, (0, 2, 1)).astype(np.double)
-        x_test = process_data(X_test, normalise=norm, min_len=min_len)
-        x_test = np.transpose(x_test, (0, 2, 1)).astype(np.double)
-        
-        #retrive training and validation from training data
-        #x_train, x_val, y_train, y_val = train_test_split(x_train, y_train, test_size=0.2, random_state=42)
-        #retrive dataloaders
-        full_dataset = Dalia(x_train, y_train)
-        train_dl = DataLoader(full_dataset,batch_size=128, shuffle=True, pin_memory=True, num_workers=4)
-        return train_dl        
-
+  
 
 def uniform_scaling(data, max_len):
     """
