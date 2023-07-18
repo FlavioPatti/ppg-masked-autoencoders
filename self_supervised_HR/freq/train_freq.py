@@ -50,6 +50,7 @@ def train_one_epoch_masked_autoencoder_freq(model: torch.nn.Module,
         # we use a per iteration (instead of per epoch) lr scheduler
         lr_sched.adjust_learning_rate(optimizer, data_iter_step / len(data_loader) + epoch)
 
+        samples = samples.float()
         #img shape (4,256) -> (4,64,256) = (CH,FREQ,TIME)
         specto_samples = torch.narrow(spectrogram_transform(samples), dim=3, start=0, length=256) 
 
@@ -91,6 +92,7 @@ def train_one_epoch_hr_detection_freq(
       tepoch.set_description(f"Epoch {epoch+1}")
       for sample, target in train:
         
+        samples = samples.float()
         #img shape (4,256) -> (4,64,256) = (CH,FREQ,TIME)
         specto_samples = torch.narrow(spectrogram_transform(sample), dim=3, start=0, length=256) 
         
@@ -140,6 +142,7 @@ def evaluate_freq(
     with torch.no_grad():
         for sample, target in data:
           
+          samples = samples.float()
           #img shape (4,256) -> (4,64,256) = (CH,FREQ,TIME)
           specto_samples = torch.narrow(spectrogram_transform(sample), dim=3, start=0, length=256) 
           
