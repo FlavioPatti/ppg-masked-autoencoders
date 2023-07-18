@@ -92,7 +92,7 @@ def train_one_epoch_hr_detection_freq(
       tepoch.set_description(f"Epoch {epoch+1}")
       for sample, target in train:
         
-        samples = samples.float()
+        sample = sample.float()
         #img shape (4,256) -> (4,64,256) = (CH,FREQ,TIME)
         specto_samples = torch.narrow(spectrogram_transform(sample), dim=3, start=0, length=256) 
         
@@ -142,7 +142,7 @@ def evaluate_freq(
     with torch.no_grad():
         for sample, target in data:
           
-          samples = samples.float()
+          sample = sample.float()
           #img shape (4,256) -> (4,64,256) = (CH,FREQ,TIME)
           specto_samples = torch.narrow(spectrogram_transform(sample), dim=3, start=0, length=256) 
           
