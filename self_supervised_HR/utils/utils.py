@@ -287,11 +287,11 @@ def plot_audio(x, type, num_sample, epoch):
 """plot heart rates"""
 def plot_heart_rates(pred, target, type, epoch):
   plt.figure(figsize=(15, 5))
-  plt.plot(pred, label='Predizioni')
-  plt.plot(target, label='Target veri')
-  plt.xlabel('Paziente')
-  plt.ylabel('Battito cardiaco (BPM)')
-  plt.title('Predizioni vs Target')
+  plt.plot(pred, label='Predictions')
+  plt.plot(target, label='True Target')
+  plt.xlabel('Time (s)')
+  plt.ylabel('Heart Rate (BPM)')
+  plt.title('Predictions vs Targets')
   plt.legend()
   plt.savefig(f'./self_supervised_HR/imgs/{type}/HR_epoch{epoch}.png') 
   

@@ -64,7 +64,7 @@ def train_one_epoch_masked_autoencoder_freq(model: torch.nn.Module,
         signal_reconstructed = utils.unpatchify(prediction, type = "freq")
         
         if plot_heatmap:
-          ppg_signal = samples[sample_to_plot,0,:,:].to('cpu').detach().numpy() #ppg signal is channel 0
+          ppg_signal = specto_samples[sample_to_plot,0,:,:].to('cpu').detach().numpy() #ppg signal is channel 0
           utils.plot_heatmap(x = ppg_signal, type="input", num_sample = sample_to_plot, epoch = epoch)
           
           ppg_signal_masked = signal_reconstructed[sample_to_plot,0,:].to('cpu').detach().numpy()
@@ -98,7 +98,7 @@ def train_one_epoch_hr_detection_freq(
           specto_samples = np.log10(specto_samples)
                   
         step += 1
-        tepoch.update(1)
+        #tepoch.update(1)
         sample, target = specto_samples.to(device), target.to(device)
         
         output = model(sample)
@@ -108,7 +108,7 @@ def train_one_epoch_hr_detection_freq(
           print(f"plot heart rates")
           pred = output.to('cpu').detach().numpy()
           true_target = target.to('cpu').detach().numpy()
-          utils.plot_heart_rates(pred = pred, target = true_target, type="input", epoch = epoch)
+          utils.plot_heart_rates(pred = pred, target = true_target, type="HR", epoch = epoch)
         
         optimizer.zero_grad()
         loss.backward()

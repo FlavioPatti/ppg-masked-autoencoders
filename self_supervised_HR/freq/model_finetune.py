@@ -8,8 +8,6 @@
 # timm: https://github.com/rwightman/pytorch-image-models/tree/master/timm
 # DeiT: https://github.com/facebookresearch/deit
 # --------------------------------------------------------
-from functools import partial
-from json import encoder
 import torch
 import torch.nn as nn
 import numpy as np

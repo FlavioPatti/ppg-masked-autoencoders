@@ -20,6 +20,20 @@ TRANSFER_LEARNING = False
 DATASET_PRETRAIN = "DALIA"
 DATASET_FINETUNING = "DALIA"
 
+"""
+# Init wandb for plot loss/mae/HR
+configuration = {'experiment': "Freq", 'epochs_pretrain': N_PRETRAIN_EPOCHS, 'epochs_finetune': N_FINETUNE_EPOCHS}
+run = wandb.init(
+            # Set entity to specify your username or team name
+            entity = "aml-2022", 
+            # Set the project where this run will be logged
+            project="Hr_detection",
+            group='finetuning2',
+            # Track hyperparameters and run metadata
+            config=configuration,
+            resume="allow")
+"""
+
 # Check CUDA availability
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 print("Training on:", device)
@@ -58,7 +72,7 @@ if not TRANSFER_LEARNING: #for time/freq experiments
           model, train_dl, criterion,
           optimizer, device, epoch, loss_scaler,
           normalization = True,
-          plot_heatmap = True, 
+          plot_heatmap = False, 
           sample_to_plot = 50,
           dataset_name = DATASET_PRETRAIN)
 
@@ -111,7 +125,7 @@ if not TRANSFER_LEARNING: #for time/freq experiments
           normalization = False,plot_heatmap = False, sample_to_plot = 50)
         
       print(f"train stats = {train_metrics}")
-      print(f"test stats = {test_metrics}")
+      print(f"test stats = {test_metrics}")    
       val_mae = train_metrics['val_MAE']
       if val_mae < best_val_mae:
         best_val_mae = val_mae
@@ -120,6 +134,10 @@ if not TRANSFER_LEARNING: #for time/freq experiments
       if test_mae < best_test_mae:
         best_test_mae = test_mae
         print(f"new best test mae found = {best_test_mae}")
+        
+      #print(f"=> Updating plot on wandb")
+      #wandb.log({'train_mae': test_mae, 'epochs': epoch + 1}, commit=True)
+      #wandb.log({'val_mae': val_mae, 'epochs': epoch + 1}, commit=True)
 
       #if epoch >= 30: #delayed earlystop
       if earlystop(val_mae):
