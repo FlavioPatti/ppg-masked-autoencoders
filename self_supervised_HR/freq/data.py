@@ -313,12 +313,12 @@ def get_full_dataset(dataset,  data_dir=None, url=WESAD_URL, ds_name='ppg_dalia.
         with zipfile.ZipFile(test_file) as zf:
           zf.extractall(data_folder)
                 
-        dataset = _collect_data(data_dir, dataset)
-        samples, target, groups = _preprocess_data(data_dir, dataset)
-       
-        full_dataset = Dalia(samples, target)
-        train_dl = DataLoader(full_dataset,batch_size=128, shuffle=True, pin_memory=True, num_workers=4)
-        return train_dl
+    dataset = _collect_data(data_dir, dataset)
+    samples, target, groups = _preprocess_data(data_dir, dataset)
+
+    full_dataset = Dalia(samples, target)
+    train_dl = DataLoader(full_dataset,batch_size=128, shuffle=True, pin_memory=True, num_workers=4)
+    return train_dl
   
 
 def build_dataloaders(datasets: Tuple[Dataset, ...],
