@@ -130,7 +130,7 @@ if not TRANSFER_LEARNING: #for time/freq experiments
       if val_mae < best_val_mae:
         best_val_mae = val_mae
         print(f"new best val mae found = {best_val_mae}")
-      test_mae = train_metrics['MAE']
+      test_mae = test_metrics['MAE']
       if test_mae < best_test_mae:
         best_test_mae = test_mae
         print(f"new best test mae found = {best_test_mae}")
@@ -190,9 +190,6 @@ else: #for transfer learning
     if earlystop(loss):
       break
   print(f"=> Done pretrain")
-      
-  #Load checkpoint from pretrain if exists
-  utils.load_checkpoint_pretrain(model, torch.load("./checkpoint_model_pretrain"))
 
   # Get the Data and perform cross-validation
   data_gen = hrd.get_data(dataset = DATASET_FINETUNING)
@@ -209,6 +206,8 @@ else: #for transfer learning
     model = utils.get_reference_model('vit_freq_finetune') #ViT (only encoder with at the end linear layer)
     if torch.cuda.is_available():
         model = model.cuda()
+    #Load checkpoint from pretrain if exists
+    utils.load_checkpoint_pretrain(model, torch.load("./checkpoint_model_pretrain"))
     
     #print #params and #ops for the model
     #input_tensor = torch.randn(1,4,64,256)
