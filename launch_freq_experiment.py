@@ -117,10 +117,9 @@ if not TRANSFER_LEARNING: #for time/freq experiments
     for epoch in range(N_FINETUNE_EPOCHS):
       train_metrics = hrd.train_one_epoch_hr_detection_freq(
             epoch, model, criterion, optimizer, train_dl, val_dl, device,
-            plot_heatmap = False, sample_to_plot = 50)
+            plot_heart_rate = False)
       
-      test_metrics = hrd.evaluate_freq(model, criterion, test_dl, device,
-          plot_heatmap = False, sample_to_plot = 50)
+      test_metrics = hrd.evaluate_freq(model, criterion, test_dl, device)
         
       print(f"train stats = {train_metrics}")
       print(f"test stats = {test_metrics}")    
@@ -222,10 +221,9 @@ else: #for transfer learning
     for epoch in range(N_FINETUNE_EPOCHS):
       train_metrics = hrd.train_one_epoch_hr_detection_freq(
           epoch, model, criterion, optimizer, train_dl, val_dl, device,
-          plot_heatmap = False, sample_to_plot = 50)
+          plot_heatmap = False)
       
-      test_metrics = hrd.evaluate_freq(model, criterion, test_dl, device,
-        plot_heatmap = False, sample_to_plot = 50)  
+      test_metrics = hrd.evaluate_freq(model, criterion, test_dl, device)  
       
       print(f"train and val stats = {train_metrics}")
       print(f"test stats = {test_metrics}")

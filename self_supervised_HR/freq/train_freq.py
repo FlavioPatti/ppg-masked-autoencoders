@@ -52,7 +52,7 @@ def train_one_epoch_masked_autoencoder_freq(model: torch.nn.Module,
 def train_one_epoch_hr_detection_freq(
         epoch: int,model: nn.Module,criterion: nn.Module,optimizer: optim.Optimizer,
         train: DataLoader,val: DataLoader,device: torch.device, 
-        normalization = False, plot_heatmap = False, sample_to_plot = 50):
+        plot_heart_rate = False):
     model.train()
     avgmae = utils.AverageMeter('6.2f')
     avgloss = utils.AverageMeter('2.5f')
@@ -68,7 +68,7 @@ def train_one_epoch_hr_detection_freq(
         output = model(sample)
         loss = criterion(output, target)
         
-        if plot_heatmap and step == 365:
+        if plot_heart_rate and step == 365:
           print(f"plot heart rates")
           pred = output.to('cpu').detach().numpy()
           true_target = target.to('cpu').detach().numpy()
@@ -82,7 +82,7 @@ def train_one_epoch_hr_detection_freq(
         avgloss.update(loss, sample.size(0))
         if step % 100 == 99:
           tepoch.set_postfix({'loss': avgloss, 'MAE': avgmae})
-      val_metrics = evaluate_freq(model, criterion, val, device, normalization=normalization)
+      val_metrics = evaluate_freq(model, criterion, val, device)
       val_metrics = {'val_' + k: v for k, v in val_metrics.items()}
       final_metrics = {
           'loss': avgloss.get(),
@@ -95,15 +95,13 @@ def train_one_epoch_hr_detection_freq(
 
 
 def evaluate_freq(
-        model: nn.Module,criterion: nn.Module,data: DataLoader,device: torch.device,
-        normalization = False, plot_heatmap = False, sample_to_plot = 50):
+        model: nn.Module,criterion: nn.Module,data: DataLoader,device: torch.device):
     model.eval()
     avgmae = utils.AverageMeter('6.2f')
     avgloss = utils.AverageMeter('2.5f')
     step = 0
     with torch.no_grad():
         for sample, target in data: 
-              
           step += 1
           sample, target = sample.to(device), target.to(device)
           output = model(sample)
