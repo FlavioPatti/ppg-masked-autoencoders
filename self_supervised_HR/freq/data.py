@@ -17,6 +17,11 @@ import scipy.io
 import copy
 import pdb
 
+augmentations = {'Jittering': {'percentage': 0.9, 'sigma': 5/100},
+                    'Scaling': {'percentage': 0.9, 'sigma': 0.3},
+                    'DA_MagWarp': {'percentage': 0.9, 'sigma': 0.5, 'knot': 4},
+                    'DA_TimeWarp': {'percentage': 0.9, 'sigma': 0.5, 'knot': 4},
+                    'Frequency_div_2': {'percentage': 0.9} }
 
 DALIA_URL = "https://archive.ics.uci.edu/ml/machine-learning-databases/00495/data.zip"
 WESAD_URL = "https://uni-siegen.sciebo.de/s/HGdUkoNlW1Ub0Gx/download"
@@ -149,7 +154,7 @@ def _preprocess_data(data_dir, dataset):
 
     return X, y, groups
 
-def _get_data_gen(samples, targets, groups):
+def _get_data_gen(samples, targets, groups, data_dir, AUGMENT):
     n = 4
     subjects = 15 #number of patients on which PPG data is taken
     indices, _ = _rndgroup_kfold(groups, n)
@@ -161,7 +166,10 @@ def _get_data_gen(samples, targets, groups):
         # Train Dataset
         train_samples = samples[train_index]
         train_targets = targets[train_index] #target = hr estimation
-         
+        if AUGMENT:
+            print(f"=> Performing data augmentation. Please wait...")
+            Augmenter = Data_Augmentation(train_samples, train_targets, augmentations, data_dir)
+            train_samples, train_targets = Augmenter.run()
         ds_train = Dalia(train_samples, train_targets)
         # Val and Test Dataset
         logo = LeaveOneGroupOut()
@@ -237,11 +245,7 @@ class Dalia(Dataset):
         return len(self.samples)
 
 
-def get_data(dataset = "WESAD",
-             data_dir=None,
-             url=WESAD_URL,
-             ds_name='ppg_dalia.zip',
-             kfold=True):
+def get_data(dataset = "WESAD",data_dir=None,url=WESAD_URL,ds_name='ppg_dalia.zip',kfold=True, augment = False):
     folder = ""
     if dataset == "WESAD":
       folder = "WESAD"
@@ -276,7 +280,7 @@ def get_data(dataset = "WESAD",
             dataset = pickle.load(f, encoding='latin1')
         samples, target, groups = dataset.values()
       
-    generator = _get_data_gen(samples, target, groups)
+    generator = _get_data_gen(samples, target, groups, data_dir = data_dir, AUGMENT = augment)
     return generator 
 
 def get_full_dataset(dataset,  data_dir=None, url=WESAD_URL, ds_name='ppg_dalia.zip'):
@@ -318,13 +322,6 @@ def get_full_dataset(dataset,  data_dir=None, url=WESAD_URL, ds_name='ppg_dalia.
                 
     dataset = _collect_data(data_dir, dataset)
     samples, target, groups = _preprocess_data(data_dir, dataset)
-    augmentations = {'Jittering': {'percentage': 0.9, 'sigma': 5/100},
-                    'Scaling': {'percentage': 0.9, 'sigma': 0.3},
-                    'DA_MagWarp': {'percentage': 0.9, 'sigma': 0.5, 'knot': 4},
-                    'DA_TimeWarp': {'percentage': 0.9, 'sigma': 0.5, 'knot': 4},
-                    'Frequency_div_2': {'percentage': 0.9} }
-    Augmenter = Data_Augmentation(samples, target, augmentations, data_dir)
-    samples, target = Augmenter.run()
     full_dataset = Dalia(samples, target)
     train_dl = DataLoader(full_dataset,batch_size=128, shuffle=True, pin_memory=True, num_workers=4)
     return train_dl

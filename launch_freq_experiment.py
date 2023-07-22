@@ -42,7 +42,7 @@ if not TRANSFER_LEARNING: #for time/freq experiments
   print(f"=> Running frequency experiment with dataset = {DATASET_PRETRAIN}")
   
   # Get the Data and perform cross-validation
-  data_gen = hrd.get_data(dataset = DATASET_PRETRAIN)
+  data_gen = hrd.get_data(dataset = DATASET_PRETRAIN, augment = False)
   for datasets in data_gen:
     train_ds, val_ds, test_ds = datasets
     test_subj = test_ds.test_subj
