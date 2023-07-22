@@ -16,6 +16,31 @@ import wfdb.processing
 import scipy.io
 import copy
 import pdb
+import torchaudio
+import numpy as np
+
+"""spectogram trasformation and relative parameters"""
+sample_rate= 32
+n_fft = 510 #freq = nfft/2 + 1 = 256 => risoluzione/granularitÃ  dello spettrogramma
+win_length = 32
+hop_length = 1 # window length = time instants
+n_mels = 64 #definisce la dimensione della frequenza di uscita
+f_min = 0
+f_max = 4
+
+spectrogram_transform = torchaudio.transforms.MelSpectrogram(
+    sample_rate = sample_rate,
+    n_fft=n_fft,
+    win_length=win_length,
+    hop_length=hop_length,
+    center=True,
+    pad_mode="reflect",
+    power=2.0,
+    normalized=True,
+    f_min = f_min,
+    f_max = f_max,
+    n_mels = n_mels
+)
 
 augmentations = {'Jittering': {'percentage': 0.9, 'sigma': 5/100},
                     'Scaling': {'percentage': 0.9, 'sigma': 0.3},
@@ -234,12 +259,15 @@ class Dalia(Dataset):
     def __getitem__(self, idx):
         if torch.is_tensor(idx):
             idx = idx.tolist()
-        sample = self.samples[idx]
-        sample = sample - np.mean(sample)
-
+        sample = torch.from_numpy(self.samples[idx]).float()
+        spectogram = self._transformation(sample)
         target = self.targets[idx]
-        
-        return sample, target
+        return spectogram, target
+
+    def _transformation(self, sample):
+        sampleN = sample - torch.mean(sample)
+        spectrogram = torch.narrow(spectrogram_transform(sampleN), dim=2, start=0, length=256) 
+        return np.log10(spectrogram)
 
     def __len__(self):
         return len(self.samples)
@@ -253,23 +281,34 @@ def get_data(dataset = "WESAD",data_dir=None,url=WESAD_URL,ds_name='ppg_dalia.zi
     elif dataset == "DALIA":
       folder = "PPG_FieldStudy"
       url = DALIA_URL
-      
-    if data_dir is None:
-        data_dir = Path('.').absolute() / dataset
-        print(f"data dir = {data_dir}")
-    filename = data_dir / ds_name
-    # Download if does not exist
-    if not filename.exists():
-        print('Download in progress... Please wait.')
-        ds_dalia = requests.get(url)
-        data_dir.mkdir()
-        with open(filename, 'wb') as f:
-            f.write(ds_dalia.content)
-    # Unzip if needed
-    if not (data_dir / folder).exists():
-        print('Unzip files... Please wait.')
-        with zipfile.ZipFile(filename) as zf:
-            zf.extractall(data_dir)
+    
+    if dataset == "DALIA" or dataset == "WESAD":
+      if data_dir is None:
+          data_dir = Path('.').absolute() / dataset
+          print(f"data dir = {data_dir}")
+      filename = data_dir / ds_name
+      # Download if does not exist
+      if not filename.exists():
+          print('Download in progress... Please wait.')
+          ds_dalia = requests.get(url)
+          data_dir.mkdir()
+          with open(filename, 'wb') as f:
+              f.write(ds_dalia.content)
+      # Unzip if needed
+      if not (data_dir / folder).exists():
+          print('Unzip files... Please wait.')
+          with zipfile.ZipFile(filename) as zf:
+              zf.extractall(data_dir)
+    if dataset == "IEEEPPG":
+        data_dir = Path('.').absolute() / dataset / 'Training_data'
+        # set data folder, train & test
+        data_folder = "./IEEEPPG/"
+        train_file = data_folder + "competition_data.zip"
+        test_file = data_folder + "TestData.zip"
+        with zipfile.ZipFile(train_file) as zf:
+          zf.extractall(data_folder)
+        with zipfile.ZipFile(test_file) as zf:
+          zf.extractall(data_folder)
 
     # This step slims the dataset. This will help to speedup following usage of data
     if not (data_dir / 'slimmed_dalia.pkl').exists():

@@ -14,8 +14,8 @@ os.environ["WANDB_API_KEY"] = "20fed903c269ff76b57d17a58cdb0ba9d0c4d2be"
 os.environ["WANDB_MODE"] = "online"
 
 # Set flags for experiments
-N_PRETRAIN_EPOCHS = 0
-N_FINETUNE_EPOCHS = 5
+N_PRETRAIN_EPOCHS = 100
+N_FINETUNE_EPOCHS = 200
 TRANSFER_LEARNING = False
 DATASET_PRETRAIN = "DALIA"
 DATASET_FINETUNING = "DALIA"
@@ -71,10 +71,8 @@ if not TRANSFER_LEARNING: #for time/freq experiments
       train_stats = hrd.train_one_epoch_masked_autoencoder_freq(
           model, train_dl, criterion,
           optimizer, device, epoch, loss_scaler,
-          normalization = True,
           plot_heatmap = False, 
-          sample_to_plot = 50,
-          dataset_name = DATASET_PRETRAIN)
+          sample_to_plot = 50)
 
       print(f"train stats = {train_stats}")
       loss = train_stats['loss']
@@ -119,10 +117,10 @@ if not TRANSFER_LEARNING: #for time/freq experiments
     for epoch in range(N_FINETUNE_EPOCHS):
       train_metrics = hrd.train_one_epoch_hr_detection_freq(
             epoch, model, criterion, optimizer, train_dl, val_dl, device,
-            normalization = False,plot_heatmap = True, sample_to_plot = 50)
+            plot_heatmap = False, sample_to_plot = 50)
       
       test_metrics = hrd.evaluate_freq(model, criterion, test_dl, device,
-          normalization = False,plot_heatmap = False, sample_to_plot = 50)
+          plot_heatmap = False, sample_to_plot = 50)
         
       print(f"train stats = {train_metrics}")
       print(f"test stats = {test_metrics}")    
@@ -173,10 +171,8 @@ else: #for transfer learning
     train_stats = hrd.train_one_epoch_masked_autoencoder_freq(
           model, train_dl, criterion,
           optimizer, device, epoch, loss_scaler,
-          normalization = True,
           plot_heatmap = False, 
-          sample_to_plot = 50, 
-          dataset_name = DATASET_PRETRAIN)
+          sample_to_plot = 50)
     
     print(f"train_stats = {train_stats}")
     loss = train_stats['loss']
@@ -226,10 +222,10 @@ else: #for transfer learning
     for epoch in range(N_FINETUNE_EPOCHS):
       train_metrics = hrd.train_one_epoch_hr_detection_freq(
           epoch, model, criterion, optimizer, train_dl, val_dl, device,
-          normalization = False,plot_heatmap = False, sample_to_plot = 50)
+          plot_heatmap = False, sample_to_plot = 50)
       
       test_metrics = hrd.evaluate_freq(model, criterion, test_dl, device,
-        normalization = False,plot_heatmap = False, sample_to_plot = 50)  
+        plot_heatmap = False, sample_to_plot = 50)  
       
       print(f"train and val stats = {train_metrics}")
       print(f"test stats = {test_metrics}")

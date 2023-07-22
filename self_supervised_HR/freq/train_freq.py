@@ -8,36 +8,12 @@ import self_supervised_HR.utils.utils as utils
 import torch
 import util.misc as misc
 import util.lr_sched as lr_sched
-import torchaudio
 import numpy as np
-
-"""spectogram trasformation and relative parameters"""
-sample_rate= 32
-n_fft = 510 #freq = nfft/2 + 1 = 256 => risoluzione/granularitÃ  dello spettrogramma
-win_length = 32
-hop_length = 1 # window length = time instants
-n_mels = 64 #definisce la dimensione della frequenza di uscita
-f_min = 0
-f_max = 4
-
-spectrogram_transform = torchaudio.transforms.MelSpectrogram(
-    sample_rate = sample_rate,
-    n_fft=n_fft,
-    win_length=win_length,
-    hop_length=hop_length,
-    center=True,
-    pad_mode="reflect",
-    power=2.0,
-    normalized=True,
-    f_min = f_min,
-    f_max = f_max,
-    n_mels = n_mels
-)
 
 def train_one_epoch_masked_autoencoder_freq(model: torch.nn.Module,
                     data_loader: DataLoader, criterion: torch.nn.MSELoss, optimizer: torch.optim.Optimizer,
                     device: torch.device, epoch: int, loss_scaler,
-                    normalization = False, plot_heatmap = False, sample_to_plot = 50, dataset_name = "DALIA"):
+                    plot_heatmap = False, sample_to_plot = 50):
     model.train(True)
     metric_logger = misc.MetricLogger(delimiter="  ")
     metric_logger.add_meter('lr', misc.SmoothedValue(window_size=1, fmt='{value:.6f}'))
@@ -49,23 +25,16 @@ def train_one_epoch_masked_autoencoder_freq(model: torch.nn.Module,
     for data_iter_step, (samples, _labels) in enumerate(metric_logger.log_every(data_loader, print_freq, header)):
         # we use a per iteration (instead of per epoch) lr scheduler
         lr_sched.adjust_learning_rate(optimizer, data_iter_step / len(data_loader) + epoch)
-
-        samples = samples.float()
-        #img shape (4,256) -> (4,64,256) = (CH,FREQ,TIME)
-        specto_samples = torch.narrow(spectrogram_transform(samples), dim=3, start=0, length=256) 
-
-        if normalization:
-          specto_samples = np.log10(specto_samples)  
     
-        specto_samples = specto_samples.to(device, non_blocking=True)
+        samples = samples.to(device, non_blocking=True)
         
-        loss, prediction, target, x_masked = model(specto_samples, mask_ratio = 0.1)
+        loss, prediction, target, x_masked = model(samples, mask_ratio = 0.1)
         
         #recostruction of the signal to the original shape
         signal_reconstructed = utils.unpatchify(prediction, type = "freq")
         
         if plot_heatmap:
-          ppg_signal = specto_samples[sample_to_plot,0,:,:].to('cpu').detach().numpy() #ppg signal is channel 0
+          ppg_signal = samples[sample_to_plot,0,:,:].to('cpu').detach().numpy() #ppg signal is channel 0
           utils.plot_heatmap(x = ppg_signal, type="input", num_sample = sample_to_plot, epoch = epoch)
           
           ppg_signal_masked = signal_reconstructed[sample_to_plot,0,:].to('cpu').detach().numpy()
@@ -91,17 +60,10 @@ def train_one_epoch_hr_detection_freq(
     with tqdm(total=len(train), unit="batch") as tepoch:
       tepoch.set_description(f"Epoch {epoch+1}")
       for sample, target in train:
-        
-        sample = sample.float()
-        #img shape (4,256) -> (4,64,256) = (CH,FREQ,TIME)
-        specto_samples = torch.narrow(spectrogram_transform(sample), dim=3, start=0, length=256) 
-        
-        if normalization:
-          specto_samples = np.log10(specto_samples)
                   
         step += 1
         #tepoch.update(1)
-        sample, target = specto_samples.to(device), target.to(device)
+        sample, target = sample.to(device), target.to(device)
         
         output = model(sample)
         loss = criterion(output, target)
@@ -140,17 +102,10 @@ def evaluate_freq(
     avgloss = utils.AverageMeter('2.5f')
     step = 0
     with torch.no_grad():
-        for sample, target in data:
-          
-          sample = sample.float()
-          #img shape (4,256) -> (4,64,256) = (CH,FREQ,TIME)
-          specto_samples = torch.narrow(spectrogram_transform(sample), dim=3, start=0, length=256) 
-          
-          if normalization:
-             specto_samples = np.log10(specto_samples) 
-                        
+        for sample, target in data: 
+              
           step += 1
-          sample, target = specto_samples.to(device), target.to(device)
+          sample, target = sample.to(device), target.to(device)
           output = model(sample)
           loss = criterion(output, target)
           mae_val = F.l1_loss(output, target) # Mean absolute error for hr detection
