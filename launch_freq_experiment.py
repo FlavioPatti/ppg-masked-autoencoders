@@ -12,6 +12,8 @@ from thop import profile
 #Wandb setup
 os.environ["WANDB_API_KEY"] = "20fed903c269ff76b57d17a58cdb0ba9d0c4d2be"
 os.environ["WANDB_MODE"] = "online"
+# Ensure deterministic execution
+seed = utils.seed_all(seed=42)
 
 # Set flags for experiments
 N_PRETRAIN_EPOCHS = 100
@@ -71,7 +73,7 @@ if not TRANSFER_LEARNING: #for time/freq experiments
       train_stats = hrd.train_one_epoch_masked_autoencoder_freq(
           model, train_dl, criterion,
           optimizer, device, epoch, loss_scaler,
-          plot_heatmap = False, 
+          plot_heatmap = False, normalization = True,
           sample_to_plot = 50)
 
       print(f"train stats = {train_stats}")
@@ -117,9 +119,9 @@ if not TRANSFER_LEARNING: #for time/freq experiments
     for epoch in range(N_FINETUNE_EPOCHS):
       train_metrics = hrd.train_one_epoch_hr_detection_freq(
             epoch, model, criterion, optimizer, train_dl, val_dl, device,
-            plot_heart_rate = False)
+            plot_heart_rate = False, normalization = False)
       
-      test_metrics = hrd.evaluate_freq(model, criterion, test_dl, device)
+      test_metrics = hrd.evaluate_freq(model, criterion, test_dl, device, normalization = False)
         
       print(f"train stats = {train_metrics}")
       print(f"test stats = {test_metrics}")    
@@ -170,7 +172,7 @@ else: #for transfer learning
     train_stats = hrd.train_one_epoch_masked_autoencoder_freq(
           model, train_dl, criterion,
           optimizer, device, epoch, loss_scaler,
-          plot_heatmap = False, 
+          plot_heatmap = False, normalization = True,
           sample_to_plot = 50)
     
     print(f"train_stats = {train_stats}")
@@ -221,9 +223,9 @@ else: #for transfer learning
     for epoch in range(N_FINETUNE_EPOCHS):
       train_metrics = hrd.train_one_epoch_hr_detection_freq(
           epoch, model, criterion, optimizer, train_dl, val_dl, device,
-          plot_heatmap = False)
+          plot_heatmap = False, normalization = False)
       
-      test_metrics = hrd.evaluate_freq(model, criterion, test_dl, device)  
+      test_metrics = hrd.evaluate_freq(model, criterion, test_dl, device, normalization = False)  
       
       print(f"train and val stats = {train_metrics}")
       print(f"test stats = {test_metrics}")

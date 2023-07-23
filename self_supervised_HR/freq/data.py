@@ -267,7 +267,7 @@ class Dalia(Dataset):
     def _transformation(self, sample):
         sampleN = sample - torch.mean(sample)
         spectrogram = torch.narrow(spectrogram_transform(sampleN), dim=2, start=0, length=256) 
-        return np.log10(spectrogram)
+        return spectrogram
 
     def __len__(self):
         return len(self.samples)

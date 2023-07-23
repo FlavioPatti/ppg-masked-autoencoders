@@ -13,7 +13,7 @@ import numpy as np
 def train_one_epoch_masked_autoencoder_freq(model: torch.nn.Module,
                     data_loader: DataLoader, criterion: torch.nn.MSELoss, optimizer: torch.optim.Optimizer,
                     device: torch.device, epoch: int, loss_scaler,
-                    plot_heatmap = False, sample_to_plot = 50):
+                    plot_heatmap = False, normalization = False, sample_to_plot = 50):
     model.train(True)
     metric_logger = misc.MetricLogger(delimiter="  ")
     metric_logger.add_meter('lr', misc.SmoothedValue(window_size=1, fmt='{value:.6f}'))
@@ -25,6 +25,9 @@ def train_one_epoch_masked_autoencoder_freq(model: torch.nn.Module,
     for data_iter_step, (samples, _labels) in enumerate(metric_logger.log_every(data_loader, print_freq, header)):
         # we use a per iteration (instead of per epoch) lr scheduler
         lr_sched.adjust_learning_rate(optimizer, data_iter_step / len(data_loader) + epoch)
+        
+        if normalization:
+          samples = np.log10(samples)
     
         samples = samples.to(device, non_blocking=True)
         
@@ -52,7 +55,7 @@ def train_one_epoch_masked_autoencoder_freq(model: torch.nn.Module,
 def train_one_epoch_hr_detection_freq(
         epoch: int,model: nn.Module,criterion: nn.Module,optimizer: optim.Optimizer,
         train: DataLoader,val: DataLoader,device: torch.device, 
-        plot_heart_rate = False):
+        plot_heart_rate = False, normalization = False):
     model.train()
     avgmae = utils.AverageMeter('6.2f')
     avgloss = utils.AverageMeter('2.5f')
@@ -60,7 +63,10 @@ def train_one_epoch_hr_detection_freq(
     with tqdm(total=len(train), unit="batch") as tepoch:
       tepoch.set_description(f"Epoch {epoch+1}")
       for sample, target in train:
-                  
+        
+        if normalization:
+          sample = np.log10(sample)
+                
         step += 1
         #tepoch.update(1)
         sample, target = sample.to(device), target.to(device)
@@ -82,7 +88,7 @@ def train_one_epoch_hr_detection_freq(
         avgloss.update(loss, sample.size(0))
         if step % 100 == 99:
           tepoch.set_postfix({'loss': avgloss, 'MAE': avgmae})
-      val_metrics = evaluate_freq(model, criterion, val, device)
+      val_metrics = evaluate_freq(model, criterion, val, device, normalization = normalization)
       val_metrics = {'val_' + k: v for k, v in val_metrics.items()}
       final_metrics = {
           'loss': avgloss.get(),
@@ -95,13 +101,17 @@ def train_one_epoch_hr_detection_freq(
 
 
 def evaluate_freq(
-        model: nn.Module,criterion: nn.Module,data: DataLoader,device: torch.device):
+        model: nn.Module,criterion: nn.Module,data: DataLoader,device: torch.device, normalization = False):
     model.eval()
     avgmae = utils.AverageMeter('6.2f')
     avgloss = utils.AverageMeter('2.5f')
     step = 0
     with torch.no_grad():
         for sample, target in data: 
+          
+          if normalization:
+              sample = np.log10(sample)
+              
           step += 1
           sample, target = sample.to(device), target.to(device)
           output = model(sample)
