@@ -88,11 +88,11 @@ def _collect_data(data_dir, data):
             rpeaks = results["ECG_R_Peaks"]
             
             #Correct peaks
-            rpeaks_corrected = wfdb.processing.correct_peaks(
-            ecg_signal, rpeaks, search_radius=36, smooth_window_size=50, peak_dir="up")
+            #rpeaks_corrected = wfdb.processing.correct_peaks(
+            #ecg_signal, rpeaks, search_radius=36, smooth_window_size=50, peak_dir="up")
             
             # Compute time intervals between consecutive peaks
-            intervalli_tempo = [rpeaks_corrected[i+1] - rpeaks_corrected[i] for i in range(len(rpeaks)-1)]
+            intervalli_tempo = [rpeaks[i+1] - rpeaks[i] for i in range(len(rpeaks)-1)]
             # Compute HR in BPM
             heart_rates = [60 / (intervallo_tempo / fs) for intervallo_tempo in intervalli_tempo]
             
@@ -103,7 +103,7 @@ def _collect_data(data_dir, data):
           'acc': acc,
           'target': target
               }
-    elif data == "IEEEPPG":
+    elif data == "IEEETRAIN":
       for idx, subj in enumerate (num):
         i = 0
         if subj <= 9:
@@ -121,21 +121,29 @@ def _collect_data(data_dir, data):
         acc = data[3:6, :]
         acc = np.transpose(acc, (1, 0))
 
+        #hr = scipy.io.loadmat(f'{data_dir}/DATA_{sub}_TYPE{t}_BPMtrace.mat')['BPM0']
+        #print(f"hr = {hr.shape}")
+        
         fs = 125
         #ECG R-peak detection
         _, results = neurokit2.ecg_peaks(ecg_signal, sampling_rate=fs)
         rpeaks = results["ECG_R_Peaks"]
+        #print(f"rpeaks = {rpeaks.shape}")
         
         #Correct peaks
-        rpeaks_corrected = wfdb.processing.correct_peaks(
-        ecg_signal, rpeaks, search_radius=36, smooth_window_size=50, peak_dir="up")
-        
+        #rpeaks_corrected = wfdb.processing.correct_peaks(
+        #ecg_signal, rpeaks, search_radius=36, smooth_window_size=50, peak_dir="up")
+
         # Compute time intervals between consecutive peaks
-        intervalli_tempo = [rpeaks_corrected[i+1] - rpeaks_corrected[i] for i in range(len(rpeaks)-1)]
+        intervalli_tempo = [rpeaks[i+1] - rpeaks[i] for i in range(len(rpeaks)-1)]
+        #print(f"intervalli_tempo = {intervalli_tempo}")
+
         # Compute HR in BPM
         heart_rates = [60 / (intervallo_tempo / fs) for intervallo_tempo in intervalli_tempo]
         
+        #target =  np.squeeze(hr).astype('float32')
         target = np.array(heart_rates).astype('float32')
+        #print(f"target = {target.shape}")
     
         dataset[subj] = { 
         #each sample is build by: ppg value, accelerometer value, hr estimation
@@ -299,8 +307,8 @@ def get_data(dataset = "WESAD",data_dir=None,url=WESAD_URL,ds_name='ppg_dalia.zi
           print('Unzip files... Please wait.')
           with zipfile.ZipFile(filename) as zf:
               zf.extractall(data_dir)
-    if dataset == "IEEEPPG":
-        data_dir = Path('.').absolute() / dataset / 'Training_data'
+    if dataset == "IEEETRAIN":
+        data_dir = Path('.').absolute() / 'IEEEPPG' / 'Training_data'
         # set data folder, train & test
         data_folder = "./IEEEPPG/"
         train_file = data_folder + "competition_data.zip"
@@ -348,8 +356,8 @@ def get_full_dataset(dataset,  data_dir=None, url=WESAD_URL, ds_name='ppg_dalia.
             print('Unzip files... Please wait.')
             with zipfile.ZipFile(filename) as zf:
                 zf.extractall(data_dir)
-    if dataset == "IEEEPPG":
-        data_dir = Path('.').absolute() / dataset / 'Training_data'
+    if dataset == "IEEETRAIN":
+        data_dir = Path('.').absolute() / 'IEEEPPG' / 'Training_data'
         # set data folder, train & test
         data_folder = "./IEEEPPG/"
         train_file = data_folder + "competition_data.zip"

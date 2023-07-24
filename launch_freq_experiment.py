@@ -12,6 +12,7 @@ from thop import profile
 #Wandb setup
 os.environ["WANDB_API_KEY"] = "20fed903c269ff76b57d17a58cdb0ba9d0c4d2be"
 os.environ["WANDB_MODE"] = "online"
+os.environ["CUBLAS_WORKSPACE_CONFIG"] = ":4096:8"
 # Ensure deterministic execution
 seed = utils.seed_all(seed=42)
 
@@ -223,7 +224,7 @@ else: #for transfer learning
     for epoch in range(N_FINETUNE_EPOCHS):
       train_metrics = hrd.train_one_epoch_hr_detection_freq(
           epoch, model, criterion, optimizer, train_dl, val_dl, device,
-          plot_heatmap = False, normalization = False)
+          plot_heart_rate = False, normalization = False)
       
       test_metrics = hrd.evaluate_freq(model, criterion, test_dl, device, normalization = False)  
       
