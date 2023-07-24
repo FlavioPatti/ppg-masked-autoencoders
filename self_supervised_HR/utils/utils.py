@@ -51,7 +51,6 @@ def get_reference_model(model_name: str):
         decoder_embed_dim=64, decoder_num_heads=16, 
         mlp_ratio=4, norm_layer=partial(nn.LayerNorm, eps=1e-6) )
 
-        
     if model_name == 'vit_time_pretrain':
         print(f"=> ViT Time Pretrain")
         return MaskedAutoencoderViT_time(

@@ -144,9 +144,9 @@ class MaskedAutoencoderViT_time(nn.Module):
         w = imgs.shape[3] // p
     
         #print(f"h = {h}, w = {w}, p = {p}")
-        x = imgs.reshape(shape=(imgs.shape[0], 4, h, p, w, p))
+        x = imgs.reshape(shape=(imgs.shape[0], self.in_chans, h, p, w, p))
         x = torch.einsum('nchpwq->nhwpqc', x)
-        x = x.reshape(shape=(imgs.shape[0], h * w, p**2 *4)) 
+        x = x.reshape(shape=(imgs.shape[0], h * w, p**2 * self.in_chans))  
         return x
 
     def random_masking(self, x, mask_ratio):

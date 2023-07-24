@@ -169,7 +169,7 @@ class MaskedAutoencoderViT_without_decoder_time(nn.Module):
         return x
 
     def forward(self, imgs):
-
+    
         #print("")
         #print(f"imgs = {imgs.shape}") 
         #(128,4,256,1)
