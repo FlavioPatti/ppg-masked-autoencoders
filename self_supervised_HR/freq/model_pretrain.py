@@ -243,7 +243,7 @@ class MaskedAutoencoderViT_freq(nn.Module):
 
         # masking: length -> length * mask_ratio
         if mask_2d:
-          x, mask, ids_restore = self.random_masking_2d(x, mask_t_prob=0.125, mask_f_prob=0.125)
+          x, mask, ids_restore = self.random_masking_2d(x, mask_t_prob=0.6, mask_f_prob=0.5)
          # print(f" x2 = {x.shape}")
         else:
           x, mask, ids_restore = self.random_masking(x, mask_ratio)

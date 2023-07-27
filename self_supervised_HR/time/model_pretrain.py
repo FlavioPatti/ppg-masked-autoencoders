@@ -18,6 +18,7 @@ class MaskedAutoencoderViT_time(nn.Module):
                  ):
         super().__init__()
 
+        self.in_chans = in_chans
         self.audio_exp=audio_exp
         self.embed_dim = embed_dim
         self.decoder_embed_dim = decoder_embed_dim

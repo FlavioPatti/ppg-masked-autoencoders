@@ -28,7 +28,7 @@ def train_one_epoch_masked_autoencoder_time(model: torch.nn.Module,
     
         samples = samples.to(device, non_blocking=True)
 
-        loss, prediction, target, x_masked = model(samples, mask_ratio=0.1)
+        loss, prediction, target, x_masked = model(samples, mask_ratio=0.75)
 
         #recostruction of the signal to the original shape
         signal_reconstructed = np.squeeze(utils.unpatchify(prediction, type = "time"))

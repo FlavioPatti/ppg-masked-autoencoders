@@ -18,6 +18,7 @@ import copy
 import pdb
 import torchaudio
 import numpy as np
+from statistics import mean
 
 """spectogram trasformation and relative parameters"""
 sample_rate= 32
@@ -51,6 +52,18 @@ augmentations = {'Jittering': {'percentage': 0.9, 'sigma': 5/100},
 DALIA_URL = "https://archive.ics.uci.edu/ml/machine-learning-databases/00495/data.zip"
 WESAD_URL = "https://uni-siegen.sciebo.de/s/HGdUkoNlW1Ub0Gx/download"
 
+def downsample_heart_rate(heart_rate_data, original_sampling_rate, target_sampling_rate):
+    original_interval = int(original_sampling_rate / target_sampling_rate)
+    downsampled_data = []
+
+    for i in range(0, len(heart_rate_data), original_interval):
+        # Calcola la media dei campioni nell'intervallo
+        interval_values = heart_rate_data[i:i+original_interval]
+        downsampled_value = sum(interval_values) / len(interval_values)
+        downsampled_data.append(downsampled_value)
+
+    return downsampled_data
+
 def _collect_data(data_dir, data):
     random.seed(42)
     folder = ""
@@ -77,26 +90,48 @@ def _collect_data(data_dir, data):
             target = subject['label'].astype('float32')
         elif data == "WESAD":
             sub = 'S'+str(subj)
-            filename = './ppg-masked-autoencoders/WESAD/WESAD'
+            filename = './WESAD/WESAD'
             fs = 700
             
             #retrive ecg_signal from SX_respiban.txt
             ecg_signal = pd.read_csv(f'{filename}/{sub}/{sub}_respiban.txt', skiprows= 3, sep ='\t').iloc[:, 2].values
-            
-            #ECG R-peak detection
             _, results = neurokit2.ecg_peaks(ecg_signal, sampling_rate=fs)
             rpeaks = results["ECG_R_Peaks"]
             
             #Correct peaks
-            #rpeaks_corrected = wfdb.processing.correct_peaks(
-            #ecg_signal, rpeaks, search_radius=36, smooth_window_size=50, peak_dir="up")
-            
-            # Compute time intervals between consecutive peaks
+            rpeaks = wfdb.processing.correct_peaks(
+            ecg_signal, rpeaks, search_radius=36, smooth_window_size=50, peak_dir="up") / fs
+            print(f"shape peaks = {rpeaks.shape}")
+            print(f"rpeaks = {rpeaks[0:20]}")
+
             intervalli_tempo = [rpeaks[i+1] - rpeaks[i] for i in range(len(rpeaks)-1)]
-            # Compute HR in BPM
-            heart_rates = [60 / (intervallo_tempo / fs) for intervallo_tempo in intervalli_tempo]
+            instant_heart_rate = [60 / (intervallo_tempo / fs) for intervallo_tempo in intervalli_tempo]
+            window_size = 8.0 
+            overlap = 2.0 
             
-            target = np.array(heart_rates).astype('float32')
+            """
+            instant_heart_rate = downsample_heart_rate(
+                instant_heart_rate,
+                original_sampling_rate=700,
+                target_sampling_rate=32)
+            """    
+            
+            heart_rate_mean = []
+            for istante_iniziale in range(0, int(rpeaks[-1]-window_size), int(overlap)):
+              heart_rate_current_windows = []
+              istante_finale = istante_iniziale + window_size
+              #print(f"ii = {istante_iniziale}, if = {istante_finale}")
+              for i in range(0, len(rpeaks)):
+                if rpeaks[i] >= istante_iniziale and rpeaks[i]< istante_finale:
+                  #print(f"rpeak = {rpeaks[i]}")
+                  heart_rate_current_windows.append(instant_heart_rate[i])
+              #print(f"hr = {heart_rate_windows}")
+              heart_rate_mean.append(mean(heart_rate_current_windows))
+            #print(f"hr mean = {heart_rate_mean}")
+            #print(f"len = {rpeaks[-1]}")
+            #break
+          
+            target = np.array(instant_heart_rate).astype('float32')
         dataset[subj] = { 
         #each sample is build by: ppg value, accelerometer value, hr estimation
           'ppg': ppg,
