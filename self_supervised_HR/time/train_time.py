@@ -37,7 +37,7 @@ def train_one_epoch_masked_autoencoder_time(model: torch.nn.Module,
           ppg_signal = samples[sample_to_plot,0,:,:].to('cpu').detach().numpy() #ppg signal is channel 0
           utils.plot_audio(x = ppg_signal, type="input", num_sample = sample_to_plot, epoch = epoch)
 
-          ppg_signal_masked = signal_reconstructed[sample_to_plot,0,:].to('cpu').detach().numpy()
+          ppg_signal_masked = signal_reconstructed[sample_to_plot,0,:,:].to('cpu').detach().numpy()
           utils.plot_audio(x = ppg_signal_masked, type="input_reconstructed", num_sample = sample_to_plot, epoch = epoch)
           
         loss_scaler(loss, optimizer, parameters=model.parameters(),update_grad=True)
