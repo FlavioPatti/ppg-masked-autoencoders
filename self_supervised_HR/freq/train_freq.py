@@ -36,13 +36,14 @@ def train_one_epoch_masked_autoencoder_freq(model: torch.nn.Module,
         #recostruction of the signal to the original shape
         signal_reconstructed = utils.unpatchify(prediction, type = "freq")
         
-        if plot_heatmap:
-          ppg_signal = samples[sample_to_plot,0,:,:].to('cpu').detach().numpy() #ppg signal is channel 0
-          utils.plot_heatmap(x = ppg_signal, type="input", num_sample = sample_to_plot, epoch = epoch)
+        if plot_heatmap and data_iter_step == 365:
+              for i in range(120):
+                    ppg_signal = samples[i,0,:,:].to('cpu').detach().numpy()
+                    utils.plot_heatmap(x = ppg_signal, type="i15", num_sample= i, epoch= epoch)
           
-          ppg_signal_masked = signal_reconstructed[sample_to_plot,0,:].to('cpu').detach().numpy()
-          utils.plot_heatmap(x = ppg_signal_masked, type="input_reconstructed", num_sample = sample_to_plot, epoch = epoch)
-          
+        ppg_signal_masked = signal_reconstructed[sample_to_plot,0,:,:].to('cpu').detach().numpy()
+        utils.plot_heatmap(x = ppg_signal_masked, type="ir15", num_sample = sample_to_plot, epoch = epoch)
+
         loss_scaler(loss, optimizer, parameters=model.parameters(), update_grad=True)
         optimizer.zero_grad()
         metric_logger.update(loss=loss)

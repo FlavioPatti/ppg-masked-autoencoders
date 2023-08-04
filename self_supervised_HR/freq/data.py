@@ -73,8 +73,15 @@ def _collect_data(data_dir, data):
       for subj in session_list:
         with open(data_dir / folder / f'S{str(subj)}' / f'S{str(subj)}.pkl', 'rb') as f:
             subject = pickle.load(f, encoding='latin1')
+            print(f" subj = {subj}")
             ppg = subject['signal']['wrist']['BVP'][::2].astype('float32')
             acc = subject['signal']['wrist']['ACC'].astype('float32')
+            ecg_signal = subject['signal']['chest']['ECG'].astype('float32')
+            ecg_signal = np.squeeze(ecg_signal)
+            print(f"ppg shape = {ppg.shape}")
+            print(f"ecg_signal = {ecg_signal.shape}")
+            print(f"ecg signal = {type(ecg_signal)}")
+
         if data == "DALIA":
             target = subject['label'].astype('float32')
         elif data == "WESAD":
@@ -83,31 +90,36 @@ def _collect_data(data_dir, data):
             fs = 700
             
             #retrive ecg_signal from SX_respiban.txt
-            ecg_signal = pd.read_csv(f'{filename}/{sub}/{sub}_respiban.txt', skiprows= 3, sep ='\t').iloc[:, 2].values
+            ecg_signal2 = pd.read_csv(f'{filename}/{sub}/{sub}_respiban.txt', skiprows= 3, sep ='\t').iloc[:, 2].values
+            #print(f"ecg signal = {ecg_signal2.shape}")
+            #print(f"ecg signal = {type(ecg_signal2)}")
+
             _, results = neurokit2.ecg_peaks(ecg_signal, sampling_rate=fs)
             rpeaks = results["ECG_R_Peaks"]
 
             #Correct peaks
             rpeaks = wfdb.processing.correct_peaks(
             ecg_signal, rpeaks, search_radius=36, smooth_window_size=50, peak_dir="up")
-            #print(f"shape peaks = {rpeaks.shape}")
+            print(f"shape peaks = {rpeaks.shape}")
             #print(f"rpeaks = {rpeaks[0:20]}")
 
             intervalli_tempo = [rpeaks[i+1] - rpeaks[i] for i in range(len(rpeaks)-1)]
             instant_heart_rate = [60 / (intervallo_tempo / fs) for intervallo_tempo in intervalli_tempo]
-            #print(f"hr shape = {len(instant_heart_rate)}")
+            print(f"hr = {instant_heart_rate}")
+            print(f"hr len = {len(instant_heart_rate)}")
             window_size = 8.0 * fs 
             shift = 2.0 * fs  
-            
+        
+
             heart_rate_mean = []
-            numero_iterazioni = int((rpeaks[-1] - window_size) // shift + 1)
+            numero_iterazioni = int((ecg_signal.shape[0] - window_size) // shift + 1)
             #print(f"numero iter = {numero_iterazioni}")
             for j in range(0, numero_iterazioni):
               heart_rate_current_window = []
               inizio_finestra = j * shift
               fine_finestra = inizio_finestra + window_size
               #print(f"ii = {inizio_finestra}, if = {fine_finestra}")
-              for i in range(0, len(rpeaks)):
+              for i in range(0, len(rpeaks)-1):
                 if rpeaks[i] >= inizio_finestra and rpeaks[i] < fine_finestra:
                   #print(f"rpeak = {rpeaks[i]}")
                   heart_rate_current_window.append(instant_heart_rate[i])
