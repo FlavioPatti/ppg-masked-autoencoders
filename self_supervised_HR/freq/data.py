@@ -153,44 +153,45 @@ def _collect_data(data_dir, data):
         acc = data[3:6, :]
         acc = np.transpose(acc, (1, 0))
 
+        #print(f"ecg = {ecg_signal.shape}, ppg = {ppg.shape}, acc = {acc.shape}")
+
         #hr = scipy.io.loadmat(f'{data_dir}/DATA_{sub}_TYPE{t}_BPMtrace.mat')['BPM0']
         #print(f"hr = {hr.shape}")
         
         fs = 125
-        #ECG R-peak detection
         _, results = neurokit2.ecg_peaks(ecg_signal, sampling_rate=fs)
         rpeaks = results["ECG_R_Peaks"]
 
         #Correct peaks
-        rpeaks = wfdb.processing.correct_peaks(
-        ecg_signal, rpeaks, search_radius=36, smooth_window_size=50, peak_dir="up")
+        #rpeaks = wfdb.processing.correct_peaks(
+        #ecg_signal, rpeaks, search_radius=36, smooth_window_size=50, peak_dir="up")
         #print(f"shape peaks = {rpeaks.shape}")
-        #print(f"rpeaks = {rpeaks[0:20]}")
+        #print(f"rpeaks = {rpeaks}")
 
         intervalli_tempo = [rpeaks[i+1] - rpeaks[i] for i in range(len(rpeaks)-1)]
+        #print(f"intervalli tempo = {intervalli_tempo}")
         instant_heart_rate = [60 / (intervallo_tempo / fs) for intervallo_tempo in intervalli_tempo]
-        #print(f"hr shape = {len(instant_heart_rate)}")
+        #print(f"hr = {instant_heart_rate}")
+        #print(f"hr len = {len(instant_heart_rate)}")
         window_size = 8.0 * fs 
         shift = 2.0 * fs  
         
+
         heart_rate_mean = []
-        numero_iterazioni = int((rpeaks[-1] - window_size) // shift + 1)
+        numero_iterazioni = int((ecg_signal.shape[0] - window_size) // shift + 1)
         #print(f"numero iter = {numero_iterazioni}")
         for j in range(0, numero_iterazioni):
           heart_rate_current_window = []
           inizio_finestra = j * shift
           fine_finestra = inizio_finestra + window_size
           #print(f"ii = {inizio_finestra}, if = {fine_finestra}")
-          for i in range(0, len(rpeaks)):
+          for i in range(0, len(rpeaks)-1):
             if rpeaks[i] >= inizio_finestra and rpeaks[i] < fine_finestra:
               #print(f"rpeak = {rpeaks[i]}")
               heart_rate_current_window.append(instant_heart_rate[i])
           #print(f"hr = {heart_rate_current_window}")
           heart_rate_mean.append(mean(heart_rate_current_window))
-        #print(f"hr mean size = {len(heart_rate_mean)}")
-        # print(f"len = {rpeaks[-1]}")
-        #break
-      
+            
         target = np.array(heart_rate_mean).astype('float32')
     
         dataset[subj] = { 
@@ -202,11 +203,15 @@ def _collect_data(data_dir, data):
     return dataset
 
 
-def _preprocess_data(data_dir, dataset):
+def _preprocess_data(data_dir, dataset, dataset_name):
     """
     Process data with a sliding window of size 'time_window' and overlap 'overlap'
     """
-    fs = 32
+    if dataset_name == "IEEETRAIN":
+      fs = 125
+    else:
+      fs = 32
+      
     time_window = 8
     overlap = 2
 
@@ -331,18 +336,18 @@ class Dalia(Dataset):
         return len(self.samples)
 
 
-def get_data(dataset = "WESAD",data_dir=None,url=WESAD_URL,ds_name='ppg_dalia.zip',kfold=True, augment = False):
+def get_data(dataset_name = "WESAD",data_dir=None,url=WESAD_URL,ds_name='ppg_dalia.zip',kfold=True, augment = False):
     folder = ""
-    if dataset == "WESAD":
+    if dataset_name == "WESAD":
       folder = "WESAD"
       url = WESAD_URL
-    elif dataset == "DALIA":
+    elif dataset_name == "DALIA":
       folder = "PPG_FieldStudy"
       url = DALIA_URL
     
-    if dataset == "DALIA" or dataset == "WESAD":
+    if dataset_name == "DALIA" or dataset_name == "WESAD":
       if data_dir is None:
-          data_dir = Path('.').absolute() / dataset
+          data_dir = Path('.').absolute() / dataset_name
           print(f"data dir = {data_dir}")
       filename = data_dir / ds_name
       # Download if does not exist
@@ -357,7 +362,7 @@ def get_data(dataset = "WESAD",data_dir=None,url=WESAD_URL,ds_name='ppg_dalia.zi
           print('Unzip files... Please wait.')
           with zipfile.ZipFile(filename) as zf:
               zf.extractall(data_dir)
-    if dataset == "IEEETRAIN":
+    if dataset_name == "IEEETRAIN":
         data_dir = Path('.').absolute() / 'IEEEPPG' / 'Training_data'
         # set data folder, train & test
         data_folder = "./IEEEPPG/"
@@ -370,8 +375,8 @@ def get_data(dataset = "WESAD",data_dir=None,url=WESAD_URL,ds_name='ppg_dalia.zi
 
     # This step slims the dataset. This will help to speedup following usage of data
     #if not (data_dir / 'slimmed_dalia.pkl').exists():
-    dataset = _collect_data(data_dir, dataset)
-    samples, target, groups = _preprocess_data(data_dir, dataset)
+    dataset = _collect_data(data_dir, dataset_name)
+    samples, target, groups = _preprocess_data(data_dir, dataset, dataset_name)
    # else:
     #    with open(data_dir / 'slimmed_dalia.pkl', 'rb') as f:
      #       dataset = pickle.load(f, encoding='latin1')

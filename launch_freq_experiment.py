@@ -17,11 +17,11 @@ os.environ["CUBLAS_WORKSPACE_CONFIG"] = ":4096:8"
 seed = utils.seed_all(seed=42)
 
 # Set flags for experiments
-N_PRETRAIN_EPOCHS = 100
+N_PRETRAIN_EPOCHS = 200
 N_FINETUNE_EPOCHS = 200
 TRANSFER_LEARNING = False
-DATASET_PRETRAIN = "DALIA"
-DATASET_FINETUNING = "DALIA"
+DATASET_PRETRAIN = "IEEETRAIN"
+DATASET_FINETUNING = "IEEETRAIN"
 
 """
 # Init wandb for plot loss/mae/HR
@@ -45,7 +45,7 @@ if not TRANSFER_LEARNING: #for time/freq experiments
   print(f"=> Running frequency experiment with dataset = {DATASET_PRETRAIN}")
   
   # Get the Data and perform cross-validation
-  data_gen = hrd.get_data(dataset = DATASET_PRETRAIN, augment = False)
+  data_gen = hrd.get_data(dataset_name = DATASET_PRETRAIN, augment = False)
   for datasets in data_gen:
     train_ds, val_ds, test_ds = datasets
     test_subj = test_ds.test_subj
@@ -190,7 +190,7 @@ else: #for transfer learning
   print(f"=> Done pretrain")
 
   # Get the Data and perform cross-validation
-  data_gen = hrd.get_data(dataset = DATASET_FINETUNING)
+  data_gen = hrd.get_data(dataset_name = DATASET_FINETUNING)
   for datasets in data_gen:
     train_ds, val_ds, test_ds = datasets
     test_subj = test_ds.test_subj
