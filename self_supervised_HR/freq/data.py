@@ -331,7 +331,7 @@ def get_data(dataset_name = "WESAD",data_dir=None,url=WESAD_URL,ds_name='ppg_dal
     if dataset_name == "IEEETRAIN":
         data_dir = Path('.').absolute() / 'IEEEPPG' / 'Training_data'
         # set data folder, train & test
-        data_folder = "./IEEEPPG/"
+        data_folder = "./IEEETRAIN/"
         train_file = data_folder + "competition_data.zip"
         test_file = data_folder + "TestData.zip"
         with zipfile.ZipFile(train_file) as zf:
@@ -351,18 +351,18 @@ def get_data(dataset_name = "WESAD",data_dir=None,url=WESAD_URL,ds_name='ppg_dal
     generator = _get_data_gen(samples, target, groups, data_dir = data_dir, AUGMENT = augment)
     return generator 
 
-def get_full_dataset(dataset,  data_dir=None, url=WESAD_URL, ds_name='ppg_dalia.zip'):
+def get_full_dataset(dataset_name,  data_dir=None, url=WESAD_URL, ds_name='ppg_dalia.zip'):
     folder = ""
-    if dataset == "WESAD":
+    if dataset_name == "WESAD":
       folder = "WESAD"
       url = WESAD_URL
-    elif dataset == "DALIA":
+    elif dataset_name == "DALIA":
       folder = "PPG_FieldStudy"
       url = DALIA_URL
       
-    if dataset == "DALIA" or dataset == "WESAD":  
+    if dataset_name == "DALIA" or dataset_name == "WESAD":  
         if data_dir is None:
-            data_dir = Path('.').absolute() / dataset
+            data_dir = Path('.').absolute() / dataset_name
             print(f"data dir = {data_dir}")
         filename = data_dir / ds_name
         # Download if does not exist
@@ -377,10 +377,10 @@ def get_full_dataset(dataset,  data_dir=None, url=WESAD_URL, ds_name='ppg_dalia.
             print('Unzip files... Please wait.')
             with zipfile.ZipFile(filename) as zf:
                 zf.extractall(data_dir)
-    if dataset == "IEEETRAIN":
-        data_dir = Path('.').absolute() / 'IEEEPPG' / 'Training_data'
+    if dataset_name == "IEEETRAIN":
+        data_dir = Path('.').absolute() / 'IEEETRAIN' / 'Training_data'
         # set data folder, train & test
-        data_folder = "./IEEEPPG/"
+        data_folder = "./IEEETRAIN/"
         train_file = data_folder + "competition_data.zip"
         test_file = data_folder + "TestData.zip"
         with zipfile.ZipFile(train_file) as zf:
@@ -388,8 +388,8 @@ def get_full_dataset(dataset,  data_dir=None, url=WESAD_URL, ds_name='ppg_dalia.
         with zipfile.ZipFile(test_file) as zf:
           zf.extractall(data_folder)
                 
-    dataset = _collect_data(data_dir, dataset)
-    samples, target, groups = _preprocess_data(data_dir, dataset)
+    dataset = _collect_data(data_dir, dataset_name)
+    samples, target, groups = _preprocess_data(data_dir, dataset, dataset_name)
     full_dataset = Dalia(samples, target)
     train_dl = DataLoader(full_dataset,batch_size=128, shuffle=True, pin_memory=True, num_workers=4)
     return train_dl
