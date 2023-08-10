@@ -13,6 +13,7 @@ from thop import profile
 os.environ["WANDB_API_KEY"] = "20fed903c269ff76b57d17a58cdb0ba9d0c4d2be"
 os.environ["WANDB_MODE"] = "online"
 os.environ["CUBLAS_WORKSPACE_CONFIG"] = ":4096:8"
+
 # Ensure deterministic execution
 seed = utils.seed_all(seed=42)
 
@@ -20,12 +21,13 @@ seed = utils.seed_all(seed=42)
 N_PRETRAIN_EPOCHS = 200
 N_FINETUNE_EPOCHS = 200
 TRANSFER_LEARNING = False
-DATASET_PRETRAIN = "IEEETRAIN"
-DATASET_FINETUNING = "IEEETRAIN"
+DATASET_PRETRAIN = "WESAD"
+DATASET_FINETUNING = "WESAD"
 
 """
 # Init wandb for plot loss/mae/HR
-configuration = {'experiment': "Freq", 'epochs_pretrain': N_PRETRAIN_EPOCHS, 'epochs_finetune': N_FINETUNE_EPOCHS}
+configuration = {'experiment': "Frequency", 'epochs_pretrain': N_PRETRAIN_EPOCHS, 'epochs_finetune': N_FINETUNE_EPOCHS, 
+                 'transfer_learning': TRANSFER_LEARNING, 'dataset_pretrain': DATASET_PRETRAIN, 'dataset_finetuning': DATASET_FINETUNING}
 run = wandb.init(
             # Set entity to specify your username or team name
             entity = "aml-2022", 
@@ -74,8 +76,7 @@ if not TRANSFER_LEARNING: #for time/freq experiments
       train_stats = hrd.train_one_epoch_masked_autoencoder_freq(
           model, train_dl, criterion,
           optimizer, device, epoch, loss_scaler,
-          plot_heatmap = False, normalization = True,
-          sample_to_plot = 50)
+          plot_heatmap = False, normalization = True, sample_to_plot = 50)
 
       print(f"train stats = {train_stats}")
       loss = train_stats['loss']
@@ -98,15 +99,14 @@ if not TRANSFER_LEARNING: #for time/freq experiments
     if torch.cuda.is_available():
         model = model.cuda()
       
-    #print #params and #ops for the model
+    #Print #params and #ops for the actual model
     #input_tensor = torch.randn(1,4,64,256)
     #flops, params = profile(model, inputs=(input_tensor,))
     #print(f"# params = {params}, #flops = {flops}")
           
     # Get Training Settings
     criterion = utils.get_default_criterion("finetune")
-    #optimizer = torch.optim.SGD(model.parameters(),lr=0.01)
-    #print(f"optimizer => {optimizer}")
+    #optimizer = torch.optim.SGD(model.parameters(),lr=0.01) => Try SGD optimizer with a step LR scheduler
     #scheduler = StepLR(optimizer, step_size=20, gamma=1/3)
     optimizer = utils.get_default_optimizer(model, "finetune")
     
@@ -114,7 +114,7 @@ if not TRANSFER_LEARNING: #for time/freq experiments
     best_test_mae = sys.float_info.max
     
     #Load checkpoint from pretrain if exists
-    #utils.load_checkpoint_pretrain(model, torch.load("./checkpoint_model_pretrain"))
+    utils.load_checkpoint_pretrain(model, torch.load("./checkpoint_model_pretrain"))
 
     print(f"=> Starting finetuning for {N_FINETUNE_EPOCHS} epochs...")
     for epoch in range(N_FINETUNE_EPOCHS):
@@ -173,8 +173,7 @@ else: #for transfer learning
     train_stats = hrd.train_one_epoch_masked_autoencoder_freq(
           model, train_dl, criterion,
           optimizer, device, epoch, loss_scaler,
-          plot_heatmap = False, normalization = True,
-          sample_to_plot = 50)
+          plot_heatmap = False, normalization = True, sample_to_plot = 50)
     
     print(f"train_stats = {train_stats}")
     loss = train_stats['loss']
@@ -206,17 +205,11 @@ else: #for transfer learning
         model = model.cuda()
     #Load checkpoint from pretrain if exists
     utils.load_checkpoint_pretrain(model, torch.load("./checkpoint_model_pretrain"))
-    
-    #print #params and #ops for the model
-    #input_tensor = torch.randn(1,4,64,256)
-    #flops, params = profile(model, inputs=(input_tensor,))
-    #print(f"# params = {params}, #flops = {flops}")
         
     # Get Training Settings
     criterion = utils.get_default_criterion("finetune")
-    #optimizer = torch.optim.SGD(model.parameters(),lr=0.01)
-    #scheduler = StepLR(optimizer, step_size=20, gamma=1/3)
     optimizer = utils.get_default_optimizer(model, "finetune")
+    
     best_val_mae = sys.float_info.max
     best_test_mae = sys.float_info.max
 

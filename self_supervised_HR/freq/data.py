@@ -78,56 +78,37 @@ def _collect_data(data_dir, data):
             acc = subject['signal']['wrist']['ACC'].astype('float32')
             ecg_signal = subject['signal']['chest']['ECG'].astype('float32')
             ecg_signal = np.squeeze(ecg_signal)
-            print(f"ppg shape = {ppg.shape}")
-            print(f"ecg_signal = {ecg_signal.shape}")
-            print(f"ecg signal = {type(ecg_signal)}")
-
         if data == "DALIA":
             target = subject['label'].astype('float32')
         elif data == "WESAD":
-            sub = 'S'+str(subj)
-            filename = './WESAD/WESAD'
-            fs = 700
             
-            #retrive ecg_signal from SX_respiban.txt
-            ecg_signal2 = pd.read_csv(f'{filename}/{sub}/{sub}_respiban.txt', skiprows= 3, sep ='\t').iloc[:, 2].values
-            #print(f"ecg signal = {ecg_signal2.shape}")
-            #print(f"ecg signal = {type(ecg_signal2)}")
-
+            #Retrive heart rate from ecg_signal: first we extract peaks from ecg signal, we correct them and
+            #then we use a sliding window of 8 seconds with shift of 2 seconds to compute the mean of istant heart rate
+    
+            fs = 700
+            #Extract peaks
             _, results = neurokit2.ecg_peaks(ecg_signal, sampling_rate=fs)
             rpeaks = results["ECG_R_Peaks"]
 
             #Correct peaks
             rpeaks = wfdb.processing.correct_peaks(
             ecg_signal, rpeaks, search_radius=36, smooth_window_size=50, peak_dir="up")
-            print(f"shape peaks = {rpeaks.shape}")
-            #print(f"rpeaks = {rpeaks[0:20]}")
 
             intervalli_tempo = [rpeaks[i+1] - rpeaks[i] for i in range(len(rpeaks)-1)]
             instant_heart_rate = [60 / (intervallo_tempo / fs) for intervallo_tempo in intervalli_tempo]
-            print(f"hr = {instant_heart_rate}")
-            print(f"hr len = {len(instant_heart_rate)}")
             window_size = 8.0 * fs 
             shift = 2.0 * fs  
         
-
             heart_rate_mean = []
             numero_iterazioni = int((ecg_signal.shape[0] - window_size) // shift + 1)
-            #print(f"numero iter = {numero_iterazioni}")
             for j in range(0, numero_iterazioni):
               heart_rate_current_window = []
               inizio_finestra = j * shift
               fine_finestra = inizio_finestra + window_size
-              #print(f"ii = {inizio_finestra}, if = {fine_finestra}")
               for i in range(0, len(rpeaks)-1):
                 if rpeaks[i] >= inizio_finestra and rpeaks[i] < fine_finestra:
-                  #print(f"rpeak = {rpeaks[i]}")
                   heart_rate_current_window.append(instant_heart_rate[i])
-              #print(f"hr = {heart_rate_current_window}")
               heart_rate_mean.append(mean(heart_rate_current_window))
-            #print(f"hr mean size = {len(heart_rate_mean)}")
-           # print(f"len = {rpeaks[-1]}")
-            #break
           
             target = np.array(heart_rate_mean).astype('float32')
         dataset[subj] = { 
@@ -143,21 +124,16 @@ def _collect_data(data_dir, data):
           sub = '0'+str(subj)
           t = '0'+str(ty[idx])
         data = scipy.io.loadmat(f'{data_dir}/DATA_{sub}_TYPE{t}.mat')['sig']
-        #la prima riga = ECG signals
+        #first row = ECG signals
         ecg_signal = data[0:1, :]
         ecg_signal = np.squeeze(ecg_signal)
-        #seconda e terza riga = PPG signals
+        #second and third rows = PPG signals
         ppg = data[1:3, :]
         ppg = np.transpose(ppg, (1, 0))
-        # ultime tre righe = acc signals
+        # last three rows = acc signals
         acc = data[3:6, :]
         acc = np.transpose(acc, (1, 0))
 
-        #print(f"ecg = {ecg_signal.shape}, ppg = {ppg.shape}, acc = {acc.shape}")
-
-        #hr = scipy.io.loadmat(f'{data_dir}/DATA_{sub}_TYPE{t}_BPMtrace.mat')['BPM0']
-        #print(f"hr = {hr.shape}")
-        
         fs = 125
         _, results = neurokit2.ecg_peaks(ecg_signal, sampling_rate=fs)
         rpeaks = results["ECG_R_Peaks"]
@@ -165,31 +141,21 @@ def _collect_data(data_dir, data):
         #Correct peaks
         #rpeaks = wfdb.processing.correct_peaks(
         #ecg_signal, rpeaks, search_radius=36, smooth_window_size=50, peak_dir="up")
-        #print(f"shape peaks = {rpeaks.shape}")
-        #print(f"rpeaks = {rpeaks}")
 
         intervalli_tempo = [rpeaks[i+1] - rpeaks[i] for i in range(len(rpeaks)-1)]
-        #print(f"intervalli tempo = {intervalli_tempo}")
         instant_heart_rate = [60 / (intervallo_tempo / fs) for intervallo_tempo in intervalli_tempo]
-        #print(f"hr = {instant_heart_rate}")
-        #print(f"hr len = {len(instant_heart_rate)}")
         window_size = 8.0 * fs 
         shift = 2.0 * fs  
-        
 
         heart_rate_mean = []
         numero_iterazioni = int((ecg_signal.shape[0] - window_size) // shift + 1)
-        #print(f"numero iter = {numero_iterazioni}")
         for j in range(0, numero_iterazioni):
           heart_rate_current_window = []
           inizio_finestra = j * shift
           fine_finestra = inizio_finestra + window_size
-          #print(f"ii = {inizio_finestra}, if = {fine_finestra}")
           for i in range(0, len(rpeaks)-1):
             if rpeaks[i] >= inizio_finestra and rpeaks[i] < fine_finestra:
-              #print(f"rpeak = {rpeaks[i]}")
               heart_rate_current_window.append(instant_heart_rate[i])
-          #print(f"hr = {heart_rate_current_window}")
           heart_rate_mean.append(mean(heart_rate_current_window))
             
         target = np.array(heart_rate_mean).astype('float32')
@@ -374,13 +340,13 @@ def get_data(dataset_name = "WESAD",data_dir=None,url=WESAD_URL,ds_name='ppg_dal
           zf.extractall(data_folder)
 
     # This step slims the dataset. This will help to speedup following usage of data
-    #if not (data_dir / 'slimmed_dalia.pkl').exists():
-    dataset = _collect_data(data_dir, dataset_name)
-    samples, target, groups = _preprocess_data(data_dir, dataset, dataset_name)
-   # else:
-    #    with open(data_dir / 'slimmed_dalia.pkl', 'rb') as f:
-     #       dataset = pickle.load(f, encoding='latin1')
-      #  samples, target, groups = dataset.values()
+    if not (data_dir / 'slimmed_dalia.pkl').exists():
+        dataset = _collect_data(data_dir, dataset_name)
+        samples, target, groups = _preprocess_data(data_dir, dataset, dataset_name)
+    else:
+        with open(data_dir / 'slimmed_dalia.pkl', 'rb') as f:
+            dataset = pickle.load(f, encoding='latin1')
+            samples, target, groups = dataset.values()
       
     generator = _get_data_gen(samples, target, groups, data_dir = data_dir, AUGMENT = augment)
     return generator 
