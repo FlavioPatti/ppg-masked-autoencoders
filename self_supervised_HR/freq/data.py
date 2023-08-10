@@ -346,7 +346,7 @@ def get_data(dataset_name = "WESAD",data_dir=None,url=WESAD_URL,ds_name='ppg_dal
     else:
         with open(data_dir / 'slimmed_dalia.pkl', 'rb') as f:
             dataset = pickle.load(f, encoding='latin1')
-            samples, target, groups = dataset.values()
+        samples, target, groups = dataset.values()
       
     generator = _get_data_gen(samples, target, groups, data_dir = data_dir, AUGMENT = augment)
     return generator 
