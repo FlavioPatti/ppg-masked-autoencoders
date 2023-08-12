@@ -63,9 +63,6 @@ def _collect_data(data_dir, data):
     elif data == "IEEETRAIN":
       num = [1,2,3,4,5,6,7,8,9,10,11,12]
       ty = [1,2,2,2,2,2,2,2,2,2,2,2]
-    elif data == "IEEETEST":
-      num = [1,2,3,4,5,6,7,8]
-      ty = [1,2,2,2,2,2,2,1]
 
     dataset = dict()
     session_list = random.sample(num, len(num))
@@ -117,101 +114,6 @@ def _collect_data(data_dir, data):
           'acc': acc,
           'target': target
               }
-    elif data == "IEEETRAIN":
-      for idx, subj in enumerate (num):
-        if subj <= 9:
-          sub = '0'+str(subj)
-          t = '0'+str(ty[idx])
-        data = scipy.io.loadmat(f'{data_dir}/DATA_{sub}_TYPE{t}.mat')['sig']
-        #first row = ECG signals
-        ecg_signal = data[0:1, :]
-        ecg_signal = np.squeeze(ecg_signal)
-        #second and third rows = PPG signals
-        ppg = data[1:3, :]
-        ppg = np.transpose(ppg, (1, 0))
-        # last three rows = acc signals
-        acc = data[3:6, :]
-        acc = np.transpose(acc, (1, 0))
-
-        fs = 125
-        _, results = neurokit2.ecg_peaks(ecg_signal, sampling_rate=fs)
-        rpeaks = results["ECG_R_Peaks"]
-
-        #Correct peaks
-        #rpeaks = wfdb.processing.correct_peaks(
-        #ecg_signal, rpeaks, search_radius=36, smooth_window_size=50, peak_dir="up")
-
-        intervalli_tempo = [rpeaks[i+1] - rpeaks[i] for i in range(len(rpeaks)-1)]
-        instant_heart_rate = [60 / (intervallo_tempo / fs) for intervallo_tempo in intervalli_tempo]
-        window_size = 8.0 * fs 
-        shift = 2.0 * fs  
-
-        heart_rate_mean = []
-        numero_iterazioni = int((ecg_signal.shape[0] - window_size) // shift + 1)
-        for j in range(0, numero_iterazioni):
-          heart_rate_current_window = []
-          inizio_finestra = j * shift
-          fine_finestra = inizio_finestra + window_size
-          for i in range(0, len(rpeaks)-1):
-            if rpeaks[i] >= inizio_finestra and rpeaks[i] < fine_finestra:
-              heart_rate_current_window.append(instant_heart_rate[i])
-          heart_rate_mean.append(mean(heart_rate_current_window))
-            
-        target = np.array(heart_rate_mean).astype('float32')
-    
-        dataset[subj] = { 
-        #each sample is build by: ppg value, accelerometer value, hr estimation
-        'ppg': ppg,
-        'acc': acc,
-        'target': target
-            }
-    elif data == "IEEETEST":
-        for idx, subj in enumerate (num):
-          sub = 'S0'+str(subj)
-          t = 'T0'+str(ty[idx])
-        data = scipy.io.loadmat(f'{data_dir}/TEST_{sub}_{t}.mat')['sig']
-        #first row = ECG signals
-        ecg_signal = data[0:1, :]
-        ecg_signal = np.squeeze(ecg_signal)
-        #second and third rows = PPG signals
-        ppg = data[1:3, :]
-        ppg = np.transpose(ppg, (1, 0))
-        # last three rows = acc signals
-        acc = data[3:6, :]
-        acc = np.transpose(acc, (1, 0))
-
-        fs = 125
-        _, results = neurokit2.ecg_peaks(ecg_signal, sampling_rate=fs)
-        rpeaks = results["ECG_R_Peaks"]
-
-        #Correct peaks
-        #rpeaks = wfdb.processing.correct_peaks(
-        #ecg_signal, rpeaks, search_radius=36, smooth_window_size=50, peak_dir="up")
-
-        intervalli_tempo = [rpeaks[i+1] - rpeaks[i] for i in range(len(rpeaks)-1)]
-        instant_heart_rate = [60 / (intervallo_tempo / fs) for intervallo_tempo in intervalli_tempo]
-        window_size = 8.0 * fs 
-        shift = 2.0 * fs  
-
-        heart_rate_mean = []
-        numero_iterazioni = int((ecg_signal.shape[0] - window_size) // shift + 1)
-        for j in range(0, numero_iterazioni):
-          heart_rate_current_window = []
-          inizio_finestra = j * shift
-          fine_finestra = inizio_finestra + window_size
-          for i in range(0, len(rpeaks)-1):
-            if rpeaks[i] >= inizio_finestra and rpeaks[i] < fine_finestra:
-              heart_rate_current_window.append(instant_heart_rate[i])
-          heart_rate_mean.append(mean(heart_rate_current_window))
-            
-        target = np.array(heart_rate_mean).astype('float32')
-    
-        dataset[subj] = { 
-        #each sample is build by: ppg value, accelerometer value, hr estimation
-        'ppg': ppg,
-        'acc': acc,
-        'target': target
-            }
     
     return dataset
 
@@ -260,8 +162,6 @@ def _get_data_gen(samples, targets, groups, data_dir, AUGMENT, dataset_name):
         subjects = 15 #number of patients on which PPG data is taken
     elif dataset_name == "IEEETRAIN":
         subjects = 12
-    elif dataset_name == "IEEETEST":
-        subjects = 8
     
     indices, _ = _rndgroup_kfold(groups, n)
     kfold_it = 0
@@ -387,13 +287,6 @@ def get_data(dataset_name = "WESAD",data_dir=None,url=WESAD_URL,ds_name='ppg_dal
         train_file = data_folder + "competition_data.zip"
         with zipfile.ZipFile(train_file) as zf:
           zf.extractall(data_folder)
-    if dataset_name == "IEEETEST":
-        data_dir = Path('.').absolute() / dataset_name / 'TestData'
-        # set data folder, train & test
-        data_folder = "./IEEETEST/"
-        test_file = data_folder + "TestData.zip"
-        with zipfile.ZipFile(test_file) as zf:
-          zf.extractall(data_folder)
 
     # This step slims the dataset. This will help to speedup following usage of data
     if not (data_dir / 'slimmed_dalia.pkl').exists():
@@ -439,13 +332,6 @@ def get_full_dataset(dataset_name,  data_dir=None, url=WESAD_URL, ds_name='ppg_d
         data_folder = "./IEEETRAIN/"
         train_file = data_folder + "competition_data.zip"
         with zipfile.ZipFile(train_file) as zf:
-          zf.extractall(data_folder)
-    if dataset_name == "IEEETEST":
-        data_dir = Path('.').absolute() / dataset_name / 'TestData'
-        # set data folder, train & test
-        data_folder = "./IEEETEST/"
-        test_file = data_folder + "TestData.zip"
-        with zipfile.ZipFile(test_file) as zf:
           zf.extractall(data_folder)
                 
     dataset = _collect_data(data_dir, dataset_name)
