@@ -380,14 +380,18 @@ def get_data(dataset_name = "WESAD",data_dir=None,url=WESAD_URL,ds_name='ppg_dal
           print('Unzip files... Please wait.')
           with zipfile.ZipFile(filename) as zf:
               zf.extractall(data_dir)
-    if dataset_name == "IEEETRAIN" or dataset_name == "IEEETRAIN":
-        data_dir = Path('.').absolute() / 'IEEETRAIN' / 'Training_data'
+    if dataset_name == "IEEETRAIN":
+        data_dir = Path('.').absolute() / dataset_name / 'Training_data'
         # set data folder, train & test
         data_folder = "./IEEETRAIN/"
         train_file = data_folder + "competition_data.zip"
-        test_file = data_folder + "TestData.zip"
         with zipfile.ZipFile(train_file) as zf:
           zf.extractall(data_folder)
+    if dataset_name == "IEEETEST":
+        data_dir = Path('.').absolute() / dataset_name / 'TestData'
+        # set data folder, train & test
+        data_folder = "./IEEETEST/"
+        test_file = data_folder + "TestData.zip"
         with zipfile.ZipFile(test_file) as zf:
           zf.extractall(data_folder)
 
@@ -429,14 +433,18 @@ def get_full_dataset(dataset_name,  data_dir=None, url=WESAD_URL, ds_name='ppg_d
             print('Unzip files... Please wait.')
             with zipfile.ZipFile(filename) as zf:
                 zf.extractall(data_dir)
-    if dataset_name == "IEEETRAIN" or dataset_name == "IEEETEST":
-        data_dir = Path('.').absolute() / 'IEEETRAIN' / 'Training_data'
+    if dataset_name == "IEEETRAIN":
+        data_dir = Path('.').absolute() / dataset_name / 'Training_data'
         # set data folder, train & test
         data_folder = "./IEEETRAIN/"
         train_file = data_folder + "competition_data.zip"
-        test_file = data_folder + "TestData.zip"
         with zipfile.ZipFile(train_file) as zf:
           zf.extractall(data_folder)
+    if dataset_name == "IEEETEST":
+        data_dir = Path('.').absolute() / dataset_name / 'TestData'
+        # set data folder, train & test
+        data_folder = "./IEEETEST/"
+        test_file = data_folder + "TestData.zip"
         with zipfile.ZipFile(test_file) as zf:
           zf.extractall(data_folder)
                 
