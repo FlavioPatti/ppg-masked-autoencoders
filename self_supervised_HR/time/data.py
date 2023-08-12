@@ -36,7 +36,7 @@ def _collect_data(data_dir, data):
     elif data == "DALIA":
       folder = "PPG_FieldStudy"
       num = [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15]
-    elif data == "IEEEPPG":
+    elif data == "IEEETRAIN":
       num = [1,2,3,4,5,6,7,8,9,10,11,12]
       ty = [1,2,2,2,2,2,2,2,2,2,2,2]
 

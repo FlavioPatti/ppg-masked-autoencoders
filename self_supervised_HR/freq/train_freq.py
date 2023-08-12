@@ -41,7 +41,7 @@ def train_one_epoch_masked_autoencoder_freq(model: torch.nn.Module,
           utils.plot_heatmap(x = ppg_signal, type="input", num_sample= sample_to_plot, epoch= epoch)
           
           ppg_signal_masked = signal_reconstructed[sample_to_plot,0,:,:].to('cpu').detach().numpy()
-          utils.plot_heatmap(x = ppg_signal_masked, type="ir15", num_sample = sample_to_plot, epoch = epoch)
+          utils.plot_heatmap(x = ppg_signal_masked, type="input_reconstructed", num_sample = sample_to_plot, epoch = epoch)
 
         loss_scaler(loss, optimizer, parameters=model.parameters(), update_grad=True)
         optimizer.zero_grad()
@@ -75,7 +75,6 @@ def train_one_epoch_hr_detection_freq(
         loss = criterion(output, target)
         
         if plot_heart_rate and step == 365:
-          print(f"plot heart rates")
           pred = output.to('cpu').detach().numpy()
           true_target = target.to('cpu').detach().numpy()
           utils.plot_heart_rates(pred = pred, target = true_target, type="HR", epoch = epoch)
