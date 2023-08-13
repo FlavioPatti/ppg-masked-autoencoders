@@ -118,12 +118,14 @@ def _collect_data(data_dir, data):
     elif data == "IEEETRAIN":
         for idx, subj in enumerate (num):
             if subj <= 9:
-                sub = '0'+str(subj)
-                t = '0'+str(ty[idx])
-                data = scipy.io.loadmat(f'{data_dir}/DATA_{sub}_TYPE{t}.mat')['sig']
+              sub = '0'+str(subj)
+              t = '0'+str(ty[idx])
+              data = scipy.io.loadmat(f'{data_dir}/DATA_{sub}_TYPE{t}.mat')['sig']
+              print(f"sub = {subj}, t = {t}")
             else:
-                t = '0'+str(ty[idx])
-                data = scipy.io.loadmat(f'{data_dir}/DATA_{subj}_TYPE{t}.mat')['sig']
+              print(f"sub = {subj}, t = {t}")
+              t = '0'+str(ty[idx])
+              data = scipy.io.loadmat(f'{data_dir}/DATA_{subj}_TYPE{t}.mat')['sig']
             #la prima riga = ECG signals
             ecg_signal = data[0:1, :]
             ecg_signal = np.squeeze(ecg_signal)
@@ -163,12 +165,12 @@ def _collect_data(data_dir, data):
             
             target = np.array(heart_rate_mean).astype('float32')
     
-        dataset[subj] = { 
-        #each sample is build by: ppg value, accelerometer value, hr estimation
-        'ppg': ppg,
-        'acc': acc,
-        'target': target
-            }
+            dataset[subj] = { 
+            #each sample is build by: ppg value, accelerometer value, hr estimation
+            'ppg': ppg,
+            'acc': acc,
+            'target': target
+                }
     
     return dataset
 
