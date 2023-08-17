@@ -25,7 +25,7 @@ Each experiment is a stand-alone python module based on five python files, namel
 4. [`train.py`](#trainpy)
 5. [`__init__.py`](#__init__py)
 
-You can find these files in their corrisponding folders: 'self_supervised_HR/time' and 'self_supervised_HR/freq'.
+You can find these files in their corrisponding folders: `self_supervised_HR/time` and `self_supervised_HR/freq`.
 
 #### **`data.py`**
 This module implement all the functions needed to gather the data, pre-process them and finally ship them to the user both in the form of [Pytorch Dataset](https://pytorch.org/docs/stable/data.html#torch.utils.data.Dataset) and [Pytorch Dataloader](https://pytorch.org/docs/stable/data.html#torch.utils.data.DataLoader). 
