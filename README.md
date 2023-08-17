@@ -22,6 +22,7 @@ Each experiment is a stand-alone python module based on five python files, namel
 3. [`model_finetune.py`](#model_finetunepy)
 4. [`train.py`](#trainpy)
 5. [`__init__.py`](#__init__py)
+The corrisponding folders are: 'self_supervised_HR/time' and 'self_supervised_HR/freq'.
 
 #### **`data.py`**
 This module implement all the functions needed to gather the data, pre-process them and finally ship them to the user both in the form of [Pytorch Dataset](https://pytorch.org/docs/stable/data.html#torch.utils.data.Dataset) and [Pytorch Dataloader](https://pytorch.org/docs/stable/data.html#torch.utils.data.DataLoader). 
