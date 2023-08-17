@@ -71,11 +71,10 @@ but the model has been made flexible to adapt to any changes of these parameters
 
 Futhermore, the model is trained for *DATASET_FINETUNING* epochs with an early stop of 20 epochs on the validation MAE. The optimizer used is **Adam** and the criterion is **LogCosh**.
 
-Actual results are presented here:
-[results.xlsx](https://github.com/eml-eda/ppg-masked-autoencoders/files/11721189/results.xlsx)
+All the results for the various experiments conducted in this repository are presented in *results.xlsx*
 
 
-#### **`train.py`**
+#### **`train_time/freq.py`**
 This module implement the minimum set of information required to implement a training loop.
 
 - `train_one_epoch_masked_autoencoder`, implements one epoch of training for to reconstruct the input signal. It takes as input an integer specifying the current *epoch*, the *model* to be trained, the *criterion*, the *optimizer*, the *train* and *val* dataloaders and finally the *device* to be used for the training. It returns a dictionary of tracked metrics.
@@ -83,9 +82,5 @@ This module implement the minimum set of information required to implement a tra
 - `evaluate`, implement an evaluation step of the model. This step can be both of validation or test depending on the specific dataloader provided as input. It takes as input the *model*, the *criterion*, the *dataloader* and the *device*. It returns a dictionary of tracked metrics.
 
 #### **`__init__.py`**
-The body of this file import all the standard functions described in `data.py`, `model_pretrain.py`, `model_finetune.py` and `train.py`.
+The body of this file import all the standard functions described in `data.py`, `model_pretrain.py`, `model_finetune.py` and `train_time/freq.py`.
 This file is mandatory to identify the parent directory as a python package and to expose to the user the developed functions.
-
-### Example Scripts
-Finally, an example script is provided that shows how to use the different functions in order to build a neat and simple DNN training:
-run `lanch_time_experiment.py` to execute time experiment or `launch_freq_experiment` to execute frequence experiment.
