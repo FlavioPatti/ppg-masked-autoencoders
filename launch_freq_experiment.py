@@ -17,12 +17,13 @@ os.environ["CUBLAS_WORKSPACE_CONFIG"] = ":4096:8"
 # Ensure deterministic execution
 seed = utils.seed_all(seed=42)
 
+
 # Set flags for experiments
 N_PRETRAIN_EPOCHS = 200
 N_FINETUNE_EPOCHS = 200
 TRANSFER_LEARNING = False
-DATASET_PRETRAIN = "WESAD"
-DATASET_FINETUNING = "WESAD"
+DATASET_PRETRAIN = "WESAD" #DALIA, WESAD, IEEETRAIN OR IEEETEST
+DATASET_FINETUNING = "WESAD" #DALIA, WESAD, IEEETRAIN OR IEEETEST
 
 """
 # Init wandb for plot loss/mae/HR

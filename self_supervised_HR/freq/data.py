@@ -121,9 +121,7 @@ def _collect_data(data_dir, data):
               sub = '0'+str(subj)
               t = '0'+str(ty[idx])
               data = scipy.io.loadmat(f'{data_dir}/DATA_{sub}_TYPE{t}.mat')['sig']
-              print(f"sub = {subj}, t = {t}")
             else:
-              print(f"sub = {subj}, t = {t}")
               t = '0'+str(ty[idx])
               data = scipy.io.loadmat(f'{data_dir}/DATA_{subj}_TYPE{t}.mat')['sig']
             #la prima riga = ECG signals
