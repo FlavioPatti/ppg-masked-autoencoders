@@ -15,6 +15,7 @@ import numpy as np
 from timm.models.vision_transformer import Block
 from util.pos_embed import get_2d_sincos_pos_embed
 from util.patch_embed import PatchEmbed_org
+from statistics import mean
 
 class MaskedAutoencoderViT_without_decoder_freq(nn.Module):
     """ Masked Autoencoder with VisionTransformer backbone
@@ -104,6 +105,8 @@ class MaskedAutoencoderViT_without_decoder_freq(nn.Module):
         #linear layer for predict HR
         self.pooling = nn.AvgPool1d(int(embed_dim/16))
         self.out_neuron = nn.Linear(in_features=64, out_features=1)
+        self.previous_predictions = []
+        self.N = 10
         
         self.initialize_weights()
 
@@ -190,8 +193,25 @@ class MaskedAutoencoderViT_without_decoder_freq(nn.Module):
       
         #output layer
         x = self.out_neuron(x) #(128,1)
-                
-        #loss = self.forward_loss(imgs, pred, norm_pix_loss=self.norm_pix_loss)
-        #pred, _, _ = self.forward_decoder(emb_enc, ids_restore)  # [N, L, p*p*3]
-        #loss_contrastive = torch.FloatTensor([0.0]).cuda()
+        
+        #apply post-processing
+        
+        print(f"x before = {x}")
+        
+        if len(self.previous_predictions) < self.N:
+                self.vector.append(x)
+        else:
+            self.previous_predictions.pop(0)  # Rimuove l'elemento più vecchio
+            self.previous_predictions.append(x)
+        
+        avg = mean(self.previous_predictions)
+        print(f"avg = {avg}")
+        th = avg / self.N 
+        print(f"th = {th}")
+        if x > avg + th:
+            x = avg + th
+        elif x < avg - th:
+            x = avg - th
+            
+        print(f"x after = {x}")
         return x
