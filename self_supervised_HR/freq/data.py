@@ -227,7 +227,7 @@ def _get_data_gen(samples, targets, groups, data_dir, AUGMENT, dataset_name):
         # Train Dataset
         train_samples = samples[train_index]
         train_targets = targets[train_index] #target = hr estimation
-        if AUGMENT:
+        if AUGMENT and dataset_name == "DALIA":
             print(f"=> Performing data augmentation. Please wait...")
             Augmenter = utils.Data_Augmentation(train_samples, train_targets, augmentations, data_dir)
             train_samples, train_targets = Augmenter.run()
