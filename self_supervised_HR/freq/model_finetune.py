@@ -195,23 +195,20 @@ class MaskedAutoencoderViT_without_decoder_freq(nn.Module):
         x = self.out_neuron(x) #(128,1)
         
         #apply post-processing
+        x_post_proc = []
+        for i in range(x.shape[0]): #128
+          if i >= self.N:
+            previous_values = x[i - self.N : i]
+            avg = sum(previous_values) / self.N
+            th = avg / self.N 
+            if x[i] > avg + th:
+                x[i] = avg + th
+            elif x[i] < avg - th:
+                x[i] = avg - th
+            x_post_proc.append(x[i])
+          else:
+            x_post_proc.append(x[i])  
+        x_post_proc = torch.Tensor(x_post_proc)
+        x_post_proc = torch.unsqueeze(x_post_proc, dim=1)
         
-        print(f"x before = {x}")
-        
-        if len(self.previous_predictions) < self.N:
-                self.vector.append(x)
-        else:
-            self.previous_predictions.pop(0)  # Rimuove l'elemento più vecchio
-            self.previous_predictions.append(x)
-        
-        avg = mean(self.previous_predictions)
-        print(f"avg = {avg}")
-        th = avg / self.N 
-        print(f"th = {th}")
-        if x > avg + th:
-            x = avg + th
-        elif x < avg - th:
-            x = avg - th
-            
-        print(f"x after = {x}")
         return x
