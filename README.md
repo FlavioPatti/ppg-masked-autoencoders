@@ -15,7 +15,7 @@ $ python setup.py install
 To run the experiments read and install all the libraries present in `requirements.txt`
 
 ## API Details
-In this repository you can find two types of experiments: signal reconstruction (pre-train phase) + heart rate estimation (finetuning phase) in the time domain and the equivalent in the frequency domain. To run this two experiments the corrisponding files are [`launch_time_experiment.py`](#launch_time_experimentpy) and [`launch_freq_experiment.py`](#launch_freq_experimentpy).
+In this repository you can find two types of experiments: signal reconstruction (pre-train phase) + heart rate estimation (finetuning phase) in the time domain and the equivalent in the frequency domain. To run these two experiments the corrisponding files are [`launch_time_experiment.py`](#launch_time_experimentpy) and [`launch_freq_experiment.py`](#launch_freq_experimentpy).
 
 For each experiment different datasets can be tested such as **PPG_Dalia**, **WESAD** and **IEEE_Train & Test** so if you want to apply a transfer learning step, please, set *TRANSFER_LEARNING = True* and specify the name of the datasets for the pre-train (*DATASET_PRETRAIN*) and finetuning (*DATASET_FINETUNING*) phases, otherwise the experiment are executed with the same dataset.
 Each experiment is a stand-alone python module based on five python files, namely:
@@ -25,7 +25,7 @@ Each experiment is a stand-alone python module based on five python files, namel
 4. [`train.py`](#trainpy)
 5. [`__init__.py`](#__init__py)
 
-You can find these files in their corrisponding folders: 'self_supervised_HR/time' and 'self_supervised_HR/freq'.
+You can find these files in their corrisponding folders: `self_supervised_HR/time` and `self_supervised_HR/freq`.
 
 #### **`data.py`**
 This module implement all the functions needed to gather the data, pre-process them and finally ship them to the user both in the form of [Pytorch Dataset](https://pytorch.org/docs/stable/data.html#torch.utils.data.Dataset) and [Pytorch Dataloader](https://pytorch.org/docs/stable/data.html#torch.utils.data.DataLoader). 
@@ -71,11 +71,10 @@ but the model has been made flexible to adapt to any changes of these parameters
 
 Futhermore, the model is trained for *DATASET_FINETUNING* epochs with an early stop of 20 epochs on the validation MAE. The optimizer used is **Adam** and the criterion is **LogCosh**.
 
-Actual results are presented here:
-[results.xlsx](https://github.com/eml-eda/ppg-masked-autoencoders/files/11721189/results.xlsx)
+All the results for the various experiments conducted in this repository are presented in *results.xlsx*
 
 
-#### **`train.py`**
+#### **`train_time/freq.py`**
 This module implement the minimum set of information required to implement a training loop.
 
 - `train_one_epoch_masked_autoencoder`, implements one epoch of training for to reconstruct the input signal. It takes as input an integer specifying the current *epoch*, the *model* to be trained, the *criterion*, the *optimizer*, the *train* and *val* dataloaders and finally the *device* to be used for the training. It returns a dictionary of tracked metrics.
@@ -83,9 +82,5 @@ This module implement the minimum set of information required to implement a tra
 - `evaluate`, implement an evaluation step of the model. This step can be both of validation or test depending on the specific dataloader provided as input. It takes as input the *model*, the *criterion*, the *dataloader* and the *device*. It returns a dictionary of tracked metrics.
 
 #### **`__init__.py`**
-The body of this file import all the standard functions described in `data.py`, `model_pretrain.py`, `model_finetune.py` and `train.py`.
+The body of this file import all the standard functions described in `data.py`, `model_pretrain.py`, `model_finetune.py` and `train_time/freq.py`.
 This file is mandatory to identify the parent directory as a python package and to expose to the user the developed functions.
-
-### Example Scripts
-Finally, an example script is provided that shows how to use the different functions in order to build a neat and simple DNN training:
-run `lanch_time_experiment.py` to execute time experiment or `launch_freq_experiment` to execute frequence experiment.
