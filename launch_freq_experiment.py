@@ -22,8 +22,8 @@ seed = utils.seed_all(seed=42)
 N_PRETRAIN_EPOCHS = 200
 N_FINETUNE_EPOCHS = 200
 TRANSFER_LEARNING = False
-DATASET_PRETRAIN = "WESAD" #DALIA, WESAD, IEEETRAIN OR IEEETEST
-DATASET_FINETUNING = "WESAD" #DALIA, WESAD, IEEETRAIN OR IEEETEST
+DATASET_PRETRAIN = "DALIA" #DALIA, WESAD, IEEETRAIN OR IEEETEST
+DATASET_FINETUNING = "DALIA" #DALIA, WESAD, IEEETRAIN OR IEEETEST
 
 """
 # Init wandb for plot loss/mae/HR
@@ -115,7 +115,10 @@ if not TRANSFER_LEARNING: #for time/freq experiments
     best_test_mae = sys.float_info.max
     
     #Load checkpoint from pretrain if exists
-    utils.load_checkpoint_pretrain(model, torch.load("./checkpoint_model_pretrain"))
+    if os.path.exists("./checkpoint_model_pretrain"):
+          utils.load_checkpoint_pretrain(model, torch.load("./checkpoint_model_pretrain"))
+    else:
+      print(f"File doesn't exist.")
 
     print(f"=> Starting finetuning for {N_FINETUNE_EPOCHS} epochs...")
     for epoch in range(N_FINETUNE_EPOCHS):
@@ -205,7 +208,10 @@ else: #for transfer learning
     if torch.cuda.is_available():
         model = model.cuda()
     #Load checkpoint from pretrain if exists
-    utils.load_checkpoint_pretrain(model, torch.load("./checkpoint_model_pretrain"))
+    if os.path.exists("./checkpoint_model_pretrain"):
+          utils.load_checkpoint_pretrain(model, torch.load("./checkpoint_model_pretrain"))
+    else:
+      print(f"File doesn't exist.")
         
     # Get Training Settings
     criterion = utils.get_default_criterion("finetune")

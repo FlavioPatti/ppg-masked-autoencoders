@@ -443,7 +443,7 @@ def get_full_dataset(dataset_name,  data_dir=None, url=WESAD_URL, ds_name='ppg_d
 
 def build_dataloaders(datasets: Tuple[Dataset, ...],
                       batch_size=128,
-                      num_workers=4
+                      num_workers=1
                       ):
     train_set, val_set, test_set = datasets
     train_loader = DataLoader(
