@@ -211,12 +211,9 @@ def _preprocess_data(data_dir, dataset, dataset_name):
 
     return X, y, groups
 
-def _get_data_gen(samples, targets, groups, data_dir, AUGMENT, dataset_name):
-    n = 4
-    if dataset_name == "DALIA" or dataset_name == "WESAD":
-        subjects = 15 #number of patients on which PPG data is taken
-    elif dataset_name == "IEEETRAIN":
-        subjects = 12
+def _get_data_gen_dalia_wesad(samples, targets, groups, data_dir, AUGMENT, dataset_name):
+    subjects = 15 #number of patients on which PPG data is taken
+    n = 4 #number of iteration in the same fold 
     
     indices, _ = _rndgroup_kfold(groups, n)
     kfold_it = 0
@@ -243,6 +240,51 @@ def _get_data_gen(samples, targets, groups, data_dir, AUGMENT, dataset_name):
                                                 groups_val_test):
 
             if j == kfold_it % n:
+                val_samples = samples_val_test[val_index]
+                val_targets = targets_val_test[val_index]
+                ds_val = Dalia(val_samples, val_targets)
+                test_subj = groups[test_val_index][test_index][0]
+                print(f'Test Subject: {test_subj}')
+                print(f"Test & Val Subjects: {np.unique(groups[test_val_index])}")
+                test_samples = samples_val_test[test_index]
+                test_targets = targets_val_test[test_index]
+                
+                ds_test = Dalia(test_samples, test_targets, test_subj) 
+               #the dataset is unzipped in several 'Sx' files, each with a different number of samples 
+               #for the different activities (that are the same for all the subjects)
+               #we use k-fold to train the TempoNet several Sx during training and then test 
+               #on a different and unseen Sx at each iteration
+                
+            j += 1
+
+        yield ds_train, ds_val, ds_test
+        kfold_it += 1
+
+def _get_data_gen_ieee(samples, targets, groups):
+    subjects = 12 #number of patients on which PPG data is taken
+    n = 3 #number of iteration in the same fold 
+    
+    indices, _ = _rndgroup_kfold(groups, n)
+    kfold_it = 0
+    while kfold_it < subjects:
+        fold = kfold_it // (n+1)
+        print(f'kFold-iteration: {kfold_it}')
+        train_index, test_val_index = indices[fold]
+        # Train Dataset
+        train_samples = samples[train_index]
+        train_targets = targets[train_index] #target = hr estimation
+        ds_train = Dalia(train_samples, train_targets)
+        # Val and Test Dataset
+        logo = LeaveOneGroupOut()
+        samples_val_test = samples[test_val_index]
+        targets_val_test = targets[test_val_index]
+        groups_val_test = groups[test_val_index]
+        j = 0
+        for val_index, test_index in logo.split(samples_val_test,
+                                                targets_val_test,
+                                                groups_val_test):
+
+            if j == kfold_it % (n+1):
                 val_samples = samples_val_test[val_index]
                 val_targets = targets_val_test[val_index]
                 ds_val = Dalia(val_samples, val_targets)
@@ -351,8 +393,11 @@ def get_data(dataset_name = "WESAD",data_dir=None,url=WESAD_URL,ds_name='ppg_dal
         with open(data_dir / 'slimmed_dalia.pkl', 'rb') as f:
             dataset = pickle.load(f, encoding='latin1')
         samples, target, groups = dataset.values()
-      
-    generator = _get_data_gen(samples, target, groups, data_dir = data_dir, AUGMENT = augment, dataset_name = dataset_name)
+    
+    if dataset_name == "DALIA" or dataset_name == "WESAD":
+        generator = _get_data_gen_dalia_wesad(samples, target, groups, data_dir = data_dir, AUGMENT = augment, dataset_name = dataset_name)
+    if dataset_name == "IEEETRAIN":
+        generator = _get_data_gen_ieee(samples, target, groups)
     return generator 
 
 def get_full_dataset(dataset_name,  data_dir=None, url=WESAD_URL, ds_name='ppg_dalia.zip'):
