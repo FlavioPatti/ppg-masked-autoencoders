@@ -73,6 +73,7 @@ def train_one_epoch_hr_detection_freq(
         
         output = model(sample)
         output = post_processing(output)
+        output = output.cuda().requires_grad_(True)
         loss = criterion(output, target)
         
         if plot_heart_rate and step == 365:
@@ -115,6 +116,7 @@ def evaluate_freq(
           sample, target = sample.to(device), target.to(device)
           output = model(sample)
           output = post_processing(output)
+          output = output.cuda()
           loss = criterion(output, target)
           mae_val = F.l1_loss(output, target) # Mean absolute error for hr detection
           avgmae.update(mae_val, sample.size(0))
