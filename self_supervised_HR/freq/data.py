@@ -262,7 +262,7 @@ def _get_data_gen_dalia_wesad(samples, targets, groups, data_dir, AUGMENT, datas
 
 def _get_data_gen_ieee(samples, targets, groups):
     subjects = 12 #number of patients on which PPG data is taken
-    n = 3 #number of iteration in the same fold 
+    n = 3 #number of folds 
     
     indices, _ = _rndgroup_kfold(groups, n)
     kfold_it = 0

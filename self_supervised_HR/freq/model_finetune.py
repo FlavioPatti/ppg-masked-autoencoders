@@ -193,22 +193,5 @@ class MaskedAutoencoderViT_without_decoder_freq(nn.Module):
       
         #output layer
         x = self.out_neuron(x) #(128,1)
-        
-        #apply post-processing
-        x_post_proc = []
-        for i in range(x.shape[0]): #128
-          if i >= self.N:
-            previous_values = x[i - self.N : i]
-            avg = sum(previous_values) / self.N
-            th = avg / self.N 
-            if x[i] > avg + th:
-                x[i] = avg + th
-            elif x[i] < avg - th:
-                x[i] = avg - th
-            x_post_proc.append(x[i])
-          else:
-            x_post_proc.append(x[i])  
-        x_post_proc = torch.Tensor(x_post_proc)
-        x_post_proc = torch.unsqueeze(x_post_proc, dim=1)
-        
+    
         return x

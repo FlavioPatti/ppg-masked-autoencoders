@@ -72,6 +72,7 @@ def train_one_epoch_hr_detection_freq(
         sample, target = sample.to(device), target.to(device)
         
         output = model(sample)
+        output = post_processing(output)
         loss = criterion(output, target)
         
         if plot_heart_rate and step == 365:
@@ -98,7 +99,6 @@ def train_one_epoch_hr_detection_freq(
       tepoch.close()
     return final_metrics
 
-
 def evaluate_freq(
         model: nn.Module,criterion: nn.Module,data: DataLoader,device: torch.device, normalization = False):
     model.eval()
@@ -114,6 +114,7 @@ def evaluate_freq(
           step += 1
           sample, target = sample.to(device), target.to(device)
           output = model(sample)
+          output = post_processing(output)
           loss = criterion(output, target)
           mae_val = F.l1_loss(output, target) # Mean absolute error for hr detection
           avgmae.update(mae_val, sample.size(0))
@@ -123,3 +124,23 @@ def evaluate_freq(
           'MAE': avgmae.get(),
         }
     return final_metrics
+  
+def post_processing(x):
+  #apply post-processing
+  N = 10
+  x_post_proc = []
+  for i in range(x.shape[0]): #128
+    if i >= N:
+      previous_values = x[i - N : i]
+      avg = sum(previous_values) / N
+      th = avg / N 
+      if x[i] > avg + th:
+          x[i] = avg + th
+      elif x[i] < avg - th:
+          x[i] = avg - th
+      x_post_proc.append(x[i])
+    else:
+      x_post_proc.append(x[i])  
+  x_post_proc = torch.Tensor(x_post_proc)
+  x_post_proc = torch.unsqueeze(x_post_proc, dim=1)
+  return x_post_proc
