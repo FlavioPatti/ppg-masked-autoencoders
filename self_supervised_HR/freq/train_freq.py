@@ -72,8 +72,6 @@ def train_one_epoch_hr_detection_freq(
         sample, target = sample.to(device), target.to(device)
         
         output = model(sample)
-        output = post_processing(output)
-        output = output.cuda().requires_grad_(True)
         loss = criterion(output, target)
         
         if plot_heart_rate and step == 365:
@@ -115,6 +113,7 @@ def evaluate_freq(
           step += 1
           sample, target = sample.to(device), target.to(device)
           output = model(sample)
+          
           output = post_processing(output)
           output = output.cuda()
           loss = criterion(output, target)
@@ -127,11 +126,39 @@ def evaluate_freq(
         }
     return final_metrics
   
+def evaluate_post_processing_freq(
+        model: nn.Module,data: DataLoader,device: torch.device, normalization = False):
+    model.eval()
+    step = 0
+    output_list = []
+    target_list = []
+    
+    with torch.no_grad():
+      for sample, target in data: 
+        
+        if normalization:
+            sample = np.log10(sample)
+            
+        step += 1
+        sample, target = sample.to(device), target.to(device)
+        output = model(sample)
+        
+        for i in range(sample.size(0)): #128
+          output_list.append(output[i])
+          target_list.append(target[i])
+      
+      output_list = post_processing(output_list)
+      print(f"output list = {output_list.shape}")
+      print(f"target list = {target_list.shape}")
+      MAE_post_proc= F.l1_loss(output_list, target_list) # Mean absolute error for hr detection
+      print(f"MAE post proc = {MAE_post_proc}")  
+    return 
+  
 def post_processing(x):
   #apply post-processing
   N = 10
   x_post_proc = []
-  for i in range(x.shape[0]): #128
+  for i in range(x.shape[0]):
     if i >= N:
       previous_values = x[i - N : i]
       avg = sum(previous_values) / N

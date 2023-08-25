@@ -145,6 +145,8 @@ if not TRANSFER_LEARNING: #for time/freq experiments
 
       #if epoch >= 30: #delayed earlystop
       if earlystop(val_mae):
+        print(f"=> Applying post processing...")
+        hrd.evaluate_post_processing_freq(model, test_dl, device, normalization=False)
         break
       
     print(f" => Done finetuning")
@@ -241,6 +243,8 @@ else: #for transfer learning
       
       #if epoch >= 30: #delayed earlystop
       if earlystop(val_mae):
+        print(f"=> Applying post processing...")
+        hrd.evaluate_post_processing_freq(model, test_dl, device, normalization=False)
         break
       
     print(f"=> Done finetuning")

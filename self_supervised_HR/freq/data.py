@@ -456,7 +456,7 @@ def build_dataloaders(datasets: Tuple[Dataset, ...],
     val_loader = DataLoader(
         val_set,
         batch_size=batch_size,
-        shuffle=True,
+        shuffle=True, #False
         num_workers=num_workers,
     )
     test_loader = DataLoader(

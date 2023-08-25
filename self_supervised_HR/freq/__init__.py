@@ -1,5 +1,5 @@
 from .data import get_data, get_full_dataset, build_dataloaders
-from .train_freq import train_one_epoch_hr_detection_freq, train_one_epoch_masked_autoencoder_freq, evaluate_freq
+from .train_freq import train_one_epoch_hr_detection_freq, train_one_epoch_masked_autoencoder_freq, evaluate_freq, evaluate_post_processing_freq
 
 __all__ = [
     'get_data',
@@ -8,4 +8,5 @@ __all__ = [
     'train_one_epoch_hr_detection_freq',
     'train_one_epoch_masked_autoencoder_freq',
     'evaluate_freq',
+    'evaluate_post_processing_freq'
 ]
