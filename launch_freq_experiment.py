@@ -19,11 +19,11 @@ seed = utils.seed_all(seed=42)
 
 
 # Set flags for experiments
-N_PRETRAIN_EPOCHS = 200
+N_PRETRAIN_EPOCHS = 0
 N_FINETUNE_EPOCHS = 200
 TRANSFER_LEARNING = False
-DATASET_PRETRAIN = "DALIA" #DALIA, WESAD, IEEETRAIN OR IEEETEST
-DATASET_FINETUNING = "DALIA" #DALIA, WESAD, IEEETRAIN OR IEEETEST
+DATASET_PRETRAIN = "IEEETRAIN" #DALIA, WESAD, IEEETRAIN OR IEEETEST
+DATASET_FINETUNING = "IEEETRAIN" #DALIA, WESAD, IEEETRAIN OR IEEETEST
 
 """
 # Init wandb for plot loss/mae/HR
@@ -126,10 +126,10 @@ if not TRANSFER_LEARNING: #for time/freq experiments
             epoch, model, criterion, optimizer, train_dl, val_dl, device,
             plot_heart_rate = False, normalization = False)
       
-      test_metrics = hrd.evaluate_freq(model, criterion, test_dl, device, normalization = False)
+      test_metrics = hrd.evaluate_freq(model, criterion, test_dl, device, normalization = False, test = True)
         
       print(f"train stats = {train_metrics}")
-      print(f"test stats = {test_metrics}")    
+      print(f"test stats = {test_metrics}")  
       val_mae = train_metrics['val_MAE']
       if val_mae < best_val_mae:
         best_val_mae = val_mae
@@ -145,8 +145,6 @@ if not TRANSFER_LEARNING: #for time/freq experiments
 
       #if epoch >= 30: #delayed earlystop
       if earlystop(val_mae):
-        print(f"=> Applying post processing...")
-        hrd.evaluate_post_processing_freq(model, test_dl, device, normalization=False)
         break
       
     print(f" => Done finetuning")
