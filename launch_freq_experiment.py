@@ -113,6 +113,7 @@ if not TRANSFER_LEARNING: #for time/freq experiments
     
     best_val_mae = sys.float_info.max
     best_test_mae = sys.float_info.max
+    best_mae_post_proc = sys.float_info.max 
     
     #Load checkpoint from pretrain if exists
     if os.path.exists("./checkpoint_model_pretrain"):
@@ -126,10 +127,11 @@ if not TRANSFER_LEARNING: #for time/freq experiments
             epoch, model, criterion, optimizer, train_dl, val_dl, device,
             plot_heart_rate = False, normalization = False)
       
-      test_metrics = hrd.evaluate_freq(model, criterion, test_dl, device, normalization = False, test = True)
+      test_metrics, MAE_post_proc = hrd.evaluate_post_processing_freq(model, criterion, test_dl, device, normalization = False)
         
       print(f"train stats = {train_metrics}")
-      print(f"test stats = {test_metrics}")  
+      print(f"test stats = {test_metrics}") 
+      print(f"MAE post proc = {MAE_post_proc}") 
       val_mae = train_metrics['val_MAE']
       if val_mae < best_val_mae:
         best_val_mae = val_mae
@@ -138,6 +140,9 @@ if not TRANSFER_LEARNING: #for time/freq experiments
       if test_mae < best_test_mae:
         best_test_mae = test_mae
         print(f"new best test mae found = {best_test_mae}")
+      if MAE_post_proc < best_mae_post_proc:
+        best_mae_post_proc = MAE_post_proc
+        print(f"new best MAE post processing found = {best_mae_post_proc}")
         
       #print(f"=> Updating plot on wandb")
       #wandb.log({'train_mae': test_mae, 'epochs': epoch + 1}, commit=True)

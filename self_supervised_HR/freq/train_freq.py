@@ -86,7 +86,7 @@ def train_one_epoch_hr_detection_freq(
         avgloss.update(loss, sample.size(0))
         if step % 100 == 99:
           tepoch.set_postfix({'loss': avgloss, 'MAE': avgmae})
-      val_metrics = evaluate_freq(model, criterion, val, device, normalization = normalization, test = False)
+      val_metrics = evaluate_freq(model, criterion, val, device, normalization = normalization)
       val_metrics = {'val_' + k: v for k, v in val_metrics.items()}
       final_metrics = {
           'loss': avgloss.get(),
@@ -98,7 +98,34 @@ def train_one_epoch_hr_detection_freq(
     return final_metrics
 
 def evaluate_freq(
-        model: nn.Module,criterion: nn.Module,data: DataLoader,device: torch.device, normalization = False, test = False):
+        model: nn.Module,criterion: nn.Module,data: DataLoader,device: torch.device, normalization = False):
+    model.eval()
+    avgmae = utils.AverageMeter('6.2f')
+    avgloss = utils.AverageMeter('2.5f')
+    step = 0
+    
+    with torch.no_grad():
+        for sample, target in data: 
+          
+          if normalization:
+              sample = np.log10(sample)
+              
+          step += 1
+          sample, target = sample.to(device), target.to(device)
+          output = model(sample)
+          loss = criterion(output, target)
+          mae_val = F.l1_loss(output, target) # Mean absolute error for hr detection
+          avgmae.update(mae_val, sample.size(0))
+          avgloss.update(loss, sample.size(0))
+      
+        final_metrics = {
+          'loss': avgloss.get(),
+          'MAE': avgmae.get(),
+        }
+    return final_metrics
+
+def evaluate_post_processing_freq(
+        model: nn.Module,criterion: nn.Module,data: DataLoader,device: torch.device, normalization = False):
     model.eval()
     avgmae = utils.AverageMeter('6.2f')
     avgloss = utils.AverageMeter('2.5f')
@@ -115,33 +142,26 @@ def evaluate_freq(
           step += 1
           sample, target = sample.to(device), target.to(device)
           output = model(sample)
-          
-          if test: 
-            for i in range(sample.size(0)): #128
-              output_list.append(output[i])
-              target_list.append(target[i])
+           
+          for i in range(sample.size(0)): #128
+            output_list.append(output[i])
+            target_list.append(target[i])
           
           loss = criterion(output, target)
           mae_val = F.l1_loss(output, target) # Mean absolute error for hr detection
           avgmae.update(mae_val, sample.size(0))
           avgloss.update(loss, sample.size(0))
-          
-        if test:
-          output_list = post_processing(output_list)
-          MAE = F.l1_loss(output,target)
-          output_list = torch.Tensor(output_list)
-          output_list = torch.unsqueeze(output_list, dim=1)
-          target_list = torch.Tensor(target_list)
-          target_list = torch.unsqueeze(target_list, dim=1)
-          MAE_post_proc= F.l1_loss(output_list, target_list) # Mean absolute error for hr detection
-          print(f"MAE = {MAE}") 
-          print(f"MAE post proc = {MAE_post_proc}")
+       
+        output_list = post_processing(output_list)
+        target_list = torch.Tensor(target_list)
+        target_list = torch.unsqueeze(target_list, dim=1)
+        MAE_post_proc= F.l1_loss(output_list, target_list) # Mean absolute error for hr detection
       
         final_metrics = {
           'loss': avgloss.get(),
           'MAE': avgmae.get(),
         }
-    return final_metrics
+    return final_metrics, MAE_post_proc
   
 def post_processing(x):
       #apply post-processing
