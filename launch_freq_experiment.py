@@ -228,27 +228,29 @@ else: #for transfer learning
 
     print(f"=> Starting finetuning for {N_FINETUNE_EPOCHS} epochs...")
     for epoch in range(N_FINETUNE_EPOCHS):
-      train_metrics = hrd.train_one_epoch_hr_detection_freq(
+      train_metrics = hrd.train_one_epoch_hr_detection_time(
           epoch, model, criterion, optimizer, train_dl, val_dl, device,
-          plot_heart_rate = False, normalization = False)
+          plot_heart_rate = False)
       
-      test_metrics = hrd.evaluate_freq(model, criterion, test_dl, device, normalization = False)  
+      test_metrics, MAE_post_proc = hrd.evaluate_post_processing_time(model, criterion, test_dl, device)  
       
-      print(f"train and val stats = {train_metrics}")
-      print(f"test stats = {test_metrics}")
+      print(f"train stats = {train_metrics}")
+      print(f"test stats = {test_metrics}") 
+      print(f"MAE post proc = {MAE_post_proc}") 
       val_mae = train_metrics['val_MAE']
-      test_mae = test_metrics['MAE']
       if val_mae < best_val_mae:
         best_val_mae = val_mae
         print(f"new best val mae found = {best_val_mae}")
+      test_mae = test_metrics['MAE']
       if test_mae < best_test_mae:
         best_test_mae = test_mae
         print(f"new best test mae found = {best_test_mae}")
+      if MAE_post_proc < best_mae_post_proc:
+        best_mae_post_proc = MAE_post_proc
+        print(f"new best MAE post processing found = {best_mae_post_proc}")
       
       #if epoch >= 30: #delayed earlystop
       if earlystop(val_mae):
-        print(f"=> Applying post processing...")
-        hrd.evaluate_post_processing_freq(model, test_dl, device, normalization=False)
         break
       
     print(f"=> Done finetuning")

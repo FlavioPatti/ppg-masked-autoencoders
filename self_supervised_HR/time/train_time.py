@@ -113,3 +113,62 @@ def evaluate_time(
         'MAE': avgmae.get(),
       }
     return final_metrics
+
+def evaluate_post_processing_time(
+        model: nn.Module,criterion: nn.Module,data: DataLoader,device: torch.device):
+    model.eval()
+    avgmae = utils.AverageMeter('6.2f')
+    avgloss = utils.AverageMeter('2.5f')
+    step = 0
+    output_list = []
+    target_list = []
+    
+    with torch.no_grad():
+        for sample, target in data: 
+              
+          step += 1
+          sample, target = sample.to(device), target.to(device)
+          output = model(sample)
+           
+          for i in range(sample.size(0)): #128
+            output_list.append(output[i])
+            target_list.append(target[i])
+          
+          loss = criterion(output, target)
+          mae_val = F.l1_loss(output, target) # Mean absolute error for hr detection
+          avgmae.update(mae_val, sample.size(0))
+          avgloss.update(loss, sample.size(0))
+       
+        output_list_post_proc = post_processing(output_list)
+        target_list = torch.Tensor(target_list)
+        target_list = torch.unsqueeze(target_list, dim=1)
+        MAE_post_proc= F.l1_loss(output_list_post_proc, target_list) # Mean absolute error for hr detection
+      
+        final_metrics = {
+          'loss': avgloss.get(),
+          'MAE': avgmae.get(),
+        }
+    return final_metrics, MAE_post_proc
+  
+def post_processing(x):
+      #apply post-processing
+  N = 10
+  x_post_proc = []
+  for i in range(len(x)):
+    if i >= N:
+      previous_values = x[i - N : i]
+      avg = sum(previous_values) / N
+      th = avg / N 
+      if x[i] > avg + th:
+        tmp = avg + th
+        x_post_proc.append(tmp)
+      elif x[i] < avg - th:
+        tmp = avg - th
+        x_post_proc.append(tmp)
+      elif x[i] <= avg + th and x[i] >= avg -th:
+        x_post_proc.append(x[i])
+    else:
+      x_post_proc.append(x[i])  
+  x_post_proc = torch.Tensor(x_post_proc)
+  x_post_proc = torch.unsqueeze(x_post_proc, dim=1)
+  return x_post_proc
