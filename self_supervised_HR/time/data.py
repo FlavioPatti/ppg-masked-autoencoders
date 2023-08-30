@@ -17,11 +17,15 @@ import self_supervised_HR.utils as utils
 import numpy as np
 from statistics import mean
 
-augmentations = {'Jittering': {'percentage': 0.9, 'sigma': 5/100},
-                    'Scaling': {'percentage': 0.9, 'sigma': 0.3},
-                    'DA_MagWarp': {'percentage': 0.9, 'sigma': 0.5, 'knot': 4},
-                    'DA_TimeWarp': {'percentage': 0.9, 'sigma': 0.5, 'knot': 4},
-                    'Frequency_div_2': {'percentage': 0.9} }
+augmentations = {"Frequency_mul_up_to_2_1": {"percentage": 1.0,"multiplier": 1.4},
+	             "Jittering": {"percentage": 1.0,"sigma": 0.05},
+	             "Scaling": {"percentage": 1.0,"sigma": 0.05},
+	             "DA_MagWarp": {"percentage": 1.0,"sigma": 0.5,"knot": 4},
+	             "DA_TimeWarp": {"percentage": 1.0,"sigma": 0.5,"knot": 4},
+	             "Frequency_div_2": {"percentage": 1.0},
+	             "Frequency_mul_up_to_2_2": {"percentage": 1.0,"multiplier": 2.0},
+	             "Jittering": {"percentage": 1.0,"sigma": 0.2},
+	             "Scaling": {"percentage": 1.0,"sigma": 0.2} }
 
 DALIA_URL = "https://archive.ics.uci.edu/ml/machine-learning-databases/00495/data.zip"
 WESAD_URL = "https://uni-siegen.sciebo.de/s/HGdUkoNlW1Ub0Gx/download"
@@ -90,6 +94,61 @@ def _collect_data(data_dir, data):
           'acc': acc,
           'target': target
               }
+        
+    elif data == "IEEETRAIN":
+        for idx, subj in enumerate (num):
+            if subj <= 9:
+              sub = '0'+str(subj)
+              t = '0'+str(ty[idx])
+              data = scipy.io.loadmat(f'{data_dir}/DATA_{sub}_TYPE{t}.mat')['sig']
+            else:
+              t = '0'+str(ty[idx])
+              data = scipy.io.loadmat(f'{data_dir}/DATA_{subj}_TYPE{t}.mat')['sig']
+            #la prima riga = ECG signals
+            ecg_signal = data[0:1, :]
+            ecg_signal = np.squeeze(ecg_signal)
+            #seconda e terza riga = PPG signals
+            ppg = data[1:3, :]
+            ppg = np.transpose(ppg, (1, 0))
+            # ultime tre righe = acc signals
+            acc = data[3:6, :]
+            acc = np.transpose(acc, (1, 0))
+            
+            fs = 125
+            _, results = neurokit2.ecg_peaks(ecg_signal, sampling_rate=fs)
+            rpeaks = results["ECG_R_Peaks"]
+
+            #Correct peaks
+            rpeaks = wfdb.processing.correct_peaks(
+            ecg_signal, rpeaks, search_radius=20, smooth_window_size=50, peak_dir="up")
+            #print(f"shape peaks = {rpeaks.shape}")
+            #print(f"rpeaks = {rpeaks}")
+
+            intervalli_tempo = [rpeaks[i+1] - rpeaks[i] for i in range(len(rpeaks)-1)]
+            instant_heart_rate = [60 / (intervallo_tempo / fs) for intervallo_tempo in intervalli_tempo]
+            window_size = 8.0 * fs 
+            shift = 2.0 * fs  
+            
+
+            heart_rate_mean = []
+            numero_iterazioni = int((ecg_signal.shape[0] - window_size) // shift + 1)
+            for j in range(0, numero_iterazioni):
+                heart_rate_current_window = []
+                inizio_finestra = j * shift
+                fine_finestra = inizio_finestra + window_size
+                for i in range(0, len(rpeaks)-1):
+                    if rpeaks[i] >= inizio_finestra and rpeaks[i] < fine_finestra:
+                        heart_rate_current_window.append(instant_heart_rate[i])
+                heart_rate_mean.append(mean(heart_rate_current_window))
+            
+            target = np.array(heart_rate_mean).astype('float32')
+    
+            dataset[subj] = { 
+            #each sample is build by: ppg value, accelerometer value, hr estimation
+            'ppg': ppg,
+            'acc': acc,
+            'target': target
+                }
     
     return dataset
 
@@ -132,12 +191,9 @@ def _preprocess_data(data_dir, dataset, dataset_name):
 
     return X, y, groups
 
-def _get_data_gen(samples, targets, groups, data_dir, AUGMENT, dataset_name):
-    n = 4
-    if dataset_name == "DALIA" or dataset_name == "WESAD":
-        subjects = 15 #number of patients on which PPG data is taken
-    elif dataset_name == "IEEETRAIN":
-        subjects = 12
+def _get_data_gen_dalia_wesad(samples, targets, groups, data_dir, AUGMENT, dataset_name):
+    subjects = 15 #number of patients on which PPG data is taken
+    n = 4 #number of iteration in the same fold 
     
     indices, _ = _rndgroup_kfold(groups, n)
     kfold_it = 0
@@ -148,7 +204,7 @@ def _get_data_gen(samples, targets, groups, data_dir, AUGMENT, dataset_name):
         # Train Dataset
         train_samples = samples[train_index]
         train_targets = targets[train_index] #target = hr estimation
-        if AUGMENT:
+        if AUGMENT and dataset_name == "DALIA":
             print(f"=> Performing data augmentation. Please wait...")
             Augmenter = utils.Data_Augmentation(train_samples, train_targets, augmentations, data_dir)
             train_samples, train_targets = Augmenter.run()
@@ -164,6 +220,51 @@ def _get_data_gen(samples, targets, groups, data_dir, AUGMENT, dataset_name):
                                                 groups_val_test):
 
             if j == kfold_it % n:
+                val_samples = samples_val_test[val_index]
+                val_targets = targets_val_test[val_index]
+                ds_val = Dalia(val_samples, val_targets)
+                test_subj = groups[test_val_index][test_index][0]
+                print(f'Test Subject: {test_subj}')
+                print(f"Test & Val Subjects: {np.unique(groups[test_val_index])}")
+                test_samples = samples_val_test[test_index]
+                test_targets = targets_val_test[test_index]
+                
+                ds_test = Dalia(test_samples, test_targets, test_subj) 
+               #the dataset is unzipped in several 'Sx' files, each with a different number of samples 
+               #for the different activities (that are the same for all the subjects)
+               #we use k-fold to train the TempoNet several Sx during training and then test 
+               #on a different and unseen Sx at each iteration
+                
+            j += 1
+
+        yield ds_train, ds_val, ds_test
+        kfold_it += 1
+
+def _get_data_gen_ieee(samples, targets, groups):
+    subjects = 12 #number of patients on which PPG data is taken
+    n = 3 #number of folds 
+    
+    indices, _ = _rndgroup_kfold(groups, n)
+    kfold_it = 0
+    while kfold_it < subjects:
+        fold = kfold_it // (n+1)
+        print(f'kFold-iteration: {kfold_it}')
+        train_index, test_val_index = indices[fold]
+        # Train Dataset
+        train_samples = samples[train_index]
+        train_targets = targets[train_index] #target = hr estimation
+        ds_train = Dalia(train_samples, train_targets)
+        # Val and Test Dataset
+        logo = LeaveOneGroupOut()
+        samples_val_test = samples[test_val_index]
+        targets_val_test = targets[test_val_index]
+        groups_val_test = groups[test_val_index]
+        j = 0
+        for val_index, test_index in logo.split(samples_val_test,
+                                                targets_val_test,
+                                                groups_val_test):
+
+            if j == kfold_it % (n+1):
                 val_samples = samples_val_test[val_index]
                 val_targets = targets_val_test[val_index]
                 ds_val = Dalia(val_samples, val_targets)
@@ -271,8 +372,11 @@ def get_data(dataset_name = "WESAD",data_dir=None,url=WESAD_URL,ds_name='ppg_dal
         with open(data_dir / 'slimmed_dalia.pkl', 'rb') as f:
             dataset = pickle.load(f, encoding='latin1')
         samples, target, groups = dataset.values()
-      
-    generator = _get_data_gen(samples, target, groups, data_dir = data_dir, AUGMENT = augment, dataset_name = dataset_name)
+    
+    if dataset_name == "DALIA" or dataset_name == "WESAD":
+        generator = _get_data_gen_dalia_wesad(samples, target, groups, data_dir = data_dir, AUGMENT = augment, dataset_name = dataset_name)
+    if dataset_name == "IEEETRAIN":
+        generator = _get_data_gen_ieee(samples, target, groups)
     return generator 
 
 def get_full_dataset(dataset_name,  data_dir=None, url=WESAD_URL, ds_name='ppg_dalia.zip'):
@@ -318,7 +422,7 @@ def get_full_dataset(dataset_name,  data_dir=None, url=WESAD_URL, ds_name='ppg_d
 
 def build_dataloaders(datasets: Tuple[Dataset, ...],
                       batch_size=128,
-                      num_workers=4
+                      num_workers=1
                       ):
     train_set, val_set, test_set = datasets
     train_loader = DataLoader(
@@ -331,7 +435,7 @@ def build_dataloaders(datasets: Tuple[Dataset, ...],
     val_loader = DataLoader(
         val_set,
         batch_size=batch_size,
-        shuffle=True,
+        shuffle=True, #False
         num_workers=num_workers,
     )
     test_loader = DataLoader(
@@ -341,3 +445,4 @@ def build_dataloaders(datasets: Tuple[Dataset, ...],
         num_workers=num_workers,
     )
     return train_loader, val_loader, test_loader
+
