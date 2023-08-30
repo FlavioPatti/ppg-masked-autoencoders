@@ -152,10 +152,10 @@ def evaluate_post_processing_freq(
           avgmae.update(mae_val, sample.size(0))
           avgloss.update(loss, sample.size(0))
        
-        output_list = post_processing(output_list)
+        output_list_post_proc = post_processing(output_list)
         target_list = torch.Tensor(target_list)
         target_list = torch.unsqueeze(target_list, dim=1)
-        MAE_post_proc= F.l1_loss(output_list, target_list) # Mean absolute error for hr detection
+        MAE_post_proc= F.l1_loss(output_list_post_proc, target_list) # Mean absolute error for hr detection
       
         final_metrics = {
           'loss': avgloss.get(),
@@ -173,10 +173,13 @@ def post_processing(x):
       avg = sum(previous_values) / N
       th = avg / N 
       if x[i] > avg + th:
-          x[i] = avg + th
+        tmp = avg + th
+        x_post_proc.append(tmp)
       elif x[i] < avg - th:
-          x[i] = avg - th
-      x_post_proc.append(x[i])
+        tmp = avg - th
+        x_post_proc.append(tmp)
+      elif x[i] <= avg + th and x[i] >= avg -th:
+        x_post_proc.append(x[i])
     else:
       x_post_proc.append(x[i])  
   x_post_proc = torch.Tensor(x_post_proc)

@@ -41,11 +41,15 @@ spectrogram_transform = torchaudio.transforms.MelSpectrogram(
     n_mels = n_mels
 )
 
-augmentations = {'Jittering': {'percentage': 0.9, 'sigma': 5/100},
-                    'Scaling': {'percentage': 0.9, 'sigma': 0.3},
-                    'DA_MagWarp': {'percentage': 0.9, 'sigma': 0.5, 'knot': 4},
-                    'DA_TimeWarp': {'percentage': 0.9, 'sigma': 0.5, 'knot': 4},
-                    'Frequency_div_2': {'percentage': 0.9} }
+augmentations = {"Frequency_mul_up_to_2_1": {"percentage": 1.0,"multiplier": 1.4},
+	             "Jittering": {"percentage": 1.0,"sigma": 0.05},
+	             "Scaling": {"percentage": 1.0,"sigma": 0.05},
+	             "DA_MagWarp": {"percentage": 1.0,"sigma": 0.5,"knot": 4},
+	             "DA_TimeWarp": {"percentage": 1.0,"sigma": 0.5,"knot": 4},
+	             "Frequency_div_2": {"percentage": 1.0},
+	             "Frequency_mul_up_to_2_2": {"percentage": 1.0,"multiplier": 2.0},
+	             "Jittering": {"percentage": 1.0,"sigma": 0.2},
+	             "Scaling": {"percentage": 1.0,"sigma": 0.2} }
 
 DALIA_URL = "https://archive.ics.uci.edu/ml/machine-learning-databases/00495/data.zip"
 WESAD_URL = "https://uni-siegen.sciebo.de/s/HGdUkoNlW1Ub0Gx/download"
@@ -139,8 +143,8 @@ def _collect_data(data_dir, data):
             rpeaks = results["ECG_R_Peaks"]
 
             #Correct peaks
-            #rpeaks = wfdb.processing.correct_peaks(
-            #ecg_signal, rpeaks, search_radius=36, smooth_window_size=50, peak_dir="up")
+            rpeaks = wfdb.processing.correct_peaks(
+            ecg_signal, rpeaks, search_radius=20, smooth_window_size=50, peak_dir="up")
             #print(f"shape peaks = {rpeaks.shape}")
             #print(f"rpeaks = {rpeaks}")
 
