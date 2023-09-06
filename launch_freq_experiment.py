@@ -228,11 +228,11 @@ else: #for transfer learning
 
     print(f"=> Starting finetuning for {N_FINETUNE_EPOCHS} epochs...")
     for epoch in range(N_FINETUNE_EPOCHS):
-      train_metrics = hrd.train_one_epoch_hr_detection_time(
+      train_metrics = hrd.train_one_epoch_hr_detection_freq(
           epoch, model, criterion, optimizer, train_dl, val_dl, device,
-          plot_heart_rate = False)
+          plot_heart_rate = False, normalization = False)
       
-      test_metrics, MAE_post_proc = hrd.evaluate_post_processing_time(model, criterion, test_dl, device)  
+      test_metrics, MAE_post_proc = hrd.evaluate_post_processing_freq(model, criterion, test_dl, device, normalization = False)  
       
       print(f"train stats = {train_metrics}")
       print(f"test stats = {test_metrics}") 
