@@ -41,15 +41,11 @@ spectrogram_transform = torchaudio.transforms.MelSpectrogram(
     n_mels = n_mels
 )
 
-augmentations = {"Frequency_mul_up_to_2_1": {"percentage": 1.0,"multiplier": 1.4},
-	             "Jittering": {"percentage": 1.0,"sigma": 0.05},
-	             "Scaling": {"percentage": 1.0,"sigma": 0.05},
-	             "DA_MagWarp": {"percentage": 1.0,"sigma": 0.5,"knot": 4},
-	             "DA_TimeWarp": {"percentage": 1.0,"sigma": 0.5,"knot": 4},
-	             "Frequency_div_2": {"percentage": 1.0},
-	             "Frequency_mul_up_to_2_2": {"percentage": 1.0,"multiplier": 2.0},
-	             "Jittering": {"percentage": 1.0,"sigma": 0.2},
-	             "Scaling": {"percentage": 1.0,"sigma": 0.2} }
+augmentations = {'Jittering': {'percentage': 0.9, 'sigma': 5/100},
+                    'Scaling': {'percentage': 0.9, 'sigma': 0.3},
+                    'DA_MagWarp': {'percentage': 0.9, 'sigma': 0.5, 'knot': 4},
+                    'DA_TimeWarp': {'percentage': 0.9, 'sigma': 0.5, 'knot': 4},
+                    'Frequency_div_2': {'percentage': 0.9} }
 
 DALIA_URL = "https://archive.ics.uci.edu/ml/machine-learning-databases/00495/data.zip"
 WESAD_URL = "https://uni-siegen.sciebo.de/s/HGdUkoNlW1Ub0Gx/download"
@@ -438,8 +434,16 @@ def get_full_dataset(dataset_name,  data_dir=None, url=WESAD_URL, ds_name='ppg_d
         with zipfile.ZipFile(train_file) as zf:
           zf.extractall(data_folder)
                 
-    dataset = _collect_data(data_dir, dataset_name)
-    samples, target, groups = _preprocess_data(data_dir, dataset, dataset_name)
+    # This step slims the dataset. This will help to speedup following usage of data
+    if not (data_dir / 'slimmed_dalia.pkl').exists():
+        dataset = _collect_data(data_dir, dataset_name)
+        samples, target, groups = _preprocess_data(data_dir, dataset, dataset_name)
+    else:
+        with open(data_dir / 'slimmed_dalia.pkl', 'rb') as f:
+            dataset = pickle.load(f, encoding='latin1')
+        samples, target, groups = dataset.values()
+        
+    #Create full dataset
     full_dataset = Dalia(samples, target)
     train_dl = DataLoader(full_dataset,batch_size=128, shuffle=True, pin_memory=True, num_workers=4)
     return train_dl

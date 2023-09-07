@@ -225,6 +225,7 @@ else: #for transfer learning
     
     best_val_mae = sys.float_info.max
     best_test_mae = sys.float_info.max
+    best_mae_post_proc = sys.float_info.max
 
     print(f"=> Starting finetuning for {N_FINETUNE_EPOCHS} epochs...")
     for epoch in range(N_FINETUNE_EPOCHS):
@@ -249,9 +250,9 @@ else: #for transfer learning
         best_mae_post_proc = MAE_post_proc
         print(f"new best MAE post processing found = {best_mae_post_proc}")
       
-      #if epoch >= 30: #delayed earlystop
-      if earlystop(val_mae):
-        break
+      if epoch >= 50: #delayed earlystop
+        if earlystop(val_mae):
+          break
       
     print(f"=> Done finetuning")
   
