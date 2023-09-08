@@ -178,7 +178,7 @@ def _preprocess_data(data_dir, dataset, dataset_name):
     """
     Process data with a sliding window of size 'time_window' and overlap 'overlap'
     """
-    if dataset_name == "IEEETRAIN" or dataset_name == "IEEETEST":
+    if dataset_name == "IEEETRAIN":
       fs = 125
     else:
       fs = 32

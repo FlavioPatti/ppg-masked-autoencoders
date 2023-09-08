@@ -128,7 +128,7 @@ if not TRANSFER_LEARNING: #for time/freq experiments
             epoch, model, criterion, optimizer, train_dl, val_dl, device,
             plot_heart_rate = False, normalization = False)
       
-      test_metrics, MAE_post_proc = hrd.evaluate_post_processing_freq(model, criterion, test_dl, device, normalization = False)
+      test_metrics, MAE_post_proc, output, target, output_post_proc = hrd.evaluate_post_processing_freq(model, criterion, test_dl, device, normalization = False)
         
       print(f"train stats = {train_metrics}")
       print(f"test stats = {test_metrics}") 
@@ -144,7 +144,16 @@ if not TRANSFER_LEARNING: #for time/freq experiments
       if MAE_post_proc < best_mae_post_proc:
         best_mae_post_proc = MAE_post_proc
         print(f"new best MAE post processing found = {best_mae_post_proc}")
-        
+      import matplotlib.pyplot as plt
+      plt.figure(figsize=(15, 5))
+      plt.plot(output, label='Output')
+      plt.plot(output_post_proc, label='Output Post Proc')
+      plt.plot(target, label='Target')
+      plt.xlabel('Time (s)')
+      plt.ylabel('Heart Rate (BPM)')
+      plt.title('Output vs Output post proc vs Target')
+      plt.legend()
+      plt.savefig(f'./self_supervised_HR/imgs/HR/epoch{epoch+1}.png')   
       #print(f"=> Updating plot on wandb")
       #wandb.log({'train_mae': test_mae, 'epochs': epoch + 1}, commit=True)
       #wandb.log({'val_mae': val_mae, 'epochs': epoch + 1}, commit=True)
