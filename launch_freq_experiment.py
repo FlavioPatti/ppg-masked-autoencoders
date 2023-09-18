@@ -17,13 +17,12 @@ os.environ["CUBLAS_WORKSPACE_CONFIG"] = ":4096:8"
 # Ensure deterministic execution
 seed = utils.seed_all(seed=42)
 
-
 # Set flags for experiments
-N_PRETRAIN_EPOCHS = 0
+N_PRETRAIN_EPOCHS = 200
 N_FINETUNE_EPOCHS = 200
 TRANSFER_LEARNING = False
-DATASET_PRETRAIN = "IEEETRAIN" #DALIA or WESAD
-DATASET_FINETUNING = "IEEETRAIN" #DALIA or WESAD
+DATASET_PRETRAIN = "DALIA" #DALIA or WESAD
+DATASET_FINETUNING = "DALIA" #DALIA or WESAD
 
 """
 # Init wandb for plot loss/mae/HR
@@ -144,16 +143,7 @@ if not TRANSFER_LEARNING: #for time/freq experiments
       if MAE_post_proc < best_mae_post_proc:
         best_mae_post_proc = MAE_post_proc
         print(f"new best MAE post processing found = {best_mae_post_proc}")
-      import matplotlib.pyplot as plt
-      plt.figure(figsize=(15, 5))
-      plt.plot(output, label='Output')
-      plt.plot(output_post_proc, label='Output Post Proc')
-      plt.plot(target, label='Target')
-      plt.xlabel('Time (s)')
-      plt.ylabel('Heart Rate (BPM)')
-      plt.title('Output vs Output post proc vs Target')
-      plt.legend()
-      plt.savefig(f'./self_supervised_HR/imgs/HR/epoch{epoch+1}.png')   
+       
       #print(f"=> Updating plot on wandb")
       #wandb.log({'train_mae': test_mae, 'epochs': epoch + 1}, commit=True)
       #wandb.log({'val_mae': val_mae, 'epochs': epoch + 1}, commit=True)
