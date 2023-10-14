@@ -42,37 +42,26 @@ The input is the audio of the PPG signal in time experiment and the corrispondin
 
 The actual configurations use a `patch_size = (1,1)` for time and a `patch_size= (8,8)` for frequency in order to reach a uniform number of patches in the two experiments of 256.
 
-Below you can see an example of reconstruction using a `mask_ratio = 75%` for time and a `mask_ratio = 15%` for frequency. The first image is the input and the second image is the reconstruction.
-
-## Time
-![input_time](https://github.com/eml-eda/ppg-masked-autoencoders/assets/101011113/16fbd6f9-a223-4105-b8d3-65459da90b36)
-![output_time](https://github.com/eml-eda/ppg-masked-autoencoders/assets/101011113/b47a91c1-b082-4a55-b6f6-458c61b38d1d)
-
-## Frequence
-![input_freq](https://github.com/eml-eda/ppg-masked-autoencoders/assets/101011113/796c2bb3-9cf5-4bb1-9001-611d0c569999)
-![output_freq](https://github.com/eml-eda/ppg-masked-autoencoders/assets/101011113/daac96ab-f643-4eb2-9cf5-45fb0a5a94c9)
-
 #### **`model_finetune.py`**
 This module implements an architecture similar to the previous one but without the decoder in the Masked Autoencoder ViT. 
 
-In its place two convolutional layers and a final linear layer have been inserted for the prediction of the Heart Rate of the various patients. 
+In its place a regression tail was inserted consisting of two Convolutional layers a AvgPooling and a final Linear layer, which starting from the extracted features of the pre-training step try to use this acquired knowledge to predict the Heart Rate of the various patients. 
 
-The currently setting of the parameters for the time experiments are: 
+A Masked Autoencoder-big was choosen for the time experiments are: 
 - `depth` = 12, 
 - `heads` = 16, 
 - `embed_dim`= 256
 
-  The currently setting of the parameters for the frequency experiments are: 
+A Masked Autoencoder-small was choosen for the frequency experiments are: 
 - `depth` = 4, 
 - `heads` = 16, 
 - `embed_dim`= 64
 
-but the model has been made flexible to adapt to any changes of these parameters.
+but the model has been made flexible to adapt to any correct changes of these parameters.
 
 Futhermore, the model is trained for *DATASET_FINETUNING* epochs with an early stop of 20 epochs on the validation MAE. The optimizer used is **Adam** and the criterion is **LogCosh**.
 
 All the results for the various experiments conducted in this repository are presented in *results.xlsx*
-
 
 #### **`train_time/freq.py`**
 This module implement the minimum set of information required to implement a training loop.
