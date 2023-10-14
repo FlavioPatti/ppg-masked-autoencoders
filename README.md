@@ -38,7 +38,10 @@ The main function in this module are:
 #### **`model_pretrain.py`**
 This module implement the **MaskedAutoencoderViT** (Masked Autoencoder Vision Trasformer) which are able to reconstruct the input signal from the original version, applying a certain *mask_ratio* (i.e., amount of patches to remove from the input). The model is trained for *N_PRETRAIN_EPOCHS* epochs. The optimizer used is **AdamW** and the criterion is **MSE Loss**.
 
-The inputs can be both 1D audio of the PPG signal in time experiments (`img_size = (256,1)`) or the corrisponding 2D spectogram in frequency experiments (`img_size = (256,64)`). 
+The inputs can be:
+- 1D audio of the PPG signal in time experiments. This means each signal is an array containing 256 elements representing time intervals (from 0 to 8 seconds).
+- the corrisponding 2D spectogram in frequency experiments. This means each signal is a two-dimensional array with 64 rows and 256 columns, where each element represents a data point in the
+signal, 64 represent the frequencies (which are bounded between 0 Hz and 4 Hz) after applying the spectrogram transformation and 256 are the time intervals (from 0 to 8 seconds). 
 
 The actual configurations use a `patch_size = (1,1)` for time and a `patch_size= (8,8)` for frequency in order to reach a uniform number of patches in the two experiments of 256.
 
