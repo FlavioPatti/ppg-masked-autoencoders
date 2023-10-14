@@ -1,7 +1,7 @@
 import torch
 import wandb
 import numpy as np
-import self_supervised_HR.freq as hrd
+import self_supervised_HR.frequency as hrd
 import self_supervised_HR.utils.utils as utils
 from self_supervised_HR.utils import  EarlyStopping
 from util.misc import NativeScalerWithGradNormCount as NativeScaler
@@ -9,18 +9,18 @@ import sys
 import os
 from thop import profile
 
-#Wandb setup
+#Wandb setup to plot statistics of our model on Weights and Biases
 os.environ["WANDB_API_KEY"] = "20fed903c269ff76b57d17a58cdb0ba9d0c4d2be"
 os.environ["WANDB_MODE"] = "online"
 os.environ["CUBLAS_WORKSPACE_CONFIG"] = ":4096:8"
 
-# Ensure deterministic execution
+#Ensure deterministic execution
 seed = utils.seed_all(seed=42)
 
 # Set flags for experiments
 N_PRETRAIN_EPOCHS = 200
 N_FINETUNE_EPOCHS = 200
-TRANSFER_LEARNING = False
+TRANSFER_LEARNING = False #False means we are using normal k-fold cross validation
 DATASET_PRETRAIN = "DALIA" #DALIA or WESAD
 DATASET_FINETUNING = "DALIA" #DALIA or WESAD
 
@@ -33,7 +33,7 @@ run = wandb.init(
             entity = "aml-2022", 
             # Set the project where this run will be logged
             project="Hr_detection",
-            group='finetuning2',
+            group='finetuning',
             # Track hyperparameters and run metadata
             config=configuration,
             resume="allow")
@@ -43,11 +43,11 @@ run = wandb.init(
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 print("Training on:", device)
 
-if not TRANSFER_LEARNING: #for time/freq experiments
+if not TRANSFER_LEARNING: #for k-fold on freq experiments
   print(f"=> Running frequency experiment with dataset = {DATASET_PRETRAIN}")
   
   # Get the Data and perform cross-validation
-  data_gen = hrd.get_data(dataset_name = DATASET_PRETRAIN, augment = False)
+  data_gen = hrd.get_data(dataset_name = DATASET_PRETRAIN)
   for datasets in data_gen:
     train_ds, val_ds, test_ds = datasets
     test_subj = test_ds.test_subj
@@ -100,9 +100,9 @@ if not TRANSFER_LEARNING: #for time/freq experiments
         model = model.cuda()
       
     #Print #params and #ops for the actual model
-    #input_tensor = torch.randn(1,4,64,256)
-    #flops, params = profile(model, inputs=(input_tensor,))
-    #print(f"# params = {params}, #flops = {flops}")
+    input_tensor = torch.randn(1,4,64,256)
+    flops, params = profile(model, inputs=(input_tensor,))
+    print(f"# params = {params}, #flops = {flops}")
           
     # Get Training Settings
     criterion = utils.get_default_criterion("finetune")
@@ -120,14 +120,13 @@ if not TRANSFER_LEARNING: #for time/freq experiments
     else:
       print(f"File doesn't exist.")
 
-
     print(f"=> Starting finetuning for {N_FINETUNE_EPOCHS} epochs...")
     for epoch in range(N_FINETUNE_EPOCHS):
       train_metrics = hrd.train_one_epoch_hr_detection_freq(
             epoch, model, criterion, optimizer, train_dl, val_dl, device,
             plot_heart_rate = False, normalization = False)
       
-      test_metrics, MAE_post_proc, output, target, output_post_proc = hrd.evaluate_post_processing_freq(model, criterion, test_dl, device, normalization = False)
+      test_metrics, MAE_post_proc = hrd.evaluate_post_processing_freq(model, criterion, test_dl, device, normalization = False)
         
       print(f"train stats = {train_metrics}")
       print(f"test stats = {test_metrics}") 

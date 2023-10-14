@@ -33,6 +33,7 @@ def train_one_epoch_masked_autoencoder_time(model: torch.nn.Module,
         #recostruction of the signal to the original shape
         signal_reconstructed = np.squeeze(utils.unpatchify(prediction, type = "time"))
             
+        #plot input and input_reconstructed
         if plot_audio:
           ppg_signal = samples[sample_to_plot,0,:,:].to('cpu').detach().numpy() #ppg signal is channel 0
           utils.plot_audio(x = ppg_signal, type="input", num_sample = sample_to_plot, epoch = epoch)
@@ -61,14 +62,14 @@ def train_one_epoch_hr_detection_time(
       tepoch.set_description(f"Epoch {epoch+1}")
       for sample, target in train:
         step += 1
-        #tepoch.update(1)
+        tepoch.update(1)
         sample, target = sample.to(device), target.to(device)
         
         output = model(sample)
         loss = criterion(output, target)
         
+        #plot heart-rates
         if plot_heart_rate and step == 365:
-          print(f"plot heart rates")
           pred = output.to('cpu').detach().numpy()
           true_target = target.to('cpu').detach().numpy()
           utils.plot_heart_rates(pred = pred, target = true_target, type="HR", epoch = epoch)
@@ -150,8 +151,8 @@ def evaluate_post_processing_time(
         }
     return final_metrics, MAE_post_proc
   
+#apply post-processing
 def post_processing(x):
-      #apply post-processing
   N = 10
   x_post_proc = []
   for i in range(len(x)):

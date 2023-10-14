@@ -12,18 +12,16 @@ import torch
 from torch.utils.data import Dataset, DataLoader
 import neurokit2
 import wfdb.processing
-import scipy.io
-import self_supervised_HR.utils as utils
 import torchaudio
 import numpy as np
 from statistics import mean
 
 """spectogram trasformation and relative parameters"""
 sample_rate= 32
-n_fft = 510 #freq = nfft/2 + 1 = 256 => risoluzione/granularitÃ  dello spettrogramma
+n_fft = 510 
 win_length = 32
-hop_length = 1 # window length = time instants
-n_mels = 64 #definisce la dimensione della frequenza di uscita
+hop_length = 1 
+n_mels = 64
 f_min = 0
 f_max = 4
 
@@ -40,12 +38,6 @@ spectrogram_transform = torchaudio.transforms.MelSpectrogram(
     f_max = f_max,
     n_mels = n_mels
 )
-
-augmentations = {'Jittering': {'percentage': 0.9, 'sigma': 5/100},
-                    'Scaling': {'percentage': 0.9, 'sigma': 0.3},
-                    'DA_MagWarp': {'percentage': 0.9, 'sigma': 0.5, 'knot': 4},
-                    'DA_TimeWarp': {'percentage': 0.9, 'sigma': 0.5, 'knot': 4},
-                    'Frequency_div_2': {'percentage': 0.9} }
 
 DALIA_URL = "https://archive.ics.uci.edu/ml/machine-learning-databases/00495/data.zip"
 WESAD_URL = "https://uni-siegen.sciebo.de/s/HGdUkoNlW1Ub0Gx/download"
@@ -115,7 +107,7 @@ def _collect_data(data_dir, data):
 
 
 
-def _preprocess_data(data_dir, dataset, dataset_name):
+def _preprocess_data(data_dir, dataset):
     """
     Process data with a sliding window of size 'time_window' and overlap 'overlap'
     """
@@ -150,9 +142,9 @@ def _preprocess_data(data_dir, dataset, dataset_name):
 
     return X, y, groups
 
-def _get_data_gen_dalia_wesad(samples, targets, groups, data_dir, AUGMENT, dataset_name):
-    subjects = 15 #number of patients on which PPG data is taken
-    n = 4 #number of iteration in the same fold 
+def _get_data_gen(samples, targets, groups):
+    subjects = 15
+    n = 4
     
     indices, _ = _rndgroup_kfold(groups, n)
     kfold_it = 0
@@ -163,10 +155,6 @@ def _get_data_gen_dalia_wesad(samples, targets, groups, data_dir, AUGMENT, datas
         # Train Dataset
         train_samples = samples[train_index]
         train_targets = targets[train_index] #target = hr estimation
-        if AUGMENT and dataset_name == "DALIA":
-            print(f"=> Performing data augmentation. Please wait...")
-            Augmenter = utils.Data_Augmentation(train_samples, train_targets, augmentations, data_dir)
-            train_samples, train_targets = Augmenter.run()
         ds_train = Dalia(train_samples, train_targets)
         # Val and Test Dataset
         logo = LeaveOneGroupOut()
@@ -189,10 +177,6 @@ def _get_data_gen_dalia_wesad(samples, targets, groups, data_dir, AUGMENT, datas
                 test_targets = targets_val_test[test_index]
                 
                 ds_test = Dalia(test_samples, test_targets, test_subj) 
-               #the dataset is unzipped in several 'Sx' files, each with a different number of samples 
-               #for the different activities (that are the same for all the subjects)
-               #we use k-fold to train the TempoNet several Sx during training and then test 
-               #on a different and unseen Sx at each iteration
                 
             j += 1
 
@@ -244,7 +228,7 @@ class Dalia(Dataset):
         return len(self.samples)
 
 
-def get_data(dataset_name = "WESAD",data_dir=None,url=WESAD_URL,ds_name='ppg_dalia.zip',kfold=True, augment = False):
+def get_data(dataset_name = "DALIA",data_dir=None,url=DALIA_URL,ds_name='ppg_dalia.zip'):
     folder = ""
     if dataset_name == "WESAD":
       folder = "WESAD"
@@ -273,13 +257,13 @@ def get_data(dataset_name = "WESAD",data_dir=None,url=WESAD_URL,ds_name='ppg_dal
     # This step slims the dataset. This will help to speedup following usage of data
     if not (data_dir / 'slimmed_dalia.pkl').exists():
         dataset = _collect_data(data_dir, dataset_name)
-        samples, target, groups = _preprocess_data(data_dir, dataset, dataset_name)
+        samples, target, groups = _preprocess_data(data_dir, dataset)
     else:
         with open(data_dir / 'slimmed_dalia.pkl', 'rb') as f:
             dataset = pickle.load(f, encoding='latin1')
         samples, target, groups = dataset.values()
    
-    generator = _get_data_gen_dalia_wesad(samples, target, groups, data_dir = data_dir, AUGMENT = augment, dataset_name = dataset_name)
+    generator = _get_data_gen(samples, target, groups)
     
     return generator 
 
@@ -312,7 +296,7 @@ def get_full_dataset(dataset_name,  data_dir=None, url=WESAD_URL, ds_name='ppg_d
     # This step slims the dataset. This will help to speedup following usage of data
     if not (data_dir / 'slimmed_dalia.pkl').exists():
         dataset = _collect_data(data_dir, dataset_name)
-        samples, target, groups = _preprocess_data(data_dir, dataset, dataset_name)
+        samples, target, groups = _preprocess_data(data_dir, dataset)
     else:
         with open(data_dir / 'slimmed_dalia.pkl', 'rb') as f:
             dataset = pickle.load(f, encoding='latin1')

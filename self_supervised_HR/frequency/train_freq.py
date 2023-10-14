@@ -31,11 +31,12 @@ def train_one_epoch_masked_autoencoder_freq(model: torch.nn.Module,
     
         samples = samples.to(device, non_blocking=True)
         
-        loss, prediction, target, x_masked = model(samples, mask_ratio = 0.1)
+        loss, prediction, target, x_masked = model(samples, mask_ratio = 0.15)
         
         #recostruction of the signal to the original shape
         signal_reconstructed = utils.unpatchify(prediction, type = "freq")
         
+        #plot input and input_reconstructed
         if plot_heatmap and data_iter_step == 365:
           ppg_signal = samples[sample_to_plot,0,:,:].to('cpu').detach().numpy()
           utils.plot_heatmap(x = ppg_signal, type="input", num_sample= sample_to_plot, epoch= epoch)
@@ -68,11 +69,12 @@ def train_one_epoch_hr_detection_freq(
           sample = np.log10(sample)
                 
         step += 1
-        #tepoch.update(1)
+        tepoch.update(1)
         sample, target = sample.to(device), target.to(device)
         output = model(sample)
         loss = criterion(output, target)
         
+        #plot heart-rates
         if plot_heart_rate and step == 365:
           pred = output.to('cpu').detach().numpy()
           true_target = target.to('cpu').detach().numpy()
@@ -162,8 +164,9 @@ def evaluate_post_processing_freq(
           'MAE': avgmae.get(),
         }
     return final_metrics, MAE_post_proc
+  
+#apply post-processing 
 def post_processing(x):
-      #apply post-processing
   N = 10
   x_post_proc = []
   for i in range(len(x)):

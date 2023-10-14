@@ -13,15 +13,16 @@ from thop import profile
 os.environ["WANDB_API_KEY"] = "20fed903c269ff76b57d17a58cdb0ba9d0c4d2be"
 os.environ["WANDB_MODE"] = "online"
 os.environ["CUBLAS_WORKSPACE_CONFIG"] = ":4096:8"
+
 # Ensure deterministic execution
 seed = utils.seed_all(seed=42)
 
 # Set flags for experiments
 N_PRETRAIN_EPOCHS = 200
 N_FINETUNE_EPOCHS = 200
-TRANSFER_LEARNING = False
-DATASET_PRETRAIN = "DALIA"
-DATASET_FINETUNING = "DALIA"
+TRANSFER_LEARNING = False #False means we are using normal k-fold cross validation
+DATASET_PRETRAIN = "DALIA" #DALIA or WESAD
+DATASET_FINETUNING = "DALIA" #DALIA or WESAD
 
 """
 # Init wandb for plot loss/mae/HR
@@ -41,7 +42,7 @@ run = wandb.init(
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 print("Training on:", device)
 
-if not TRANSFER_LEARNING: #for time/freq experiments
+if not TRANSFER_LEARNING: #for k-fold on freq experiments
   print(f"=> Running time experiment with dataset = {DATASET_PRETRAIN}")
   
   # Get the Data and perform cross-validation
@@ -98,9 +99,9 @@ if not TRANSFER_LEARNING: #for time/freq experiments
         model = model.cuda()
       
     #print #params and #ops for the model
-    #input_tensor = torch.randn(1,4,64,256)
-    #flops, params = profile(model, inputs=(input_tensor,))
-    #print(f"# params = {params}, #flops = {flops}")
+    input_tensor = torch.randn(1,4,64,256)
+    flops, params = profile(model, inputs=(input_tensor,))
+    print(f"# params = {params}, #flops = {flops}")
           
     # Get Training Settings
     criterion = utils.get_default_criterion("finetune")
@@ -111,9 +112,13 @@ if not TRANSFER_LEARNING: #for time/freq experiments
     
     best_val_mae = sys.float_info.max
     best_test_mae = sys.float_info.max
+    best_mae_post_proc = sys.float_info.max
     
     #Load checkpoint from pretrain if exists
-    utils.load_checkpoint_pretrain(model, torch.load("./checkpoint_model_pretrain"))
+    if os.path.exists("./checkpoint_model_pretrain"):
+          utils.load_checkpoint_pretrain(model, torch.load("./checkpoint_model_pretrain"))
+    else:
+      print(f"File doesn't exist.")
 
     print(f"=> Starting finetuning for {N_FINETUNE_EPOCHS} epochs...")
     for epoch in range(N_FINETUNE_EPOCHS):
@@ -207,12 +212,10 @@ else: #for transfer learning
     if torch.cuda.is_available():
         model = model.cuda()
     #Load checkpoint from pretrain if exists
-    utils.load_checkpoint_pretrain(model, torch.load("./checkpoint_model_pretrain"))
-    
-    #print #params and #ops for the model
-    #input_tensor = torch.randn(1,4,64,256)
-    #flops, params = profile(model, inputs=(input_tensor,))
-    #print(f"# params = {params}, #flops = {flops}")
+    if os.path.exists("./checkpoint_model_pretrain"):
+          utils.load_checkpoint_pretrain(model, torch.load("./checkpoint_model_pretrain"))
+    else:
+      print(f"File doesn't exist.")
         
     # Get Training Settings
     criterion = utils.get_default_criterion("finetune")
@@ -221,6 +224,7 @@ else: #for transfer learning
     optimizer = utils.get_default_optimizer(model, "finetune")
     best_val_mae = sys.float_info.max
     best_test_mae = sys.float_info.max
+    best_mae_post_proc = sys.float_info.max
 
     print(f"=> Starting finetuning for {N_FINETUNE_EPOCHS} epochs...")
     for epoch in range(N_FINETUNE_EPOCHS):
