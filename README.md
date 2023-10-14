@@ -17,7 +17,7 @@ To run the experiments read and install all the libraries present in `requiremen
 ## API Details
 In this repository you can find two types of experiments: signal reconstruction (pre-train phase) + heart rate estimation (finetuning phase) in the time domain and the equivalent in the frequency domain. To run these two experiments the corrisponding files are [`launch_time_experiments.py`](#launch_time_experimentspy) and [`launch_frequency_experiments.py`](#launch_frequency_experimentspy).
 
-For each experiment two datasets can be tested: **PPG_Dalia** and **WESAD**. If you want to apply transfer learning step, please, set *TRANSFER_LEARNING = True* and specify the name of the datasets for the pre-train (*DATASET_PRETRAIN*) and finetuning (*DATASET_FINETUNING*) phases, otherwise the experiment is executed with the same dataset following a k-fold cross validation approach.
+For each experiment two datasets can be tested: [**PPG_Dalia**](https://archive.ics.uci.edu/dataset/495/ppg+dalia) and [**WESAD**](https://archive.ics.uci.edu/dataset/465/wesad+wearable+stress+and+affect+detection). If you want to apply transfer learning step, please, set *TRANSFER_LEARNING = True* and specify the name of the datasets for the pre-train (*DATASET_PRETRAIN*) and finetuning (*DATASET_FINETUNING*) phases, otherwise the experiment is executed with the same dataset following a k-fold cross validation approach.
 Each experiment is a stand-alone python module based on five python files, namely:
 1. [`data.py`](#datapy)
 2. [`model_pretrain.py`](#model_pretrainpy)
@@ -45,7 +45,7 @@ The actual configurations use a `patch_size = (1,1)` for time and a `patch_size=
 #### **`model_finetune.py`**
 This module implements an architecture similar to the previous one but without the decoder in the Masked Autoencoder ViT. 
 
-In its place a regression tail was inserted consisting of two Convolutional layers a AvgPooling and a final Linear layer, which starting from the extracted features of the pre-training step tris to exploit this acquired knowledge to predict the Heart Rate of the various patients. 
+In its place a regression tail was inserted consisting of two Convolutional layers a AvgPooling and a final Linear layer, which starting from the extracted features of the pre-training step tries to exploit this acquired knowledge for Heart Rate estimation of the various patients present in the mentioned datasets. 
 
 A Masked Autoencoder-**big** was chosen for the time experiments are: 
 - `depth` = 12, 
