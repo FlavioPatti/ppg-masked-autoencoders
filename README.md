@@ -45,21 +45,21 @@ The actual configurations use a `patch_size = (1,1)` for time and a `patch_size=
 #### **`model_finetune.py`**
 This module implements an architecture similar to the previous one but without the decoder in the Masked Autoencoder ViT. 
 
-In its place a regression tail was inserted consisting of two Convolutional layers a AvgPooling and a final Linear layer, which starting from the extracted features of the pre-training step try to use this acquired knowledge to predict the Heart Rate of the various patients. 
+In its place a regression tail was inserted consisting of two Convolutional layers a AvgPooling and a final Linear layer, which starting from the extracted features of the pre-training step try to exploit this acquired knowledge to predict the Heart Rate of the various patients. 
 
-A Masked Autoencoder-big was choosen for the time experiments are: 
+A Masked Autoencoder-**big** was chosen for the time experiments are: 
 - `depth` = 12, 
 - `heads` = 16, 
 - `embed_dim`= 256
 
-A Masked Autoencoder-small was choosen for the frequency experiments are: 
+A Masked Autoencoder-**small** was chosen for the frequency experiments are: 
 - `depth` = 4, 
 - `heads` = 16, 
 - `embed_dim`= 64
 
 but the model has been made flexible to adapt to any correct changes of these parameters.
 
-Futhermore, the model is trained for *DATASET_FINETUNING* epochs with an early stop of 20 epochs on the validation MAE. The optimizer used is **Adam** and the criterion is **LogCosh**.
+Furthermore, the model is trained for *DATASET_FINETUNING* epochs with an early stop of 20 epochs on the validation MAE. The optimizer used is **Adam** and the criterion is **LogCosh**.
 
 All the results for the various experiments conducted in this repository are presented in *results.xlsx*
 
