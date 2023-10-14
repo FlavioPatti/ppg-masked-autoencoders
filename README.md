@@ -64,11 +64,12 @@ Furthermore, the model is trained for *DATASET_FINETUNING* epochs with an early 
 All the results for the various experiments conducted in this repository are presented in *results.xlsx*
 
 #### **`train_time/freq.py`**
-This module implement the minimum set of information required to implement a training loop.
+This module implement functions necessary for running a training loop.
 
 - `train_one_epoch_masked_autoencoder`, implements one epoch of training for to reconstruct the input signal. It takes as input an integer specifying the current *epoch*, the *model* to be trained, the *criterion*, the *optimizer*, the *train* and *val* dataloaders and finally the *device* to be used for the training. It returns a dictionary of tracked metrics.
 - `train_one_epoch_hr_detection`, implements one epoch of training and validation for predict heart rate estimation. For the validation part it directly calls the `evaluate` function. It takes as input an integer specifying the current *epoch*, the *model* to be trained, the *criterion*, the *optimizer*, the *train* and *val* dataloaders and finally the *device* to be used for the training. It returns a dictionary of tracked metrics.
 - `evaluate`, implement an evaluation step of the model. This step can be both of validation or test depending on the specific dataloader provided as input. It takes as input the *model*, the *criterion*, the *dataloader* and the *device*. It returns a dictionary of tracked metrics.
+- `evaluate_post_processing`, implement an evaluation step of the model, applying a post-processing step to the output of the model to improve accuracy. This step can be both of validation or test depending on the specific dataloader provided as input. It takes as input the *model*, the *criterion*, the *dataloader* and the *device*. It returns a dictionary of tracked metrics.
 
 #### **`__init__.py`**
 The body of this file import all the standard functions described in `data.py`, `model_pretrain.py`, `model_finetune.py` and `train_time/freq.py`.
