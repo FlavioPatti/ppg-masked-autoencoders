@@ -43,7 +43,7 @@ The inputs can be:
 - the corrisponding 2D spectogram in frequency experiments. This means each signal is a two-dimensional array with 64 rows and 256 columns, where each element represents a data point in the
 signal, 64 represent the frequencies (which are bounded between 0 Hz and 4 Hz) after applying the spectrogram transformation and 256 are the time intervals (from 0 to 8 seconds). 
 
-The actual configurations use a `patch_size = (1,1)` for time and a `patch_size= (8,8)` for frequency in order to reach a uniform number of patches in the two experiments of 256.
+The actual configurations use a `patch_size = (1,1)` for time and a `patch_size= (8,8)` for frequency in order to reach a uniform number of patches in the two domains of 256.
 
 #### **`model_finetune.py`**
 This module implements an architecture similar to the previous one but without the decoder in the Masked Autoencoder ViT. 
