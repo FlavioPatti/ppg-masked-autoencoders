@@ -36,7 +36,7 @@ The main function in this module are:
 - `build_dataloaders`, which returns a tuple of [Pytorch Dataloaders](https://pytorch.org/docs/stable/data.html#torch.utils.data.DataLoader). Takes as inputs the dataset returned by `get_data` and constants such as the *batch-size* and the *number of workers*. The number of elements of the returned tuple is 3 (train,validation, test) according to `get_data` implementation.
 
 #### **`model_pretrain.py`**
-This module implement the **MaskedAutoencoderViT** (Masked Autoencoder Vision Trasformer) to reconstruct the input signal from the original version applying a certain *mask_ratio* after *N_PRETRAIN_EPOCHS* epochs. The optimizer used is **AdamW** and the criterion is **MSE Loss**.
+This module implement the **MaskedAutoencoderViT** (Masked Autoencoder Vision Trasformer) which are able to reconstruct the input signal from the original version, applying a certain *mask_ratio* (i.e., amount of patches to remove from the input). The model is trained for *N_PRETRAIN_EPOCHS* epochs. The optimizer used is **AdamW** and the criterion is **MSE Loss**.
 
 The input is the audio of the PPG signal in time experiment and the corrisponding spectogram in frequency experiment. 
 
@@ -45,7 +45,7 @@ The actual configurations use a `patch_size = (1,1)` for time and a `patch_size=
 #### **`model_finetune.py`**
 This module implements an architecture similar to the previous one but without the decoder in the Masked Autoencoder ViT. 
 
-In its place a regression tail was inserted consisting of two Convolutional layers a AvgPooling and a final Linear layer, which starting from the extracted features of the pre-training step try to exploit this acquired knowledge to predict the Heart Rate of the various patients. 
+In its place a regression tail was inserted consisting of two Convolutional layers a AvgPooling and a final Linear layer, which starting from the extracted features of the pre-training step tris to exploit this acquired knowledge to predict the Heart Rate of the various patients. 
 
 A Masked Autoencoder-**big** was chosen for the time experiments are: 
 - `depth` = 12, 
@@ -69,7 +69,7 @@ This module implement functions necessary for running a training loop.
 - `train_one_epoch_masked_autoencoder`, implements one epoch of training for to reconstruct the input signal. It takes as input an integer specifying the current *epoch*, the *model* to be trained, the *criterion*, the *optimizer*, the *train* and *val* dataloaders and finally the *device* to be used for the training. It returns a dictionary of tracked metrics.
 - `train_one_epoch_hr_detection`, implements one epoch of training and validation for predict heart rate estimation. For the validation part it directly calls the `evaluate` function. It takes as input an integer specifying the current *epoch*, the *model* to be trained, the *criterion*, the *optimizer*, the *train* and *val* dataloaders and finally the *device* to be used for the training. It returns a dictionary of tracked metrics.
 - `evaluate`, implement an evaluation step of the model. This step can be both of validation or test depending on the specific dataloader provided as input. It takes as input the *model*, the *criterion*, the *dataloader* and the *device*. It returns a dictionary of tracked metrics.
-- `evaluate_post_processing`, implement an evaluation step of the model, applying a post-processing step to the output of the model to improve accuracy. This step can be both of validation or test depending on the specific dataloader provided as input. It takes as input the *model*, the *criterion*, the *dataloader* and the *device*. It returns a dictionary of tracked metrics.
+- `evaluate_post_processing`, implement an evaluation step of the model, applying a post-processing step to the output to improve accuracy of the model. This step can be both of validation or test depending on the specific dataloader provided as input. It takes as input the *model*, the *criterion*, the *dataloader* and the *device*. It returns a dictionary of tracked metrics.
 
 #### **`__init__.py`**
 The body of this file import all the standard functions described in `data.py`, `model_pretrain.py`, `model_finetune.py` and `train_time/freq.py`.
