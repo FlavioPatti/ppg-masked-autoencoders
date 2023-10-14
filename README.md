@@ -42,7 +42,7 @@ The input is the audio of the PPG signal in time experiment and the corrispondin
 
 The actual configurations use a `patch_size = (1,1)` for time and a `patch_size= (8,8)` for frequency in order to reach a uniform number of patches in the two experiments of 256.
 
-You can see an example of reconstruction using a `mask_ratio = 15%` for both cases below. The first image is the input and the second image is the reconstruction.
+Below you can see an example of reconstruction using a `mask_ratio = 75%` for time and a `mask_ratio = 15%` for frequency. The first image is the input and the second image is the reconstruction.
 
 ## Time
 ![input_time](https://github.com/eml-eda/ppg-masked-autoencoders/assets/101011113/16fbd6f9-a223-4105-b8d3-65459da90b36)
