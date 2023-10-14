@@ -50,12 +50,12 @@ This module implements an architecture similar to the previous one but without t
 
 In its place a regression tail was inserted consisting of two Convolutional layers a AvgPooling and a final Linear layer, which starting from the extracted features of the pre-training step tries to exploit this acquired knowledge for Heart Rate estimation of the various patients present in the mentioned datasets. 
 
-A Masked Autoencoder-**big** was chosen for the time experiments are: 
+A Masked Autoencoder-**big** was chosen for the time experiments with the following configurations: 
 - `depth` = 12, 
 - `heads` = 16, 
 - `embed_dim`= 256
 
-A Masked Autoencoder-**small** was chosen for the frequency experiments are: 
+A Masked Autoencoder-**small** was chosen for the frequency experiments with the following configurations: 
 - `depth` = 4, 
 - `heads` = 16, 
 - `embed_dim`= 64
