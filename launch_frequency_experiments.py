@@ -98,11 +98,6 @@ if not TRANSFER_LEARNING: #for k-fold on freq experiments
     model = utils.get_reference_model('vit_freq_finetune') #ViT (only encoder with at the end linear layer)
     if torch.cuda.is_available():
         model = model.cuda()
-      
-    #Print #params and #ops for the actual model
-    input_tensor = torch.randn(1,4,64,256)
-    flops, params = profile(model, inputs=(input_tensor,))
-    print(f"# params = {params}, #flops = {flops}")
           
     # Get Training Settings
     criterion = utils.get_default_criterion("finetune")

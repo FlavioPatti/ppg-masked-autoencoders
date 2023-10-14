@@ -1,3 +1,3 @@
-from .utils import AverageMeter, unpatchify, plot_audio, get_default_criterion, get_default_optimizer, plot_heatmap, seed_all
+from .utils import AverageMeter, unpatchify, plot_audio, get_default_criterion, get_default_optimizer, plot_heatmap, seed_all, EarlyStopping
 
-__all__ = ['AverageMeter', 'unpatchify', 'plot_audio', 'plot_heatmap', 'EarlyStopping', 'seed_all', 'get_default_criterion', 'get_default_optimizer']
+__all__ = ['AverageMeter', 'unpatchify', 'plot_audio', 'plot_heatmap', 'EarlyStopping', 'seed_all', 'get_default_criterion', 'get_default_optimizer', 'EarlyStopping']

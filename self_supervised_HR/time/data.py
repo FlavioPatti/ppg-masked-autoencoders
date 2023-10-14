@@ -206,7 +206,7 @@ class Dalia(Dataset):
         return len(self.samples)
 
 
-def get_data(dataset_name = "WESAD",data_dir=None,url=WESAD_URL,ds_name='ppg_dalia.zip',kfold=True, augment = False):
+def get_data(dataset_name = "WESAD",data_dir=None,url=WESAD_URL,ds_name='ppg_dalia.zip'):
     folder = ""
     if dataset_name == "WESAD":
       folder = "WESAD"
@@ -241,7 +241,7 @@ def get_data(dataset_name = "WESAD",data_dir=None,url=WESAD_URL,ds_name='ppg_dal
             dataset = pickle.load(f, encoding='latin1')
         samples, target, groups = dataset.values()
     
-    generator = _get_data_gen(samples, target, groups, data_dir = data_dir)
+    generator = _get_data_gen(samples, target, groups)
     
     return generator 
 

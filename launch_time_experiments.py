@@ -46,7 +46,7 @@ if not TRANSFER_LEARNING: #for k-fold on freq experiments
   print(f"=> Running time experiment with dataset = {DATASET_PRETRAIN}")
   
   # Get the Data and perform cross-validation
-  data_gen = hrd.get_data(dataset_name = DATASET_PRETRAIN, augment = False)
+  data_gen = hrd.get_data(dataset_name = DATASET_PRETRAIN)
   for datasets in data_gen:
     train_ds, val_ds, test_ds = datasets
     test_subj = test_ds.test_subj
@@ -97,11 +97,6 @@ if not TRANSFER_LEARNING: #for k-fold on freq experiments
     model = utils.get_reference_model('vit_time_finetune') #ViT (only encoder with at the end linear layer)
     if torch.cuda.is_available():
         model = model.cuda()
-      
-    #print #params and #ops for the model
-    input_tensor = torch.randn(1,4,64,256)
-    flops, params = profile(model, inputs=(input_tensor,))
-    print(f"# params = {params}, #flops = {flops}")
           
     # Get Training Settings
     criterion = utils.get_default_criterion("finetune")
@@ -181,7 +176,7 @@ else: #for transfer learning
     train_stats = hrd.train_one_epoch_masked_autoencoder_time(
           model, train_dl, criterion,
           optimizer, device, epoch, loss_scaler,
-          plot_heatmap = False, sample_to_plot = 50)
+          plot_audio = False, sample_to_plot = 50)
     
     print(f"train_stats = {train_stats}")
     loss = train_stats['loss']
@@ -197,7 +192,7 @@ else: #for transfer learning
   print(f"=> Done pretrain")
 
   # Get the Data and perform cross-validation
-  data_gen = hrd.get_data(dataset = DATASET_FINETUNING)
+  data_gen = hrd.get_data(dataset_name = DATASET_FINETUNING)
   for datasets in data_gen:
     train_ds, val_ds, test_ds = datasets
     test_subj = test_ds.test_subj
