@@ -5,7 +5,6 @@ import pickle
 import random
 import requests
 import zipfile
-import self_supervised_HR.freq as hrd
 import numpy as np
 from sklearn.model_selection import LeaveOneGroupOut
 from skimage.util.shape import view_as_windows
@@ -13,7 +12,6 @@ import torch
 from torch.utils.data import Dataset, DataLoader
 import neurokit2
 import wfdb.processing
-import self_supervised_HR.utils as utils
 import numpy as np
 from statistics import mean
 
