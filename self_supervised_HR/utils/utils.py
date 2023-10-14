@@ -15,8 +15,8 @@ import timm.optim.optim_factory as optim_factory
 import torch.nn as nn
 from self_supervised_HR.time.model_pretrain import MaskedAutoencoderViT_time
 from self_supervised_HR.time.model_finetune import MaskedAutoencoderViT_without_decoder_time
-from self_supervised_HR.freq.model_pretrain import MaskedAutoencoderViT_freq
-from self_supervised_HR.freq.model_finetune import MaskedAutoencoderViT_without_decoder_freq
+from self_supervised_HR.frequency.model_pretrain import MaskedAutoencoderViT_freq
+from self_supervised_HR.frequency.model_finetune import MaskedAutoencoderViT_without_decoder_freq
 from functools import partial
 
 def save_checkpoint_pretrain(state, filename="checkpoint_model_pretrain"):
