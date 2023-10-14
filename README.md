@@ -17,7 +17,7 @@ To run the experiments read and install all the libraries present in `requiremen
 ## API Details
 In this repository you can find two types of experiments: signal reconstruction (pre-train phase) + heart rate estimation (finetuning phase) in the time domain and the equivalent in the frequency domain. To run these two experiments the corrisponding files are [`launch_time_experiments.py`](#launch_time_experimentspy) and [`launch_frequency_experiments.py`](#launch_frequency_experimentspy).
 
-For each experiment different datasets can be tested such as **PPG_Dalia**, **WESAD** and **IEEE_Train & Test** so if you want to apply a transfer learning step, please, set *TRANSFER_LEARNING = True* and specify the name of the datasets for the pre-train (*DATASET_PRETRAIN*) and finetuning (*DATASET_FINETUNING*) phases, otherwise the experiment are executed with the same dataset.
+For each experiment two datasets can be tested: **PPG_Dalia** and **WESAD**. If you want to apply transfer learning step, please, set *TRANSFER_LEARNING = True* and specify the name of the datasets for the pre-train (*DATASET_PRETRAIN*) and finetuning (*DATASET_FINETUNING*) phases, otherwise the experiment are executed with the same dataset following a k-fold cross validation approach.
 Each experiment is a stand-alone python module based on five python files, namely:
 1. [`data.py`](#datapy)
 2. [`model_pretrain.py`](#model_pretrainpy)
